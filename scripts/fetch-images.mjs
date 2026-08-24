@@ -1,16 +1,17 @@
 #!/usr/bin/env node
 /**
- * Optional: download a photo for each sight from Wikipedia into public/img/,
- * so the deployed page doesn't hit Wikipedia at runtime.
+ * Download a photo for each sight into public/img/ and write a manifest the
+ * page reads instead of calling Wikipedia at runtime.
  *
- *   node scripts/fetch-images.mjs
+ *   npm run images
  *
- * Then set USE_LOCAL_IMAGES = true near the top of the <script> in
- * public/index.html (or just delete public/img to go back to runtime fetching).
+ * This is the reliable path: the files are committed and served from your own
+ * origin, so there is no API, no CORS and no cache to go wrong. Delete
+ * public/img/ to fall back to fetching at runtime.
  *
- * Images come from Wikipedia/Wikimedia Commons. Most are CC-licensed and
- * require attribution — public/img/CREDITS.json records the source page for
- * each one. Check the licence before using these anywhere public.
+ * Images come from Wikipedia/Wikimedia Commons. Most are CC-licensed and need
+ * attribution — public/img/CREDITS.json records the source page for each one.
+ * Check the licence before using these anywhere public.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import { SIGHTS } from "../src/sights.js";
@@ -21,20 +22,28 @@ const UA = "london-sights-vote/1.0 (private trip planner)";
 await mkdir(OUT, { recursive: true });
 
 const titles = [...new Set(SIGHTS.map((s) => s.wiki))];
-const api =
-  "https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1" +
-  "&prop=pageimages&piprop=thumbnail&pithumbsize=800&titles=" +
-  encodeURIComponent(titles.join("|"));
-
-const res = await fetch(api, { headers: { "user-agent": UA } });
-const data = await res.json();
-
+// `pilimit` matters: without it the API returns a thumbnail for the FIRST
+// title only, and every other card falls back to a placeholder.
 const byTitle = {};
-for (const page of Object.values(data?.query?.pages || {})) {
-  if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
+
+for (let i = 0; i < titles.length; i += 45) {
+  const batch = titles.slice(i, i + 45);
+  const api =
+    "https://en.wikipedia.org/w/api.php" +
+    "?action=query&format=json&formatversion=2&redirects=1" +
+    "&prop=pageimages&piprop=thumbnail&pithumbsize=800" +
+    `&pilimit=${batch.length}&titles=` +
+    encodeURIComponent(batch.join("|"));
+
+  const res = await fetch(api, { headers: { "user-agent": UA } });
+  const data = await res.json();
+
+  for (const page of data?.query?.pages || []) {
+    if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
+  }
+  for (const r of data?.query?.redirects || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
+  for (const n of data?.query?.normalized || []) if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
 }
-for (const r of data?.query?.redirects || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
-for (const n of data?.query?.normalized || []) if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
 
 const credits = {};
 let saved = 0;
@@ -64,6 +73,19 @@ for (const sight of SIGHTS) {
   console.log(`  saved ${sight.id}`);
 }
 
+const manifest = Object.fromEntries(
+  Object.entries(credits).map(([id, c]) => [id, `/img/${c.file}`])
+);
+await writeFile(new URL("manifest.json", OUT), JSON.stringify(manifest, null, 2));
 await writeFile(new URL("CREDITS.json", OUT), JSON.stringify(credits, null, 2));
+
+const missed = SIGHTS.filter((s) => !credits[s.id]);
 console.log(`\n${saved}/${SIGHTS.length} images saved to public/img/`);
-console.log("Attribution recorded in public/img/CREDITS.json — check licences before public use.");
+if (missed.length) {
+  console.log(`\nNo image found for ${missed.length}:`);
+  for (const s of missed) console.log(`  ${s.id}  (wiki: "${s.wiki}")`);
+  console.log("\nFix by editing the `wiki` field in src/sights.js, or drop a file");
+  console.log("into public/img/ named <id>.jpg and add it to manifest.json by hand.");
+}
+console.log("\nNow commit public/img/ and redeploy — the page prefers these over Wikipedia.");
+console.log("Attribution is in public/img/CREDITS.json; check licences before public use.");

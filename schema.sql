@@ -23,3 +23,15 @@ CREATE TABLE IF NOT EXISTS custom_sights (
 );
 
 CREATE INDEX IF NOT EXISTS idx_custom_created ON custom_sights (created_at);
+
+-- Comments on an option. Anyone can write, only the author can delete.
+CREATE TABLE IF NOT EXISTS comments (
+  id         TEXT    PRIMARY KEY,   -- "c-<uuid>"
+  sight_id   TEXT    NOT NULL,      -- built-in id or "custom-…"
+  author     TEXT    NOT NULL,      -- as typed
+  author_key TEXT    NOT NULL,      -- lowercased
+  body       TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_comments_sight ON comments (sight_id, created_at);

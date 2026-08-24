@@ -237,6 +237,74 @@ h1{
   background:var(--maroon-soft);padding:2px 6px;border-radius:2px;white-space:nowrap;
 }
 
+
+/* ---------------- sticky top bar ---------------- */
+#topbar{
+  position:sticky;top:0;z-index:40;margin:0 -20px;
+  background:color-mix(in srgb,var(--paper) 94%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
+}
+#topbar .who,#topbar .bar{position:static;margin:0;backdrop-filter:none;background:none}
+#topbar .who{border-bottom:1px solid var(--line);padding:10px 20px}
+#topbar .bar{padding:9px 20px;margin:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+#topbar .bar::-webkit-scrollbar{display:none}
+#topbar .bar button{flex:0 0 auto}
+
+/* ---------------- comments ---------------- */
+.talk{
+  font:inherit;font-size:13px;cursor:pointer;background:none;border:0;
+  color:var(--ink-3);padding:6px 4px;display:inline-flex;align-items:center;gap:5px;
+}
+.talk:hover{color:var(--maroon)}
+.talk[aria-expanded="true"]{color:var(--maroon);font-weight:500}
+.talk .bubble{font-size:14px;line-height:1}
+.talk .n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+.thread{
+  border-top:1px solid var(--line);padding:12px 16px 14px;
+  background:var(--card);display:grid;gap:10px;
+}
+.thread[hidden]{display:none}
+.cmt{font-size:14px;line-height:1.5}
+.cmt .meta-line{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.04em;color:var(--ink-3);margin-bottom:2px;
+  display:flex;gap:8px;align-items:baseline;
+}
+.cmt .meta-line b{color:var(--maroon);font-weight:500}
+.cmt .del{
+  font:inherit;font-size:10.5px;background:none;border:0;padding:0;
+  color:var(--ink-3);text-decoration:underline;cursor:pointer;margin-left:auto;
+}
+.cmt .del:hover{color:var(--maroon)}
+.cmt p{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
+.thread .none{font-size:13.5px;color:var(--ink-3);margin:0}
+.thread form{display:grid;gap:8px}
+.thread textarea{
+  width:100%;font:inherit;font-size:15px;padding:9px 11px;border-radius:3px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+  resize:vertical;min-height:60px;
+}
+.thread .send{
+  justify-self:start;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;
+  background:var(--maroon);border:1px solid var(--maroon);color:var(--on-accent);
+  padding:8px 15px;border-radius:3px;
+}
+.thread .send:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------------- back to top ---------------- */
+#totop{
+  position:fixed;right:16px;bottom:16px;z-index:50;
+  width:46px;height:46px;border-radius:50%;cursor:pointer;
+  border:1px solid var(--line-2);background:var(--card);color:var(--maroon);
+  font-size:19px;line-height:1;box-shadow:var(--shadow);
+  display:grid;place-items:center;
+  opacity:0;pointer-events:none;transform:translateY(8px);
+  transition:opacity .2s ease,transform .2s ease;
+}
+#totop.show{opacity:1;pointer-events:auto;transform:none}
+#totop:hover{border-color:var(--maroon)}
+
 /* ---------------- misc ---------------- */
 .notice{
   border:1px solid var(--maroon);border-left-width:4px;background:var(--maroon-soft);
@@ -249,6 +317,25 @@ footer{
   color:var(--ink-3);letter-spacing:.04em;line-height:1.8;
 }
 footer a{color:var(--maroon)}
+
+@media (max-width:640px){
+  .wrap{padding:0 14px 90px}
+  #topbar{margin:0 -14px}
+  #topbar .who,#topbar .bar{padding-left:14px;padding-right:14px}
+  .who input{flex:1 1 140px;min-width:0}
+  .who .status{flex-basis:100%;margin-left:0;font-size:11px}
+  header{padding:28px 0 18px}
+  .grid{grid-template-columns:1fr;gap:14px}
+  .shot{aspect-ratio:3/2}
+  .foot{flex-wrap:wrap;gap:8px}
+  .want{padding:10px 16px;font-size:15px}
+  .talk{padding:8px 4px;font-size:14px}
+  .tally{flex-basis:100%;order:3}
+  .voters{white-space:normal}
+  .remove{margin-left:0}
+  #totop{right:12px;bottom:12px}
+}
+
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:520px){
   .who .status{margin-left:0;flex-basis:100%}
@@ -264,6 +351,7 @@ footer a{color:var(--maroon)}
   <p class="lede" id="lede"></p>
 </header>
 
+<div id="topbar">
 <div class="who">
   <label for="name" id="name-label">Your name</label>
   <input id="name" type="text" maxlength="32" placeholder="e.g. Manuel" autocomplete="given-name" spellcheck="false">
@@ -282,6 +370,7 @@ footer a{color:var(--maroon)}
   <button type="button" data-f="added" aria-pressed="false">Added by us</button>
   <button type="button" data-f="mine" aria-pressed="false">My picks</button>
   <button type="button" data-f="top" aria-pressed="false">Most wanted</button>
+</div>
 </div>
 
 <details class="addbox" id="addbox">
@@ -318,15 +407,19 @@ footer a{color:var(--maroon)}
 
 </div>
 
+<button id="totop" type="button" aria-label="Back to top" title="Back to top">↑</button>
+
 <script type="module">
 const $  = (s, r = document) => r.querySelector(s);
 const NAME_KEY = "london-vote-name";
 const CODE_KEY = "london-vote-code";
 const LANG_KEY = "london-vote-lang";
 const IMG_KEY  = "london-vote-images-v2";
+const openThreads = new Set();   // which cards have their comments expanded
 
 let SIGHTS = [];
 let CUSTOM = [];
+let COMMENTS = {};
 let VOTES  = {};
 let filter = "all";
 let me     = "";
@@ -374,6 +467,18 @@ const T = {
     voteFail: msg => `Couldn't save that vote: ${msg}`,
     namePlaceholder: "e.g. Manuel",
     descPlaceholder: "Why should we go?",
+    comments: "Comments", comment: "comment", commentsN: "comments",
+    noComments: "No comments yet.",
+    commentPlaceholder: "Add a note for the others…",
+    send: "Post",
+    del: "delete",
+    delConfirm: "Delete this comment?",
+    needNameComment: "Enter your name at the top first.",
+    backToTop: "Back to top",
+    justNow: "just now",
+    minsAgo: n => `${n} min ago`,
+    hoursAgo: n => `${n} h ago`,
+    daysAgo: n => `${n} d ago`,
   },
   de: {
     kicker: "London · 11.–16. September 2026",
@@ -410,6 +515,18 @@ const T = {
     voteFail: msg => `Stimme konnte nicht gespeichert werden: ${msg}`,
     namePlaceholder: "z. B. Manuel",
     descPlaceholder: "Warum sollten wir hin?",
+    comments: "Kommentare", comment: "Kommentar", commentsN: "Kommentare",
+    noComments: "Noch keine Kommentare.",
+    commentPlaceholder: "Notiz für die anderen …",
+    send: "Absenden",
+    del: "löschen",
+    delConfirm: "Diesen Kommentar löschen?",
+    needNameComment: "Trag oben zuerst deinen Namen ein.",
+    backToTop: "Nach oben",
+    justNow: "gerade eben",
+    minsAgo: n => `vor ${n} Min.`,
+    hoursAgo: n => `vor ${n} Std.`,
+    daysAgo: n => `vor ${n} T.`,
   },
 };
 
@@ -455,6 +572,7 @@ async function load() {
   SIGHTS = data.sights;
   CUSTOM = data.custom || [];
   VOTES  = data.votes || {};
+  COMMENTS = data.comments || {};
   render();
   loadImages();
 }
@@ -465,22 +583,47 @@ async function refresh() {
     const before = CUSTOM.length;
     CUSTOM = data.custom || [];
     VOTES  = data.votes || {};
+    COMMENTS = data.comments || {};
     if (CUSTOM.length !== before) render();
-    else { paintTallies(); applyFilter(); }
+    else { paintTallies(); paintThreads(); applyFilter(); }
     setStatus();
   } catch { /* transient */ }
 }
 
 /* ---------------------------------------------------------------- images */
-/* One batched Wikipedia call covers every built-in sight. pilimit is the
-   trap here: without it the API returns a thumbnail for the FIRST page only. */
+/* Two sources, in order of reliability:
+     1. /img/manifest.json  — files served from this origin. Run `npm run images`
+        to create it. No API, no CORS, no cache: this always works.
+     2. Wikipedia at runtime — a fallback for when the manifest isn't there.
+   Whatever happens, a missing photo just leaves the lettered placeholder. */
+
+const imageState = { source: "none", found: 0, missing: [], error: null };
 
 async function loadImages() {
-  let cache = null;
-  try { cache = JSON.parse(localStorage.getItem(IMG_KEY) || "null"); } catch {}
-  if (cache?.at > Date.now() - 30 * 864e5 && cache.map) {
-    applyImages(cache.map);
-    if (Object.keys(cache.map).length >= SIGHTS.length) return;
+  // ---- 1. local manifest
+  try {
+    const res = await fetch("/img/manifest.json", { cache: "no-cache" });
+    if (res.ok) {
+      const map = await res.json();
+      if (map && Object.keys(map).length) {
+        imageState.source = "local";
+        imageState.found = Object.keys(map).length;
+        imageState.missing = SIGHTS.filter((s) => !map[s.id]).map((s) => s.id);
+        applyImages(map);
+        return;
+      }
+    }
+  } catch { /* no manifest — fall through */ }
+
+  // ---- 2. Wikipedia
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(IMG_KEY) || "null"); } catch {}
+  if (cached?.map && Object.keys(cached.map).length >= SIGHTS.length &&
+      cached.at > Date.now() - 30 * 864e5) {
+    imageState.source = "cache";
+    imageState.found = Object.keys(cached.map).length;
+    applyImages(cached.map);
+    return;
   }
 
   const titles = [...new Set(SIGHTS.map((s) => s.wiki).filter(Boolean))];
@@ -494,24 +637,23 @@ async function loadImages() {
       "&prop=pageimages&piprop=thumbnail&pithumbsize=640" +
       `&pilimit=${batch.length}&redirects=1&titles=` +
       encodeURIComponent(batch.join("|"));
-
     try {
       const data = await (await fetch(url)).json();
       const byTitle = {};
       for (const page of data?.query?.pages || []) {
         if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
       }
-      for (const r of data?.query?.redirects || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
+      for (const r of data?.query?.redirects  || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
       for (const n of data?.query?.normalized || []) if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
       for (const s of SIGHTS) if (byTitle[s.wiki]) map[s.id] = byTitle[s.wiki];
-    } catch { /* fall through to the per-page retry */ }
+    } catch (e) {
+      imageState.error = String(e);
+    }
   }
 
   applyImages(map);
 
-  // Anything the batch missed: ask the REST summary endpoint directly.
-  const missing = SIGHTS.filter((s) => s.wiki && !map[s.id]);
-  for (const s of missing) {
+  for (const s of SIGHTS.filter((x) => x.wiki && !map[x.id])) {
     try {
       const res = await fetch(
         "https://en.wikipedia.org/api/rest_v1/page/summary/" +
@@ -521,9 +663,12 @@ async function loadImages() {
       const d = await res.json();
       const src = d.thumbnail?.source || d.originalimage?.source;
       if (src) { map[s.id] = src; applyImages({ [s.id]: src }); }
-    } catch { /* give up on this one */ }
+    } catch (e) { imageState.error ||= String(e); }
   }
 
+  imageState.source = "wikipedia";
+  imageState.found = Object.keys(map).length;
+  imageState.missing = SIGHTS.filter((s) => !map[s.id]).map((s) => s.id);
   try { localStorage.setItem(IMG_KEY, JSON.stringify({ at: Date.now(), map })); } catch {}
 }
 
@@ -541,9 +686,23 @@ function applyImages(map) {
       const ph = shot.querySelector(".ph");
       if (ph) ph.hidden = true;
     };
+    img.onerror = () => { imageState.missing.push(id); };
     img.src = src;
   }
 }
+
+/* Type imageDebug() in the console to see what happened. */
+window.imageDebug = () => {
+  console.table({
+    source: imageState.source,
+    found: imageState.found,
+    of: SIGHTS.length,
+    error: imageState.error || "none",
+  });
+  if (imageState.missing.length) console.log("missing:", imageState.missing);
+  console.log('Clear the cache with: localStorage.removeItem("' + IMG_KEY + '")');
+  return imageState;
+};
 
 /* ---------------------------------------------------------------- render */
 
@@ -583,9 +742,14 @@ function cardHTML(s) {
       <button class="want" type="button" data-id="${esc(s.id)}" aria-pressed="false" disabled>
         <span class="heart">♡</span><span class="txt">${esc(t().want)}</span>
       </button>
+      <button class="talk" type="button" data-talk="${esc(s.id)}" aria-expanded="false"
+              aria-controls="thread-${esc(s.id)}">
+        <span class="bubble" aria-hidden="true">💬</span><span class="n">0</span>
+      </button>
       <span class="tally" id="tally-${esc(s.id)}"></span>
       ${custom ? `<button class="remove" type="button" data-remove="${esc(s.id)}" hidden>${esc(t().remove)}</button>` : ""}
     </div>
+    <div class="thread" id="thread-${esc(s.id)}" hidden></div>
   </article>`;
 }
 
@@ -594,6 +758,7 @@ function render() {
   $("#grid").innerHTML = all().map(cardHTML).join("");
   if (!wired) { $("#grid").addEventListener("click", onClick); wired = true; }
   paintTallies();
+  paintThreads();
   applyFilter();
 }
 
@@ -621,6 +786,62 @@ function paintTallies() {
 
     const rm = document.querySelector(`.remove[data-remove="${CSS.escape(s.id)}"]`);
     if (rm) rm.hidden = !(key && s.addedBy && norm(s.addedBy) === key);
+  }
+}
+
+function ago(ms) {
+  const L = t();
+  const mins = Math.floor((Date.now() - ms) / 60000);
+  if (mins < 1)   return L.justNow;
+  if (mins < 60)  return L.minsAgo(mins);
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return L.hoursAgo(hours);
+  return L.daysAgo(Math.floor(hours / 24));
+}
+
+function threadHTML(id) {
+  const L = t();
+  const list = COMMENTS[id] || [];
+  const key = norm(me);
+
+  const items = list.length
+    ? list.map((c) => `
+        <div class="cmt">
+          <div class="meta-line">
+            <b>${esc(c.author)}</b><span>${esc(ago(c.createdAt))}</span>
+            ${key && norm(c.author) === key
+              ? `<button class="del" type="button" data-delc="${esc(c.id)}">${esc(L.del)}</button>`
+              : ""}
+          </div>
+          <p>${esc(c.body)}</p>
+        </div>`).join("")
+    : `<p class="none">${esc(L.noComments)}</p>`;
+
+  return `${items}
+    <form data-cform="${esc(id)}">
+      <textarea maxlength="500" rows="2" placeholder="${esc(L.commentPlaceholder)}"
+                aria-label="${esc(L.comments)}"></textarea>
+      <button class="send" type="submit"${me ? "" : " disabled"}>${esc(L.send)}</button>
+    </form>`;
+}
+
+/** Repaint counts, and the contents of any thread that's currently open. */
+function paintThreads() {
+  for (const s of all()) {
+    const n = (COMMENTS[s.id] || []).length;
+    const btn = document.querySelector(`.talk[data-talk="${CSS.escape(s.id)}"]`);
+    if (btn) {
+      btn.querySelector(".n").textContent = n;
+      btn.title = `${n} ${n === 1 ? t().comment : t().commentsN}`;
+    }
+    const box = document.getElementById(`thread-${s.id}`);
+    if (!box) continue;
+    const open = openThreads.has(s.id);
+    box.hidden = !open;
+    btn?.setAttribute("aria-expanded", String(open));
+    if (open && document.activeElement?.tagName !== "TEXTAREA") {
+      box.innerHTML = threadHTML(s.id);
+    }
   }
 }
 
@@ -707,6 +928,8 @@ function paintChrome() {
   $("#add-hint").textContent   = L.addHint;
   $("#add-desc").placeholder   = L.descPlaceholder;
 
+  const tt = $("#totop");
+  if (tt) { tt.title = L.backToTop; tt.setAttribute("aria-label", L.backToTop); }
   $("#foot-note").textContent  = L.footNote;
   $("#foot-guide").textContent = L.footGuide;
   $("#guide").textContent      = L.guideLink;
@@ -726,6 +949,21 @@ function setLang(next) {
 /* --------------------------------------------------------------- actions */
 
 async function onClick(event) {
+  const talk = event.target.closest(".talk");
+  if (talk) {
+    const id = talk.dataset.talk;
+    if (openThreads.has(id)) openThreads.delete(id);
+    else openThreads.add(id);
+    const box = document.getElementById(`thread-${id}`);
+    if (box) box.innerHTML = threadHTML(id);
+    paintThreads();
+    if (openThreads.has(id)) box?.querySelector("textarea")?.focus();
+    return;
+  }
+
+  const delc = event.target.closest(".del");
+  if (delc) return onDeleteComment(delc.dataset.delc);
+
   const rm = event.target.closest(".remove");
   if (rm) return onRemove(rm.dataset.remove);
 
@@ -745,8 +983,9 @@ async function onClick(event) {
     });
     VOTES = data.votes || {};
     CUSTOM = data.custom || CUSTOM;
+    COMMENTS = data.comments || COMMENTS;
     notify("");
-    paintTallies(); applyFilter(); setStatus();
+    paintTallies(); paintThreads(); applyFilter(); setStatus();
   } catch (err) {
     notify(t().voteFail(err.message));
   } finally {
@@ -767,11 +1006,62 @@ async function onRemove(id) {
     });
     CUSTOM = data.custom || [];
     VOTES  = data.votes || {};
+    COMMENTS = data.comments || {};
     render(); setStatus(); notify("");
   } catch (err) {
     notify(err.message);
   }
 }
+
+async function onDeleteComment(id) {
+  if (!window.confirm(t().delConfirm)) return;
+  try {
+    const data = await api("/api/comments/remove", {
+      method: "POST",
+      body: JSON.stringify({ id, voter: me }),
+    });
+    COMMENTS = data.comments || {};
+    VOTES = data.votes || {};
+    paintThreads();
+    notify("");
+  } catch (err) {
+    notify(err.message);
+  }
+}
+
+/* Comment forms are created and destroyed constantly, so listen on the grid. */
+$("#grid").addEventListener("submit", async (event) => {
+  const form = event.target.closest("form[data-cform]");
+  if (!form) return;
+  event.preventDefault();
+
+  const id = form.dataset.cform;
+  const area = form.querySelector("textarea");
+  const text = area.value.trim();
+
+  if (!me) { notify(t().needNameComment); $("#name").focus(); return; }
+  if (!text) return;
+
+  const send = form.querySelector(".send");
+  send.disabled = true;
+
+  try {
+    const data = await api("/api/comments/add", {
+      method: "POST",
+      body: JSON.stringify({ sightId: id, voter: me, body: text }),
+    });
+    COMMENTS = data.comments || {};
+    VOTES = data.votes || {};
+    area.value = "";
+    area.blur();
+    paintThreads();
+    notify("");
+  } catch (err) {
+    notify(err.message);
+  } finally {
+    send.disabled = false;
+  }
+});
 
 $("#addform").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -802,6 +1092,7 @@ $("#addform").addEventListener("submit", async (event) => {
     });
     CUSTOM = data.custom || [];
     VOTES  = data.votes || {};
+    COMMENTS = data.comments || {};
     $("#addform").reset();
     $("#addbox").open = false;
     render(); setStatus(); notify("");
@@ -817,7 +1108,7 @@ $("#addform").addEventListener("submit", async (event) => {
 $("#name").addEventListener("input", (e) => {
   me = e.target.value.trim();
   try { localStorage.setItem(NAME_KEY, me); } catch {}
-  paintTallies(); applyFilter(); setStatus();
+  paintTallies(); paintThreads(); applyFilter(); setStatus();
 });
 
 $("#filters").addEventListener("click", (e) => {
@@ -852,6 +1143,17 @@ load()
     notify(t().loadFail(err.message));
     $("#status").textContent = "—";
   });
+
+const toTop = $("#totop");
+toTop.title = t().backToTop;
+toTop.setAttribute("aria-label", t().backToTop);
+toTop.addEventListener("click", () => {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+});
+const onScroll = () => toTop.classList.toggle("show", window.scrollY > 500);
+window.addEventListener("scroll", onScroll, { passive: true });
+onScroll();
 
 setInterval(refresh, 20000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });

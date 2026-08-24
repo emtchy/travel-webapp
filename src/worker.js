@@ -99,10 +99,29 @@ async function isKnownSight(env, id) {
   return !!row;
 }
 
+async function getComments(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, sight_id, author, body, created_at
+       FROM comments ORDER BY created_at ASC`
+  ).all();
+
+  const bySight = {};
+  for (const row of results ?? []) {
+    (bySight[row.sight_id] ||= []).push({
+      id: row.id,
+      author: row.author,
+      body: row.body,
+      createdAt: row.created_at,
+    });
+  }
+  return bySight;
+}
+
 /** Everything the page needs, so a mutation never needs a follow-up GET. */
 const snapshot = async (env) => ({
   custom: await getCustom(env),
   votes: await getVotes(env),
+  comments: await getComments(env),
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -220,8 +239,69 @@ async function handleDeleteSight(request, env) {
     return bad("Only the person who added it can remove it.", 403);
 
   await env.DB.prepare("DELETE FROM votes WHERE sight_id = ?1").bind(id).run();
+  await env.DB.prepare("DELETE FROM comments WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM custom_sights WHERE id = ?1").bind(id).run();
 
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+async function handleAddComment(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const author = cleanName(body?.voter);
+  if (!author) return bad("Enter your name first.");
+
+  const { sightId } = body ?? {};
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+    return bad("Unknown sight.");
+
+  const text = cleanText(body?.body, 500);
+  if (!text) return bad("Write something first.");
+  if (text === undefined) return bad("Keep comments under 500 characters.");
+
+  const existing = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM comments WHERE sight_id = ?1"
+  )
+    .bind(sightId)
+    .first();
+  if (existing.count >= 50) return bad("That's 50 comments on one option — enough.");
+
+  await env.DB.prepare(
+    `INSERT INTO comments (id, sight_id, author, author_key, body, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+  )
+    .bind(`c-${crypto.randomUUID()}`, sightId, author, voterKey(author), text, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+async function handleRemoveComment(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const name = cleanName(body?.voter);
+  const { id } = body ?? {};
+  if (!name) return bad("Enter your name first.");
+  if (typeof id !== "string" || !id.startsWith("c-")) return bad("Unknown comment.");
+
+  const row = await env.DB.prepare("SELECT author_key FROM comments WHERE id = ?1")
+    .bind(id)
+    .first();
+  if (!row) return bad("That comment is already gone.", 404);
+  if (row.author_key !== voterKey(name))
+    return bad("Only the person who wrote it can delete it.", 403);
+
+  await env.DB.prepare("DELETE FROM comments WHERE id = ?1").bind(id).run();
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
@@ -252,6 +332,12 @@ export default {
 
     if (pathname === "/api/sights/remove" && method === "POST")
       return handleDeleteSight(request, env);
+
+    if (pathname === "/api/comments/add" && method === "POST")
+      return handleAddComment(request, env);
+
+    if (pathname === "/api/comments/remove" && method === "POST")
+      return handleRemoveComment(request, env);
 
     return bad("Not found.", 404);
   },
