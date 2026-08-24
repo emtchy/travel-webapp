@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>London — vote for the sights</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
+  --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
+  --line:#D9DDD4; --line-2:#C4CABD;
+  --maroon:#7B2230; --maroon-soft:#F0E2E3;
+  --green:#1F4A3C; --green-soft:#E1EAE4;
+  --brass:#8A6118; --brass-soft:#F2E9D6;
+  --on-accent:#FBFCF9;
+  --shadow:0 1px 2px rgba(23,29,25,.06), 0 10px 28px -20px rgba(23,29,25,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101410; --card:#171C18; --card-2:#1E241F;
+    --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
+    --line:#2A322B; --line-2:#3A443B;
+    --maroon:#E0868F; --maroon-soft:#2E1A1E;
+    --green:#7CBBA0; --green-soft:#152420;
+    --brass:#D9AC59; --brass-soft:#241D0F;
+    --on-accent:#101410;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -22px rgba(0,0,0,.9);
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+
+/* ---------------- header ---------------- */
+header{padding:44px 0 24px;border-bottom:1px solid var(--line)}
+.kicker{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0 0 14px;
+}
+h1{
+  font-family:"Fraunces",Georgia,serif;font-weight:600;
+  font-size:clamp(30px,5vw,46px);line-height:1.05;letter-spacing:-.02em;
+  margin:0 0 12px;text-wrap:balance;
+}
+.lede{color:var(--ink-2);max-width:60ch;margin:0;font-size:16px}
+
+/* ---------------- identity bar ---------------- */
+.who{
+  position:sticky;top:0;z-index:30;margin:0 -20px;padding:12px 20px;
+  background:color-mix(in srgb,var(--paper) 93%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.who label{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+}
+.who input{
+  font:inherit;font-size:15px;padding:7px 11px;border-radius:3px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+  min-width:170px;
+}
+.who input:focus-visible{outline:2px solid var(--maroon);outline-offset:1px}
+.who .status{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
+  color:var(--ink-3);margin-left:auto;
+}
+.who .status b{color:var(--maroon)}
+
+/* ---------------- filters ---------------- */
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:22px 0 4px}
+.bar .lbl{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:2px;
+}
+.bar button{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.05em;
+  border:1px solid var(--line-2);background:transparent;color:var(--ink-2);
+  padding:5px 11px;border-radius:2px;cursor:pointer;
+}
+.bar button:hover{border-color:var(--maroon);color:var(--maroon)}
+.bar button[aria-pressed="true"]{background:var(--maroon);border-color:var(--maroon);color:var(--on-accent)}
+
+/* ---------------- grid ---------------- */
+.grid{
+  display:grid;gap:18px;margin-top:22px;
+  grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
+}
+.sight{
+  display:flex;flex-direction:column;background:var(--card);
+  border:1px solid var(--line);border-radius:5px;overflow:hidden;
+  box-shadow:var(--shadow);
+}
+.sight.hide{display:none}
+
+.shot{
+  position:relative;aspect-ratio:16/10;background:var(--card-2);overflow:hidden;
+}
+.shot img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .35s ease}
+.shot img.in{opacity:1}
+.shot .ph[hidden]{display:none}
+.shot .ph{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:"Fraunces",Georgia,serif;font-size:38px;color:var(--line-2);
+  background:linear-gradient(135deg,var(--card-2),var(--card));
+}
+.rank{
+  position:absolute;top:10px;left:10px;z-index:2;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;font-weight:500;
+  background:var(--paper);color:var(--maroon);border:1px solid var(--line-2);
+  padding:3px 8px;border-radius:2px;
+}
+.cost{
+  position:absolute;top:10px;right:10px;z-index:2;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.04em;
+  padding:3px 8px;border-radius:2px;border:1px solid;
+}
+.cost.free{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+.cost.paid{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
+.cost.limited{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
+
+.body{padding:15px 16px 0;flex:1}
+.sight h2{
+  font-family:"Fraunces",Georgia,serif;font-size:18px;font-weight:600;
+  margin:0 0 4px;line-height:1.24;letter-spacing:-.01em;
+}
+.where{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.04em;color:var(--ink-3);margin:0 0 9px;
+}
+.sight p.desc{margin:0 0 10px;font-size:14.2px;color:var(--ink-2)}
+.price{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  color:var(--ink-3);margin:0 0 12px;
+}
+.more{
+  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--maroon);text-decoration:none;border-bottom:1px solid currentColor;
+  padding-bottom:1px;margin-bottom:14px;
+}
+.more:hover{opacity:.75}
+
+.foot{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-top:1px solid var(--line);background:var(--card-2);
+}
+.want{
+  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
+  font:inherit;font-size:14px;font-weight:500;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
+  padding:7px 13px;border-radius:3px;transition:background .12s ease,color .12s ease,border-color .12s ease;
+}
+.want:hover:not(:disabled){border-color:var(--maroon);color:var(--maroon)}
+.want:disabled{opacity:.45;cursor:not-allowed}
+.want[aria-pressed="true"]{background:var(--maroon);border-color:var(--maroon);color:var(--on-accent)}
+.want .heart{font-size:13px;line-height:1}
+.want.busy{opacity:.5}
+
+.tally{font-size:13px;color:var(--ink-3);min-width:0}
+.tally b{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink);
+  font-size:13px;font-variant-numeric:tabular-nums;
+}
+.voters{
+  display:block;font-size:12px;color:var(--ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+/* ---------------- misc ---------------- */
+.notice{
+  border:1px solid var(--maroon);border-left-width:4px;background:var(--maroon-soft);
+  border-radius:3px;padding:14px 16px;margin:22px 0 0;font-size:14.5px;color:var(--ink-2);
+}
+.empty{padding:60px 0;text-align:center;color:var(--ink-3)}
+footer{
+  margin-top:48px;padding-top:18px;border-top:1px solid var(--line);
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  color:var(--ink-3);letter-spacing:.04em;line-height:1.8;
+}
+footer a{color:var(--maroon)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:520px){
+  .who .status{margin-left:0;flex-basis:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="kicker">London · 11–16 September 2026</p>
+  <h1>What do you actually want to see?</h1>
+  <p class="lede">Thirty-three sights, ranked. Put your name in, then tap <em>Want this</em> on everything you'd like to do. Everyone sees the running totals — no accounts, nothing to install.</p>
+</header>
+
+<div class="who">
+  <label for="name">Your name</label>
+  <input id="name" type="text" maxlength="32" placeholder="e.g. Manuel" autocomplete="given-name" spellcheck="false">
+  <span class="status" id="status">Loading…</span>
+</div>
+
+<div class="bar" id="filters">
+  <span class="lbl">Show</span>
+  <button type="button" data-f="all" aria-pressed="true">All 33</button>
+  <button type="button" data-f="free" aria-pressed="false">Free</button>
+  <button type="button" data-f="paid" aria-pressed="false">Paid</button>
+  <button type="button" data-f="mine" aria-pressed="false">My picks</button>
+  <button type="button" data-f="top" aria-pressed="false">Most wanted</button>
+</div>
+
+<div id="notice" class="notice" hidden></div>
+<div class="grid" id="grid"></div>
+<p class="empty" id="empty" hidden>Nothing matches that filter.</p>
+
+<footer>
+  Votes are shared — everyone loading this page sees the same numbers, refreshed every 20 seconds.<br>
+  Full trip guide: <a id="guide" href="https://claude.ai/code/artifact/a00d53b2-95bc-49fe-8a08-f070bc9729f4" target="_blank" rel="noopener">the ranked list, food and day plan</a>
+</footer>
+
+</div>
+
+<script type="module">
+const $  = (s, r = document) => r.querySelector(s);
+const NAME_KEY = "london-vote-name";
+const CODE_KEY = "london-vote-code";
+const IMG_KEY  = "london-vote-images-v1";
+
+let SIGHTS = [];
+let VOTES  = {};          // { sightId: [voterName, ...] }
+let filter = "all";
+let me     = "";
+
+const norm = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
+const esc  = (s) => String(s).replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* ------------------------------------------------------------------ data */
+
+let accessCode = "";
+try { accessCode = localStorage.getItem(CODE_KEY) || ""; } catch {}
+
+async function api(path, options, retried = false) {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      "content-type": "application/json",
+      ...(accessCode ? { "x-access-code": accessCode } : {}),
+      ...(options?.headers || {}),
+    },
+  });
+  const data = await res.json().catch(() => ({}));
+
+  // Only when the Worker has ACCESS_CODE set. Ask once, remember, retry.
+  if (res.status === 401 && !retried) {
+    const entered = window.prompt("Access code for this page:");
+    if (entered) {
+      accessCode = entered.trim();
+      try { localStorage.setItem(CODE_KEY, accessCode); } catch {}
+      return api(path, options, true);
+    }
+  }
+
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  return data;
+}
+
+async function load() {
+  const data = await api("/api/sights");
+  SIGHTS = data.sights;
+  VOTES  = data.votes || {};
+  render();
+  loadImages();
+}
+
+async function refresh() {
+  try {
+    const { votes } = await api("/api/votes");
+    VOTES = votes || {};
+    paintTallies();
+    setStatus();
+  } catch {
+    /* transient — the next tick will retry */
+  }
+}
+
+/* ---------------------------------------------------------------- images */
+/* One batched call to Wikipedia gets a lead photo for all 33 sights.
+   Cached in localStorage so it only happens once per browser. */
+
+async function loadImages() {
+  let cache = null;
+  try { cache = JSON.parse(localStorage.getItem(IMG_KEY) || "null"); } catch {}
+
+  if (cache && cache.at > Date.now() - 30 * 864e5) {
+    applyImages(cache.map);
+    return;
+  }
+
+  const titles = [...new Set(SIGHTS.map((s) => s.wiki))].join("|");
+  const url =
+    "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
+    "&prop=pageimages&piprop=thumbnail&pithumbsize=640&redirects=1&titles=" +
+    encodeURIComponent(titles);
+
+  try {
+    const res  = await fetch(url);
+    const data = await res.json();
+    const pages = Object.values(data?.query?.pages || {});
+    const byTitle = {};
+    for (const page of pages) {
+      if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
+    }
+    // `redirects` may rename a title, so map back through the redirect table.
+    for (const r of data?.query?.redirects || []) {
+      if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
+    }
+    // Same for normalisation (underscores, capitalisation).
+    for (const n of data?.query?.normalized || []) {
+      if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
+    }
+
+    const map = {};
+    for (const s of SIGHTS) if (byTitle[s.wiki]) map[s.id] = byTitle[s.wiki];
+
+    applyImages(map);
+    try { localStorage.setItem(IMG_KEY, JSON.stringify({ at: Date.now(), map })); } catch {}
+  } catch {
+    /* leave the lettered placeholders in place */
+  }
+}
+
+function applyImages(map) {
+  for (const [id, src] of Object.entries(map || {})) {
+    const shot = document.getElementById(`shot-${id}`);
+    if (!shot) continue;
+    const img = new Image();
+    img.alt = "";
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.onload = () => {
+      shot.querySelector("img")?.remove();
+      shot.appendChild(img);
+      requestAnimationFrame(() => img.classList.add("in"));
+      const ph = shot.querySelector(".ph");
+      if (ph) ph.hidden = true;
+    };
+    img.src = src;
+  }
+}
+
+/* ---------------------------------------------------------------- render */
+
+const COST_LABEL = { free: "Free", "free-limited": "Free, limited", paid: "Paid", mixed: "Part paid" };
+const COST_CLASS = { free: "free", "free-limited": "limited", paid: "paid", mixed: "paid" };
+
+function cardHTML(s) {
+  return `
+  <article class="sight" id="card-${s.id}" data-cost="${s.cost}">
+    <div class="shot" id="shot-${s.id}">
+      <div class="ph" aria-hidden="true">${esc(s.name.charAt(0))}</div>
+      <span class="rank">${s.rank}</span>
+      <span class="cost ${COST_CLASS[s.cost]}">${COST_LABEL[s.cost]}</span>
+    </div>
+    <div class="body">
+      <h2>${esc(s.name)}</h2>
+      <p class="where">${esc(s.area)} · ${esc(s.station)}</p>
+      <p class="desc">${esc(s.summary)}</p>
+      <p class="price">${esc(s.priceLabel)}${s.bookingRequired ? " · booking needed" : ""}</p>
+      <a class="more" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">Read more ↗</a>
+    </div>
+    <div class="foot">
+      <button class="want" type="button" data-id="${s.id}" aria-pressed="false" disabled>
+        <span class="heart">♡</span><span class="txt">Want this</span>
+      </button>
+      <span class="tally" id="tally-${s.id}"></span>
+    </div>
+  </article>`;
+}
+
+function render() {
+  $("#grid").innerHTML = SIGHTS.map(cardHTML).join("");
+  $("#grid").addEventListener("click", onClick);
+  paintTallies();
+  applyFilter();
+}
+
+function paintTallies() {
+  const key = norm(me);
+  for (const s of SIGHTS) {
+    const voters = VOTES[s.id] || [];
+    const mine   = key && voters.some((v) => norm(v) === key);
+
+    const tally = document.getElementById(`tally-${s.id}`);
+    if (tally) {
+      tally.innerHTML = voters.length
+        ? `<b>${voters.length}</b> ${voters.length === 1 ? "vote" : "votes"}
+           <span class="voters">${esc(voters.join(" · "))}</span>`
+        : `<span class="voters">No votes yet</span>`;
+    }
+
+    const btn = document.querySelector(`.want[data-id="${s.id}"]`);
+    if (btn) {
+      btn.setAttribute("aria-pressed", String(!!mine));
+      btn.disabled = !me;
+      btn.querySelector(".heart").textContent = mine ? "♥" : "♡";
+      btn.querySelector(".txt").textContent   = mine ? "Wanted" : "Want this";
+      btn.title = me ? "" : "Enter your name first";
+    }
+  }
+}
+
+function applyFilter() {
+  const key = norm(me);
+  let shown = 0;
+
+  const ordered = [...SIGHTS];
+  if (filter === "top") {
+    ordered.sort((a, b) =>
+      (VOTES[b.id]?.length || 0) - (VOTES[a.id]?.length || 0) || a.rank - b.rank);
+  } else {
+    ordered.sort((a, b) => a.rank - b.rank);
+  }
+
+  const grid = $("#grid");
+  for (const s of ordered) {
+    const card = document.getElementById(`card-${s.id}`);
+    if (!card) continue;
+    grid.appendChild(card);   // keeps DOM order matching the sort
+
+    const voters = VOTES[s.id] || [];
+    const mine   = key && voters.some((v) => norm(v) === key);
+
+    const show =
+      filter === "all"  ? true :
+      filter === "free" ? s.cost !== "paid" :
+      filter === "paid" ? s.cost === "paid" || s.cost === "mixed" :
+      filter === "mine" ? mine :
+      /* top */           voters.length > 0;
+
+    card.classList.toggle("hide", !show);
+    if (show) shown++;
+  }
+  $("#empty").hidden = shown > 0;
+}
+
+function setStatus() {
+  const total = Object.values(VOTES).reduce((n, v) => n + v.length, 0);
+  const people = new Set();
+  for (const list of Object.values(VOTES)) list.forEach((v) => people.add(norm(v)));
+
+  $("#status").innerHTML = me
+    ? `Voting as <b>${esc(me)}</b> · ${total} votes from ${people.size} ${people.size === 1 ? "person" : "people"}`
+    : `Enter your name to vote · ${total} votes from ${people.size} ${people.size === 1 ? "person" : "people"}`;
+}
+
+function notify(message) {
+  const el = $("#notice");
+  el.textContent = message;
+  el.hidden = !message;
+}
+
+/* --------------------------------------------------------------- actions */
+
+async function onClick(event) {
+  const btn = event.target.closest(".want");
+  if (!btn || btn.disabled) return;
+
+  if (!me) {
+    $("#name").focus();
+    return;
+  }
+
+  const id     = btn.dataset.id;
+  const wanted = btn.getAttribute("aria-pressed") !== "true";
+
+  // Optimistic: flip it now, reconcile with the server's answer.
+  btn.classList.add("busy");
+  btn.disabled = true;
+
+  try {
+    const { votes } = await api("/api/vote", {
+      method: "POST",
+      body: JSON.stringify({ sightId: id, voter: me, wanted }),
+    });
+    VOTES = votes || {};
+    notify("");
+    paintTallies();
+    applyFilter();
+    setStatus();
+  } catch (err) {
+    notify(`Couldn't save that vote: ${err.message}`);
+  } finally {
+    btn.classList.remove("busy");
+    btn.disabled = !me;
+  }
+}
+
+$("#name").addEventListener("input", (e) => {
+  me = e.target.value.trim();
+  try { localStorage.setItem(NAME_KEY, me); } catch {}
+  paintTallies();
+  applyFilter();
+  setStatus();
+});
+
+$("#filters").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  filter = btn.dataset.f;
+  for (const b of $("#filters").querySelectorAll("button")) {
+    b.setAttribute("aria-pressed", String(b === btn));
+  }
+  applyFilter();
+});
+
+/* ------------------------------------------------------------------ boot */
+
+try { me = localStorage.getItem(NAME_KEY) || ""; } catch {}
+$("#name").value = me;
+
+load()
+  .then(() => { setStatus(); notify(""); })
+  .catch((err) => {
+    notify(`Couldn't load the list: ${err.message}. Is the database set up? See the README.`);
+    $("#status").textContent = "Offline";
+  });
+
+setInterval(refresh, 20000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>
