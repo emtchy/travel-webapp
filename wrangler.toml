@@ -1,4 +1,6 @@
-name = 'travel-webapp'
+# Must match the Worker name in your Cloudflare dashboard.
+# If you connected a GitHub repo, that name wins — change this to match it.
+name = "london-sights-vote"
 main = "src/worker.js"
 compatibility_date = "2026-08-01"
 
@@ -10,5 +12,10 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "london-votes"
-database_id = "d7412b9d-0cca-4b50-b13e-10c8476fceba"
+# `npm run setup` fills this in. It MUST be committed — the build reads it from the repo.
+database_id = "PASTE_YOUR_DATABASE_ID_HERE"
 
+# Optional shared passphrase. Leave commented out for open access.
+# Set it for real with:  npx wrangler secret put ACCESS_CODE
+# [vars]
+# ACCESS_CODE = "london2026"

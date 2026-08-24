@@ -176,6 +176,67 @@ h1{
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 
+
+/* ---------------- language + add form ---------------- */
+.langs{display:inline-flex;border:1px solid var(--line-2);border-radius:3px;overflow:hidden}
+.langs button{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.08em;
+  border:0;background:transparent;color:var(--ink-2);padding:6px 10px;cursor:pointer;
+}
+.langs button[aria-pressed="true"]{background:var(--maroon);color:var(--on-accent)}
+
+.addbox{
+  border:1px dashed var(--line-2);border-radius:5px;background:var(--card);
+  margin-top:22px;padding:0;overflow:hidden;
+}
+.addbox > summary{
+  cursor:pointer;padding:14px 18px;list-style:none;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--maroon);
+}
+.addbox > summary::-webkit-details-marker{display:none}
+.addbox > summary::before{content:"+ ";font-weight:600}
+.addbox[open] > summary::before{content:"− "}
+.addform{padding:0 18px 18px;display:grid;gap:12px;max-width:620px}
+.addform label{
+  display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;
+}
+.addform input,.addform textarea{
+  width:100%;font:inherit;font-size:15px;padding:8px 11px;border-radius:3px;
+  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
+}
+.addform textarea{resize:vertical;min-height:64px}
+.addform .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.addform .hint{font-size:12.5px;color:var(--ink-3)}
+.addform .submit{
+  font:inherit;font-size:14px;font-weight:500;cursor:pointer;
+  background:var(--maroon);border:1px solid var(--maroon);color:var(--on-accent);
+  padding:8px 16px;border-radius:3px;
+}
+.addform .submit:disabled{opacity:.45;cursor:not-allowed}
+.addform .err{font-size:13.5px;color:var(--maroon)}
+
+.sight.is-custom{border-style:dashed}
+.byline{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  letter-spacing:.04em;color:var(--ink-3);margin:0 0 10px;
+}
+.remove{
+  margin-left:auto;font:inherit;font-size:12.5px;cursor:pointer;
+  background:none;border:0;color:var(--ink-3);text-decoration:underline;padding:4px;
+}
+.remove:hover{color:var(--maroon)}
+.shot.blank{aspect-ratio:auto;height:8px;background:var(--maroon-soft)}
+.shot.blank .ph,.shot.blank .rank{display:none}
+.shot.blank .cost{display:none}
+.custom-head{display:flex;gap:8px;align-items:baseline}
+.custom-head .badge{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--maroon);border:1px solid var(--maroon);
+  background:var(--maroon-soft);padding:2px 6px;border-radius:2px;white-space:nowrap;
+}
+
 /* ---------------- misc ---------------- */
 .notice{
   border:1px solid var(--maroon);border-left-width:4px;background:var(--maroon-soft);
@@ -198,33 +259,61 @@ footer a{color:var(--maroon)}
 <div class="wrap">
 
 <header>
-  <p class="kicker">London · 11–16 September 2026</p>
-  <h1>What do you actually want to see?</h1>
-  <p class="lede">Thirty-three sights, ranked. Put your name in, then tap <em>Want this</em> on everything you'd like to do. Everyone sees the running totals — no accounts, nothing to install.</p>
+  <p class="kicker" id="kicker">London · 11–16 September 2026</p>
+  <h1 id="headline">What do you actually want to see?</h1>
+  <p class="lede" id="lede"></p>
 </header>
 
 <div class="who">
-  <label for="name">Your name</label>
+  <label for="name" id="name-label">Your name</label>
   <input id="name" type="text" maxlength="32" placeholder="e.g. Manuel" autocomplete="given-name" spellcheck="false">
+  <span class="langs" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
+    <button type="button" data-lang="de" aria-pressed="false">DE</button>
+  </span>
   <span class="status" id="status">Loading…</span>
 </div>
 
 <div class="bar" id="filters">
-  <span class="lbl">Show</span>
-  <button type="button" data-f="all" aria-pressed="true">All 33</button>
+  <span class="lbl" id="filter-label">Show</span>
+  <button type="button" data-f="all" aria-pressed="true">All</button>
   <button type="button" data-f="free" aria-pressed="false">Free</button>
   <button type="button" data-f="paid" aria-pressed="false">Paid</button>
+  <button type="button" data-f="added" aria-pressed="false">Added by us</button>
   <button type="button" data-f="mine" aria-pressed="false">My picks</button>
   <button type="button" data-f="top" aria-pressed="false">Most wanted</button>
 </div>
 
+<details class="addbox" id="addbox">
+  <summary id="add-summary">Add a sight</summary>
+  <form class="addform" id="addform">
+    <div>
+      <label for="add-name">Name</label>
+      <input id="add-name" type="text" maxlength="80" required placeholder="Sky Pod Bar">
+    </div>
+    <div>
+      <label for="add-url">Link <span class="hint" id="add-url-opt">(optional)</span></label>
+      <input id="add-url" type="text" maxlength="500" placeholder="https://…">
+    </div>
+    <div>
+      <label for="add-desc">Short description <span class="hint" id="add-desc-opt">(optional)</span></label>
+      <textarea id="add-desc" maxlength="300" placeholder="Why should we go?"></textarea>
+    </div>
+    <div class="row">
+      <button class="submit" type="submit" id="add-submit">Add it</button>
+      <span class="hint" id="add-hint">You'll be counted as the first vote.</span>
+    </div>
+    <p class="err" id="add-err" hidden></p>
+  </form>
+</details>
+
 <div id="notice" class="notice" hidden></div>
 <div class="grid" id="grid"></div>
-<p class="empty" id="empty" hidden>Nothing matches that filter.</p>
+<p class="empty" id="empty" hidden></p>
 
 <footer>
-  Votes are shared — everyone loading this page sees the same numbers, refreshed every 20 seconds.<br>
-  Full trip guide: <a id="guide" href="https://claude.ai/code/artifact/a00d53b2-95bc-49fe-8a08-f070bc9729f4" target="_blank" rel="noopener">the ranked list, food and day plan</a>
+  <span id="foot-note"></span><br>
+  <span id="foot-guide"></span> <a id="guide" href="https://claude.ai/code/artifact/a00d53b2-95bc-49fe-8a08-f070bc9729f4" target="_blank" rel="noopener">the ranked list, food and day plan</a>
 </footer>
 
 </div>
@@ -233,18 +322,105 @@ footer a{color:var(--maroon)}
 const $  = (s, r = document) => r.querySelector(s);
 const NAME_KEY = "london-vote-name";
 const CODE_KEY = "london-vote-code";
-const IMG_KEY  = "london-vote-images-v1";
+const LANG_KEY = "london-vote-lang";
+const IMG_KEY  = "london-vote-images-v2";
 
 let SIGHTS = [];
-let VOTES  = {};          // { sightId: [voterName, ...] }
+let CUSTOM = [];
+let VOTES  = {};
 let filter = "all";
 let me     = "";
+let lang   = "en";
 
 const norm = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
-const esc  = (s) => String(s).replace(/[&<>"']/g, (c) =>
+const esc  = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-/* ------------------------------------------------------------------ data */
+/* ------------------------------------------------------------------- i18n */
+
+const T = {
+  en: {
+    kicker: "London · 11–16 September 2026",
+    headline: "What do you actually want to see?",
+    lede: n => `${n} options, ranked — the famous ones and the ones only locals mention. Put your name in, then tap Want this on everything you'd like to do. Add your own at the top if something's missing.`,
+    nameLabel: "Your name",
+    show: "Show",
+    all: "All", free: "Free", paid: "Paid", added: "Added by us",
+    mine: "My picks", top: "Most wanted",
+    want: "Want this", wanted: "Wanted",
+    noVotes: "No votes yet",
+    vote: "vote", votes: "votes",
+    readMore: "Read more ↗",
+    booking: " · booking needed",
+    costFree: "Free", costLimited: "Free, limited", costPaid: "Paid", costMixed: "Part paid",
+    votingAs: (who, v, p) => `Voting as <b>${who}</b> · ${v} votes from ${p} ${p === 1 ? "person" : "people"}`,
+    enterName: (v, p) => `Enter your name to vote · ${v} votes from ${p} ${p === 1 ? "person" : "people"}`,
+    empty: "Nothing matches that filter.",
+    addSummary: "Add a sight",
+    addName: "Name", addUrl: "Link", addDesc: "Short description",
+    optional: "(optional)",
+    addSubmit: "Add it",
+    addHint: "You'll be counted as the first vote.",
+    addNeedName: "Enter your name at the top first.",
+    added: "Added",
+    addedBy: who => `Added by ${who}`,
+    remove: "Remove",
+    removeConfirm: name => `Remove "${name}"? Its votes go too.`,
+    ownVote: "yours",
+    footNote: "Votes are shared — everyone loading this page sees the same numbers, refreshed every 20 seconds.",
+    footGuide: "Full trip guide:",
+    guideLink: "the ranked list, food and day plan",
+    loadFail: msg => `Couldn't load the list: ${msg}`,
+    voteFail: msg => `Couldn't save that vote: ${msg}`,
+    namePlaceholder: "e.g. Manuel",
+    descPlaceholder: "Why should we go?",
+  },
+  de: {
+    kicker: "London · 11.–16. September 2026",
+    headline: "Was wollt ihr wirklich sehen?",
+    lede: n => `${n} Vorschläge, sortiert – die berühmten und die, die nur Einheimische nennen. Namen eintragen, dann bei allem auf „Will ich“ tippen, was euch reizt. Fehlt etwas, oben selbst hinzufügen.`,
+    nameLabel: "Dein Name",
+    show: "Filter",
+    all: "Alle", free: "Kostenlos", paid: "Kostenpflichtig", added: "Selbst ergänzt",
+    mine: "Meine Auswahl", top: "Beliebteste",
+    want: "Will ich", wanted: "Ausgewählt",
+    noVotes: "Noch keine Stimmen",
+    vote: "Stimme", votes: "Stimmen",
+    readMore: "Mehr dazu ↗",
+    booking: " · Buchung nötig",
+    costFree: "Kostenlos", costLimited: "Teils kostenlos", costPaid: "Kostenpflichtig", costMixed: "Teils kostenpflichtig",
+    votingAs: (who, v, p) => `Angemeldet als <b>${who}</b> · ${v} Stimmen von ${p} ${p === 1 ? "Person" : "Personen"}`,
+    enterName: (v, p) => `Namen eintragen zum Abstimmen · ${v} Stimmen von ${p} ${p === 1 ? "Person" : "Personen"}`,
+    empty: "Nichts passt zu diesem Filter.",
+    addSummary: "Eigenen Vorschlag hinzufügen",
+    addName: "Name", addUrl: "Link", addDesc: "Kurze Beschreibung",
+    optional: "(optional)",
+    addSubmit: "Hinzufügen",
+    addHint: "Du zählst automatisch als erste Stimme.",
+    addNeedName: "Trag oben zuerst deinen Namen ein.",
+    added: "Ergänzt",
+    addedBy: who => `Ergänzt von ${who}`,
+    remove: "Entfernen",
+    removeConfirm: name => `„${name}“ entfernen? Die Stimmen dazu verschwinden mit.`,
+    ownVote: "du",
+    footNote: "Die Stimmen sind gemeinsam — alle sehen dieselben Zahlen, Aktualisierung alle 20 Sekunden.",
+    footGuide: "Vollständiger Reiseführer:",
+    guideLink: "die sortierte Liste, Essen und Tagesplan",
+    loadFail: msg => `Liste konnte nicht geladen werden: ${msg}`,
+    voteFail: msg => `Stimme konnte nicht gespeichert werden: ${msg}`,
+    namePlaceholder: "z. B. Manuel",
+    descPlaceholder: "Warum sollten wir hin?",
+  },
+};
+
+const t = () => T[lang];
+
+/* Text for one entry in the active language, falling back to English. */
+const title   = (s) => (lang === "de" && s.name_de)    || s.name;
+const blurb   = (s) => (lang === "de" && s.summary_de) || s.summary || "";
+const priceOf = (s) => (lang === "de" && s.priceLabel_de) || s.priceLabel || "";
+
+/* -------------------------------------------------------------------- api */
 
 let accessCode = "";
 try { accessCode = localStorage.getItem(CODE_KEY) || ""; } catch {}
@@ -260,23 +436,24 @@ async function api(path, options, retried = false) {
   });
   const data = await res.json().catch(() => ({}));
 
-  // Only when the Worker has ACCESS_CODE set. Ask once, remember, retry.
   if (res.status === 401 && !retried) {
-    const entered = window.prompt("Access code for this page:");
+    const entered = window.prompt("Access code / Zugangscode:");
     if (entered) {
       accessCode = entered.trim();
       try { localStorage.setItem(CODE_KEY, accessCode); } catch {}
       return api(path, options, true);
     }
   }
-
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
+
+const all = () => [...SIGHTS, ...CUSTOM];
 
 async function load() {
   const data = await api("/api/sights");
   SIGHTS = data.sights;
+  CUSTOM = data.custom || [];
   VOTES  = data.votes || {};
   render();
   loadImages();
@@ -284,71 +461,81 @@ async function load() {
 
 async function refresh() {
   try {
-    const { votes } = await api("/api/votes");
-    VOTES = votes || {};
-    paintTallies();
+    const data = await api("/api/state");
+    const before = CUSTOM.length;
+    CUSTOM = data.custom || [];
+    VOTES  = data.votes || {};
+    if (CUSTOM.length !== before) render();
+    else { paintTallies(); applyFilter(); }
     setStatus();
-  } catch {
-    /* transient — the next tick will retry */
-  }
+  } catch { /* transient */ }
 }
 
 /* ---------------------------------------------------------------- images */
-/* One batched call to Wikipedia gets a lead photo for all 33 sights.
-   Cached in localStorage so it only happens once per browser. */
+/* One batched Wikipedia call covers every built-in sight. pilimit is the
+   trap here: without it the API returns a thumbnail for the FIRST page only. */
 
 async function loadImages() {
   let cache = null;
   try { cache = JSON.parse(localStorage.getItem(IMG_KEY) || "null"); } catch {}
-
-  if (cache && cache.at > Date.now() - 30 * 864e5) {
+  if (cache?.at > Date.now() - 30 * 864e5 && cache.map) {
     applyImages(cache.map);
-    return;
+    if (Object.keys(cache.map).length >= SIGHTS.length) return;
   }
 
-  const titles = [...new Set(SIGHTS.map((s) => s.wiki))].join("|");
-  const url =
-    "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*" +
-    "&prop=pageimages&piprop=thumbnail&pithumbsize=640&redirects=1&titles=" +
-    encodeURIComponent(titles);
+  const titles = [...new Set(SIGHTS.map((s) => s.wiki).filter(Boolean))];
+  const map = {};
 
-  try {
-    const res  = await fetch(url);
-    const data = await res.json();
-    const pages = Object.values(data?.query?.pages || {});
-    const byTitle = {};
-    for (const page of pages) {
-      if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
-    }
-    // `redirects` may rename a title, so map back through the redirect table.
-    for (const r of data?.query?.redirects || []) {
-      if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
-    }
-    // Same for normalisation (underscores, capitalisation).
-    for (const n of data?.query?.normalized || []) {
-      if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
-    }
+  for (let i = 0; i < titles.length; i += 45) {
+    const batch = titles.slice(i, i + 45);
+    const url =
+      "https://en.wikipedia.org/w/api.php" +
+      "?action=query&format=json&formatversion=2&origin=*" +
+      "&prop=pageimages&piprop=thumbnail&pithumbsize=640" +
+      `&pilimit=${batch.length}&redirects=1&titles=` +
+      encodeURIComponent(batch.join("|"));
 
-    const map = {};
-    for (const s of SIGHTS) if (byTitle[s.wiki]) map[s.id] = byTitle[s.wiki];
-
-    applyImages(map);
-    try { localStorage.setItem(IMG_KEY, JSON.stringify({ at: Date.now(), map })); } catch {}
-  } catch {
-    /* leave the lettered placeholders in place */
+    try {
+      const data = await (await fetch(url)).json();
+      const byTitle = {};
+      for (const page of data?.query?.pages || []) {
+        if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
+      }
+      for (const r of data?.query?.redirects || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
+      for (const n of data?.query?.normalized || []) if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
+      for (const s of SIGHTS) if (byTitle[s.wiki]) map[s.id] = byTitle[s.wiki];
+    } catch { /* fall through to the per-page retry */ }
   }
+
+  applyImages(map);
+
+  // Anything the batch missed: ask the REST summary endpoint directly.
+  const missing = SIGHTS.filter((s) => s.wiki && !map[s.id]);
+  for (const s of missing) {
+    try {
+      const res = await fetch(
+        "https://en.wikipedia.org/api/rest_v1/page/summary/" +
+        encodeURIComponent(s.wiki.replace(/ /g, "_"))
+      );
+      if (!res.ok) continue;
+      const d = await res.json();
+      const src = d.thumbnail?.source || d.originalimage?.source;
+      if (src) { map[s.id] = src; applyImages({ [s.id]: src }); }
+    } catch { /* give up on this one */ }
+  }
+
+  try { localStorage.setItem(IMG_KEY, JSON.stringify({ at: Date.now(), map })); } catch {}
 }
 
 function applyImages(map) {
   for (const [id, src] of Object.entries(map || {})) {
     const shot = document.getElementById(`shot-${id}`);
-    if (!shot) continue;
+    if (!shot || shot.dataset.loaded === "1") continue;
     const img = new Image();
     img.alt = "";
-    img.loading = "lazy";
     img.decoding = "async";
     img.onload = () => {
-      shot.querySelector("img")?.remove();
+      shot.dataset.loaded = "1";
       shot.appendChild(img);
       requestAnimationFrame(() => img.classList.add("in"));
       const ph = shot.querySelector(".ph");
@@ -360,96 +547,118 @@ function applyImages(map) {
 
 /* ---------------------------------------------------------------- render */
 
-const COST_LABEL = { free: "Free", "free-limited": "Free, limited", paid: "Paid", mixed: "Part paid" };
+const COST_KEY = { free: "costFree", "free-limited": "costLimited", paid: "costPaid", mixed: "costMixed" };
 const COST_CLASS = { free: "free", "free-limited": "limited", paid: "paid", mixed: "paid" };
 
 function cardHTML(s) {
+  const custom = !!s.custom;
+  const shot = custom
+    ? `<div class="shot blank" id="shot-${esc(s.id)}"></div>`
+    : `<div class="shot" id="shot-${esc(s.id)}">
+         <div class="ph" aria-hidden="true">${esc(title(s).charAt(0))}</div>
+         <span class="rank">${s.rank}</span>
+         <span class="cost ${COST_CLASS[s.cost]}">${esc(t()[COST_KEY[s.cost]])}</span>
+       </div>`;
+
+  const head = custom
+    ? `<div class="custom-head"><h2>${esc(s.name)}</h2><span class="badge">${esc(t().added)}</span></div>
+       <p class="byline">${esc(t().addedBy(s.addedBy))}</p>`
+    : `<h2>${esc(title(s))}</h2>
+       <p class="where">${esc(s.area)} · ${esc(s.station)}</p>`;
+
+  const desc = custom
+    ? (s.summary ? `<p class="desc">${esc(s.summary)}</p>` : "")
+    : `<p class="desc">${esc(blurb(s))}</p>
+       <p class="price">${esc(priceOf(s))}${s.bookingRequired ? esc(t().booking) : ""}</p>`;
+
+  const link = s.url
+    ? `<a class="more" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(t().readMore)}</a>`
+    : "";
+
   return `
-  <article class="sight" id="card-${s.id}" data-cost="${s.cost}">
-    <div class="shot" id="shot-${s.id}">
-      <div class="ph" aria-hidden="true">${esc(s.name.charAt(0))}</div>
-      <span class="rank">${s.rank}</span>
-      <span class="cost ${COST_CLASS[s.cost]}">${COST_LABEL[s.cost]}</span>
-    </div>
-    <div class="body">
-      <h2>${esc(s.name)}</h2>
-      <p class="where">${esc(s.area)} · ${esc(s.station)}</p>
-      <p class="desc">${esc(s.summary)}</p>
-      <p class="price">${esc(s.priceLabel)}${s.bookingRequired ? " · booking needed" : ""}</p>
-      <a class="more" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">Read more ↗</a>
-    </div>
+  <article class="sight${custom ? " is-custom" : ""}" id="card-${esc(s.id)}" data-cost="${esc(s.cost || "free")}">
+    ${shot}
+    <div class="body">${head}${desc}${link}</div>
     <div class="foot">
-      <button class="want" type="button" data-id="${s.id}" aria-pressed="false" disabled>
-        <span class="heart">♡</span><span class="txt">Want this</span>
+      <button class="want" type="button" data-id="${esc(s.id)}" aria-pressed="false" disabled>
+        <span class="heart">♡</span><span class="txt">${esc(t().want)}</span>
       </button>
-      <span class="tally" id="tally-${s.id}"></span>
+      <span class="tally" id="tally-${esc(s.id)}"></span>
+      ${custom ? `<button class="remove" type="button" data-remove="${esc(s.id)}" hidden>${esc(t().remove)}</button>` : ""}
     </div>
   </article>`;
 }
 
+let wired = false;
 function render() {
-  $("#grid").innerHTML = SIGHTS.map(cardHTML).join("");
-  $("#grid").addEventListener("click", onClick);
+  $("#grid").innerHTML = all().map(cardHTML).join("");
+  if (!wired) { $("#grid").addEventListener("click", onClick); wired = true; }
   paintTallies();
   applyFilter();
 }
 
 function paintTallies() {
   const key = norm(me);
-  for (const s of SIGHTS) {
+  for (const s of all()) {
     const voters = VOTES[s.id] || [];
     const mine   = key && voters.some((v) => norm(v) === key);
 
     const tally = document.getElementById(`tally-${s.id}`);
     if (tally) {
       tally.innerHTML = voters.length
-        ? `<b>${voters.length}</b> ${voters.length === 1 ? "vote" : "votes"}
+        ? `<b>${voters.length}</b> ${voters.length === 1 ? esc(t().vote) : esc(t().votes)}
            <span class="voters">${esc(voters.join(" · "))}</span>`
-        : `<span class="voters">No votes yet</span>`;
+        : `<span class="voters">${esc(t().noVotes)}</span>`;
     }
 
-    const btn = document.querySelector(`.want[data-id="${s.id}"]`);
+    const btn = document.querySelector(`.want[data-id="${CSS.escape(s.id)}"]`);
     if (btn) {
       btn.setAttribute("aria-pressed", String(!!mine));
       btn.disabled = !me;
       btn.querySelector(".heart").textContent = mine ? "♥" : "♡";
-      btn.querySelector(".txt").textContent   = mine ? "Wanted" : "Want this";
-      btn.title = me ? "" : "Enter your name first";
+      btn.querySelector(".txt").textContent   = mine ? t().wanted : t().want;
     }
+
+    const rm = document.querySelector(`.remove[data-remove="${CSS.escape(s.id)}"]`);
+    if (rm) rm.hidden = !(key && s.addedBy && norm(s.addedBy) === key);
   }
 }
 
 function applyFilter() {
   const key = norm(me);
+  const grid = $("#grid");
   let shown = 0;
 
-  const ordered = [...SIGHTS];
+  const ordered = all().slice();
   if (filter === "top") {
     ordered.sort((a, b) =>
-      (VOTES[b.id]?.length || 0) - (VOTES[a.id]?.length || 0) || a.rank - b.rank);
+      (VOTES[b.id]?.length || 0) - (VOTES[a.id]?.length || 0) ||
+      (a.rank ?? 999) - (b.rank ?? 999));
   } else {
-    ordered.sort((a, b) => a.rank - b.rank);
+    ordered.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
   }
 
-  const grid = $("#grid");
   for (const s of ordered) {
     const card = document.getElementById(`card-${s.id}`);
     if (!card) continue;
-    grid.appendChild(card);   // keeps DOM order matching the sort
+    grid.appendChild(card);
 
     const voters = VOTES[s.id] || [];
     const mine   = key && voters.some((v) => norm(v) === key);
 
     const show =
-      filter === "all"  ? true :
-      filter === "free" ? s.cost !== "paid" :
-      filter === "paid" ? s.cost === "paid" || s.cost === "mixed" :
-      filter === "mine" ? mine :
-      /* top */           voters.length > 0;
+      filter === "all"   ? true :
+      filter === "free"  ? !s.custom && s.cost !== "paid" && s.cost !== "mixed" :
+      filter === "paid"  ? !s.custom && (s.cost === "paid" || s.cost === "mixed") :
+      filter === "added" ? !!s.custom :
+      filter === "mine"  ? mine :
+      /* top */            voters.length > 0;
 
     card.classList.toggle("hide", !show);
     if (show) shown++;
   }
+
+  $("#empty").textContent = t().empty;
   $("#empty").hidden = shown > 0;
 }
 
@@ -457,60 +666,158 @@ function setStatus() {
   const total = Object.values(VOTES).reduce((n, v) => n + v.length, 0);
   const people = new Set();
   for (const list of Object.values(VOTES)) list.forEach((v) => people.add(norm(v)));
-
   $("#status").innerHTML = me
-    ? `Voting as <b>${esc(me)}</b> · ${total} votes from ${people.size} ${people.size === 1 ? "person" : "people"}`
-    : `Enter your name to vote · ${total} votes from ${people.size} ${people.size === 1 ? "person" : "people"}`;
+    ? t().votingAs(esc(me), total, people.size)
+    : t().enterName(total, people.size);
 }
 
 function notify(message) {
   const el = $("#notice");
-  el.textContent = message;
+  el.textContent = message || "";
   el.hidden = !message;
+}
+
+/* --------------------------------------------------------------- language */
+
+function paintChrome() {
+  document.documentElement.lang = lang;
+  const L = t();
+  $("#kicker").textContent   = L.kicker;
+  $("#headline").textContent = L.headline;
+  $("#lede").textContent     = L.lede(all().length);
+  $("#name-label").textContent = L.nameLabel;
+  $("#name").placeholder     = L.namePlaceholder;
+  $("#filter-label").textContent = L.show;
+
+  const f = $("#filters");
+  f.querySelector('[data-f="all"]').textContent   = L.all;
+  f.querySelector('[data-f="free"]').textContent  = L.free;
+  f.querySelector('[data-f="paid"]').textContent  = L.paid;
+  f.querySelector('[data-f="added"]').textContent = L.added;
+  f.querySelector('[data-f="mine"]').textContent  = L.mine;
+  f.querySelector('[data-f="top"]').textContent   = L.top;
+
+  $("#add-summary").textContent = L.addSummary;
+  $("#addform").querySelector('label[for="add-name"]').textContent = L.addName;
+  $("#addform").querySelector('label[for="add-url"]').innerHTML =
+    `${esc(L.addUrl)} <span class="hint">${esc(L.optional)}</span>`;
+  $("#addform").querySelector('label[for="add-desc"]').innerHTML =
+    `${esc(L.addDesc)} <span class="hint">${esc(L.optional)}</span>`;
+  $("#add-submit").textContent = L.addSubmit;
+  $("#add-hint").textContent   = L.addHint;
+  $("#add-desc").placeholder   = L.descPlaceholder;
+
+  $("#foot-note").textContent  = L.footNote;
+  $("#foot-guide").textContent = L.footGuide;
+  $("#guide").textContent      = L.guideLink;
+
+  for (const b of $(".langs").querySelectorAll("button")) {
+    b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+  }
+}
+
+function setLang(next) {
+  lang = next === "de" ? "de" : "en";
+  try { localStorage.setItem(LANG_KEY, lang); } catch {}
+  paintChrome();
+  if (SIGHTS.length) render();
 }
 
 /* --------------------------------------------------------------- actions */
 
 async function onClick(event) {
+  const rm = event.target.closest(".remove");
+  if (rm) return onRemove(rm.dataset.remove);
+
   const btn = event.target.closest(".want");
   if (!btn || btn.disabled) return;
-
-  if (!me) {
-    $("#name").focus();
-    return;
-  }
+  if (!me) return $("#name").focus();
 
   const id     = btn.dataset.id;
   const wanted = btn.getAttribute("aria-pressed") !== "true";
-
-  // Optimistic: flip it now, reconcile with the server's answer.
   btn.classList.add("busy");
   btn.disabled = true;
 
   try {
-    const { votes } = await api("/api/vote", {
+    const data = await api("/api/vote", {
       method: "POST",
       body: JSON.stringify({ sightId: id, voter: me, wanted }),
     });
-    VOTES = votes || {};
+    VOTES = data.votes || {};
+    CUSTOM = data.custom || CUSTOM;
     notify("");
-    paintTallies();
-    applyFilter();
-    setStatus();
+    paintTallies(); applyFilter(); setStatus();
   } catch (err) {
-    notify(`Couldn't save that vote: ${err.message}`);
+    notify(t().voteFail(err.message));
   } finally {
     btn.classList.remove("busy");
     btn.disabled = !me;
   }
 }
 
+async function onRemove(id) {
+  const entry = CUSTOM.find((c) => c.id === id);
+  if (!entry) return;
+  if (!window.confirm(t().removeConfirm(entry.name))) return;
+
+  try {
+    const data = await api("/api/sights/remove", {
+      method: "POST",
+      body: JSON.stringify({ id, voter: me }),
+    });
+    CUSTOM = data.custom || [];
+    VOTES  = data.votes || {};
+    render(); setStatus(); notify("");
+  } catch (err) {
+    notify(err.message);
+  }
+}
+
+$("#addform").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const err = $("#add-err");
+  err.hidden = true;
+
+  if (!me) {
+    err.textContent = t().addNeedName;
+    err.hidden = false;
+    $("#name").focus();
+    return;
+  }
+
+  const payload = {
+    voter: me,
+    name: $("#add-name").value,
+    url: $("#add-url").value,
+    summary: $("#add-desc").value,
+  };
+
+  const submit = $("#add-submit");
+  submit.disabled = true;
+
+  try {
+    const data = await api("/api/sights/add", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    CUSTOM = data.custom || [];
+    VOTES  = data.votes || {};
+    $("#addform").reset();
+    $("#addbox").open = false;
+    render(); setStatus(); notify("");
+    document.getElementById(`card-${data.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+  } catch (e) {
+    err.textContent = e.message;
+    err.hidden = false;
+  } finally {
+    submit.disabled = false;
+  }
+});
+
 $("#name").addEventListener("input", (e) => {
   me = e.target.value.trim();
   try { localStorage.setItem(NAME_KEY, me); } catch {}
-  paintTallies();
-  applyFilter();
-  setStatus();
+  paintTallies(); applyFilter(); setStatus();
 });
 
 $("#filters").addEventListener("click", (e) => {
@@ -523,16 +830,27 @@ $("#filters").addEventListener("click", (e) => {
   applyFilter();
 });
 
+$(".langs").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if (btn) setLang(btn.dataset.lang);
+});
+
 /* ------------------------------------------------------------------ boot */
 
 try { me = localStorage.getItem(NAME_KEY) || ""; } catch {}
+try {
+  lang = localStorage.getItem(LANG_KEY) ||
+    ((navigator.language || "").startsWith("de") ? "de" : "en");
+} catch {}
+if (!["en", "de"].includes(lang)) lang = "en";
 $("#name").value = me;
+paintChrome();
 
 load()
-  .then(() => { setStatus(); notify(""); })
+  .then(() => { paintChrome(); setStatus(); notify(""); })
   .catch((err) => {
-    notify(`Couldn't load the list: ${err.message}. Is the database set up? See the README.`);
-    $("#status").textContent = "Offline";
+    notify(t().loadFail(err.message));
+    $("#status").textContent = "—";
   });
 
 setInterval(refresh, 20000);

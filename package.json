@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "db:local": "wrangler d1 execute london-votes --local --file=./schema.sql",
-    "db:remote": "wrangler d1 execute london-votes --remote --file=./schema.sql",
-    "results": "wrangler d1 execute london-votes --remote --command \"SELECT sight_id, COUNT(*) AS votes, GROUP_CONCAT(voter_name, ', ') AS who FROM votes GROUP BY sight_id ORDER BY votes DESC\"",
-    "images": "node scripts/fetch-images.mjs"
-  },
-  "devDependencies": {
-    "wrangler": "^4.125.0"
+    "login": "npx --yes wrangler@4 login",
+    "setup": "node scripts/setup.mjs",
+    "deploy": "npx --yes wrangler@4 deploy",
+    "dev": "npx --yes wrangler@4 dev",
+    "db:local": "npx --yes wrangler@4 d1 execute london-votes --local --file=./schema.sql",
+    "db:remote": "npx --yes wrangler@4 d1 execute london-votes --remote --file=./schema.sql",
+    "results": "npx --yes wrangler@4 d1 execute london-votes --remote --command \"SELECT sight_id, COUNT(*) AS votes, GROUP_CONCAT(voter_name, ', ') AS who FROM votes GROUP BY sight_id ORDER BY votes DESC\"",
+    "images": "node scripts/fetch-images.mjs",
+    "test": "node scripts/test.mjs"
   }
 }
