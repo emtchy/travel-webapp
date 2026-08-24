@@ -10,8 +10,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "london-votes"
-# `npm run setup` fills this in. It MUST be committed — the build reads it from the repo.
-database_id = "PASTE_YOUR_DATABASE_ID_HERE"
+database_id = "d7412b9d-0cca-4b50-b13e-10c8476fceba"
 
 # Optional shared passphrase. Leave commented out for open access.
 # Set it for real with:  npx wrangler secret put ACCESS_CODE
