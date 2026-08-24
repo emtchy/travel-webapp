@@ -1,6 +1,4 @@
-# Must match the Worker name in your Cloudflare dashboard.
-# If you connected a GitHub repo, that name wins — change this to match it.
-name = "london-sights-vote"
+name = "travel-webapp"
 main = "src/worker.js"
 compatibility_date = "2026-08-01"
 
