@@ -12,9 +12,10 @@ no npm dependencies at runtime.
 ```
 public/index.html      the vote page — HTML, CSS and JS in one file
 public/bookings.html   the bookings overview
+public/plan.html       the day-by-day plan
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
-schema.sql             four tables
+schema.sql             five tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-images.mjs   optional: self-host the photos
@@ -48,6 +49,27 @@ the sight itself — it stays on the voting page with every vote intact.
 
 The filters apply to the main list only. A booked entry is done, and hiding one
 behind a vote filter would just make people wonder whether it really got booked.
+
+## The Plan page
+
+`/plan`, a column per day of the trip. It has no scheduler in it — no routes, no
+travel times, nothing worked out for you. It shows what happens when, and the
+times are the ones you type.
+
+Entries come from two places:
+
+- **Booked with a date** — anything marked booked on the Bookings page with a
+  slot appears here on its own. Change the slot there and the plan follows.
+- **Added by hand** — everything else. Pick the sight, the day, and optionally a
+  from and to time. Only the day is required; plenty of things are "Tuesday,
+  sometime". Untimed entries sort to the end of their day.
+
+Each stop is labelled **booked** or **by hand** so it is obvious which is which,
+and hand-added ones can be taken off again.
+
+A sight can't be on the plan twice. If you book something that was already
+placed by hand, the booking takes over and the hand entry goes; the API refuses
+a hand entry for anything already booked with a date.
 
 ### Sights you add yourself
 
@@ -177,11 +199,13 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-93 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+119 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
-their votes, and the date and time of a booked slot. No network and no Cloudflare account
+their votes, the date and time of a booked slot, and the plan: placing a sight
+by hand, a booking taking over from a hand entry, and the rules that keep one
+sight from appearing twice. No network and no Cloudflare account
 needed.
 
 Most Wikimedia images are CC-licensed and need attribution. `CREDITS.json`
@@ -262,7 +286,9 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/vote`    | `{ sightId, voter, wanted }` → toggles one vote      |
 | POST   | `/api/sights/add`    | `{ voter, name, url?, summary? }` → adds an option |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
-| POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime? }` → `"booked"`, `"skipped"` or `null` |
+| POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |
+| POST   | `/api/plan/set`      | `{ voter, sightId, day, start?, end? }` → onto the plan |
+| POST   | `/api/plan/remove`   | `{ voter, sightId }` → off it again                |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.

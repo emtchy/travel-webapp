@@ -313,5 +313,90 @@ t3("removing a custom sight clears its booking row",
 t3("/api/state carries the booking states",
    Array.isArray((await (await call("/api/state")).json()).bookings));
 
-console.log(`\n${ok + ok2 + ok3} passed, ${fail + fail2 + fail3} failed`);
-process.exit(fail + fail2 + fail3 ? 1 : 0);
+/* ----------------------------------------------------------------- the plan */
+
+console.log("\nplan");
+let ok4 = 0, fail4 = 0;
+const t4 = (name, cond) => { cond ? (ok4++, console.log("  ✓", name)) : (fail4++, console.log("  ✗", name)); };
+
+const planSet = (b) => call("/api/plan/set", { method: "POST", body: JSON.stringify(b) });
+const planRm = (b) => call("/api/plan/remove", { method: "POST", body: JSON.stringify(b) });
+const onPlan = (d, id) => d.plan.some(e => e.id === id);
+const bookedOn = (d, id) => d.bookings.some(x => x.id === id && x.status === "booked" && x.date);
+
+const trip = (await (await call("/api/sights")).json()).trip;
+t4("the API hands over the trip days", trip.days.length === 6);
+t4("they are the days of the trip", trip.days[0] === "2026-09-11" && trip.days[5] === "2026-09-16");
+
+let pl = await (await planSet({ voter: "Emily", sightId: "british-museum",
+  day: "2026-09-15", start: "10:00", end: "12:30" })).json();
+t4("a sight can be put on the plan by hand", onPlan(pl, "british-museum"));
+const entry = pl.plan.find(e => e.id === "british-museum");
+t4("its day is kept", entry.day === "2026-09-15");
+t4("its start and end are kept", entry.start === "10:00" && entry.end === "12:30");
+t4("who added it is kept", entry.addedBy === "Emily");
+
+pl = await (await planSet({ voter: "Emily", sightId: "trafalgar-square", day: "2026-09-15" })).json();
+const bare = pl.plan.find(e => e.id === "trafalgar-square");
+t4("a day on its own is enough", bare.day === "2026-09-15" && bare.start === null);
+
+pl = await (await planSet({ voter: "Emily", sightId: "trafalgar-square",
+  day: "2026-09-12", start: "09:00" })).json();
+t4("setting it again moves it rather than duplicating",
+   pl.plan.filter(e => e.id === "trafalgar-square").length === 1 &&
+   pl.plan.find(e => e.id === "trafalgar-square").day === "2026-09-12");
+
+// booking is the other source, and it wins
+pl = await (await setStatus({ voter: "Maya", sightId: "british-museum",
+  status: "booked", bookedDate: "2026-09-13", bookedTime: "11:00", bookedEnd: "13:00" })).json();
+t4("booking a hand-placed sight removes the hand entry", !onPlan(pl, "british-museum"));
+t4("and it is on the plan from its booking", bookedOn(pl, "british-museum"));
+t4("the booked end time is kept",
+   pl.bookings.find(x => x.id === "british-museum")?.endTime === "13:00");
+t4("a hand entry for something already booked is refused",
+   (await planSet({ voter: "Emily", sightId: "british-museum", day: "2026-09-12" })).status === 400);
+
+pl = await (await setStatus({ voter: "Maya", sightId: "british-museum", status: null })).json();
+t4("un-booking takes it off the plan entirely",
+   !onPlan(pl, "british-museum") && !bookedOn(pl, "british-museum"));
+
+t4("a booked end before its start is rejected",
+   (await setStatus({ voter: "M", sightId: "london-eye", status: "booked",
+                      bookedDate: "2026-09-12", bookedTime: "14:00", bookedEnd: "10:00" })).status === 400);
+t4("a booked end with no start is rejected",
+   (await setStatus({ voter: "M", sightId: "london-eye", status: "booked",
+                      bookedDate: "2026-09-12", bookedEnd: "10:00" })).status === 400);
+t4("a booked date outside the trip is rejected",
+   (await setStatus({ voter: "M", sightId: "london-eye", status: "booked",
+                      bookedDate: "2026-12-01" })).status === 400);
+
+t4("a day outside the trip is rejected",
+   (await planSet({ voter: "E", sightId: "tate-modern", day: "2026-12-01" })).status === 400);
+t4("an end before the start is rejected",
+   (await planSet({ voter: "E", sightId: "tate-modern", day: "2026-09-12",
+                    start: "14:00", end: "10:00" })).status === 400);
+t4("an end with no start is rejected",
+   (await planSet({ voter: "E", sightId: "tate-modern", day: "2026-09-12", end: "10:00" })).status === 400);
+t4("a malformed time is rejected",
+   (await planSet({ voter: "E", sightId: "tate-modern", day: "2026-09-12", start: "25:99" })).status === 400);
+t4("planning needs a name",
+   (await planSet({ voter: "", sightId: "tate-modern", day: "2026-09-12" })).status === 400);
+t4("planning an unknown sight is rejected",
+   (await planSet({ voter: "E", sightId: "nope", day: "2026-09-12" })).status === 400);
+
+pl = await (await planRm({ voter: "Emily", sightId: "trafalgar-square" })).json();
+t4("a hand entry can be taken off", !onPlan(pl, "trafalgar-square"));
+t4("removing one that isn't there is harmless",
+   (await planRm({ voter: "Emily", sightId: "trafalgar-square" })).status === 200);
+
+// a deleted custom sight must not linger on the plan
+const ghost = (await (await add({ voter: "Emily", name: "Ghost stop" })).json())
+  .custom.find(c => c.name === "Ghost stop");
+await planSet({ voter: "Emily", sightId: ghost.id, day: "2026-09-12" });
+const gone = await (await del({ id: ghost.id, voter: "Emily" })).json();
+t4("deleting a custom sight takes it off the plan", !onPlan(gone, ghost.id));
+
+t4("/api/state carries the plan", Array.isArray((await (await call("/api/state")).json()).plan));
+
+console.log(`\n${ok + ok2 + ok3 + ok4} passed, ${fail + fail2 + fail3 + fail4} failed`);
+process.exit(fail + fail2 + fail3 + fail4 ? 1 : 0);

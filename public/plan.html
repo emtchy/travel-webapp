@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>London — bookings</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎟️</text></svg>">
+<title>London — the plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗓️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
@@ -68,6 +68,52 @@ a{color:var(--maroon)}
   .navtools input[type=text]{width:112px}
   .navstatus{flex-basis:100%;max-width:none;text-align:right}
 }
+
+
+/* ---- day columns ---- */
+.days{display:grid;gap:18px;margin-top:26px}
+@media(min-width:900px){.days{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:1300px){.days{grid-template-columns:repeat(3,1fr)}}
+.day{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
+.day > header{padding:14px 17px;border-bottom:1px solid var(--line);
+  background:var(--card-2);display:flex;align-items:baseline;gap:9px}
+.day h2{font-family:"Fraunces",Georgia,serif;font-size:18px;margin:0;font-weight:600}
+.day .wd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--maroon)}
+.day .n{margin-left:auto;font-family:"IBM Plex Mono",monospace;
+  font-size:11px;color:var(--ink-3)}
+ol.stops{list-style:none;margin:0;padding:6px 0;flex:1;min-height:54px}
+li.stop{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 17px;
+  border-bottom:1px dashed var(--line)}
+li.stop:last-child{border-bottom:0}
+.when{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);
+  white-space:nowrap;padding-top:1px;min-width:44px}
+.when em{display:block;font-style:normal;color:var(--ink-3);font-size:11px}
+.when.open{color:var(--ink-3)}
+.sname{font-weight:600;font-size:14.5px;line-height:1.3}
+.smeta{font-size:12px;color:var(--ink-3);margin-top:2px;
+  display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.src{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:4px;padding:1px 5px;border:1px solid}
+.src.booked{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+.src.hand{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
+.stopact{display:flex;gap:5px;margin-top:6px}
+.stopact button{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:3px 3px}
+.stopact button:hover{color:var(--maroon)}
+.dayempty{padding:20px 17px;color:var(--ink-3);font-size:13px}
+
+/* ---- add to the plan ---- */
+.addplan{margin-top:26px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.addplan > summary{padding:14px 18px;cursor:pointer;font-weight:600;font-size:15px}
+.apbody{padding:14px 18px 18px;border-top:1px solid var(--line);
+  display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.apbody label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2)}
+.apbody select,.apbody input{font:inherit;font-size:13.5px;padding:7px 10px;
+  border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
+.apbody select{min-width:230px;max-width:100%}
+.aphint{flex-basis:100%;font-size:12.5px;color:var(--ink-3);margin:2px 0 0}
 
 header{padding:40px 0 22px}
 .kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
@@ -191,8 +237,8 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
     <a class="brand" href="/">London&nbsp;2026</a>
     <div class="navlinks">
       <a href="/" id="nav-sights">Sights</a>
-      <a href="/bookings" aria-current="page" id="nav-bookings">Bookings</a>
-      <a href="/plan" id="nav-plan">Plan</a>
+      <a href="/bookings" id="nav-bookings">Bookings</a>
+      <a href="/plan" aria-current="page" id="nav-plan">Plan</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
@@ -210,16 +256,28 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 <div class="wrap">
 <header>
   <p class="kicker" id="kicker">London · 11–16 September 2026</p>
-  <h1 id="headline">What we need to book</h1>
+  <h1 id="headline">The plan</h1>
   <p class="lede" id="lede"></p>
 </header>
 
 <div class="stats" id="stats"></div>
-<div class="filters" id="filters"></div>
-<div class="list" id="list"></div>
-<p class="empty" id="empty" hidden></p>
-<div id="booked"></div>
-<div id="gone"></div>
+<div class="days" id="days"></div>
+
+<details class="addplan" id="addplan">
+  <summary id="ap-title">Add something to the plan</summary>
+  <div class="apbody">
+    <label id="ap-what-l">What
+      <select id="ap-what"></select></label>
+    <label id="ap-day-l">Day
+      <select id="ap-day"></select></label>
+    <label id="ap-from-l">From
+      <input id="ap-from" type="time"></label>
+    <label id="ap-to-l">To
+      <input id="ap-to" type="time"></label>
+    <button class="btn" id="ap-add" type="button">Add</button>
+    <p class="aphint" id="ap-hint"></p>
+  </div>
+</details>
 
 <footer><span id="foot"></span></footer>
 </div>
@@ -235,82 +293,61 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 const T = {
   en: {
     kicker: "London · 11–16 September 2026",
-    headline: "What we need to book",
-    lede: "Everything on the list that costs money or has to be booked ahead — the built-in sights and the ones we added ourselves. Take anything off that we've decided against; it stays on the voting page either way.",
-    nameLabel: "Your name", namePh: "e.g. Manuel",
+    headline: "The plan",
+    lede: "Anything booked with a date lands here on its own. Everything else you place by hand — pick a day and a rough time and it slots in.",
+    nameLabel: "Your name",
     navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
     loading: "Loading…", saving: "Saving…", saved: "Saved",
     needName: "Enter your name first.",
-    needDate: "Pick a date to go with that time.",
-    statTotal: "still to book", statBooked: "booked", statBook: "need booking", statOurs: "added by us",
-    fVotes: "Votes", fAll: "All", fPlus: "+", fType: "Kind",
-    fBuiltIn: "Built-in", fAdded: "Added by us", fBookOnly: "Booking only",
-    tagPaid: "Paid", tagBook: "Book ahead", tagAdded: "Added by us", tagLimited: "Limited entry",
-    open: "Open site", remove: "Not booking this",
-    markBooked: "Mark as booked", unbook: "Not booked after all",
-    slotDate: "Date", slotTime: "From", slotEnd: "To", slotConfirm: "Save booking",
-    slotCancel: "Cancel", slotHint: "Leave blank if there's no fixed slot.",
-    editSlot: "Change slot", noSlot: "no fixed slot",
-    bookedTitle: "Booked", bookedNote: "Sorted. Nothing left to do for these.",
-    bookedBy: "booked by", on: "on",
-    wanted: (n) => `${n} ${n === 1 ? "vote" : "votes"}`,
-    noVotes: "No votes yet",
-    empty: "Nothing matches those filters.",
-    emptyAll: "Nothing on the list costs anything yet. Tick “it costs something” when adding a sight and it will show up here.",
-    allDone: "Everything is booked. Nothing left to sort out.",
-    goneTitle: "Not booking these",
-    goneNote: "Still on the voting page, still keeping their votes — just not something we're booking.",
-    restore: "Back to the list", by: "removed by",
-    foot: "Prices are what the sight lists publicly and are per person unless it says otherwise. Check the official site before booking.",
+    statPlanned: "on the plan", statBooked: "from bookings", statHand: "added by hand", statDays: "days with plans",
+    srcBooked: "booked", srcHand: "by hand",
+    dayEmpty: "Nothing planned yet.",
+    stops: (n) => `${n} ${n === 1 ? "stop" : "stops"}`,
+    noTime: "any time",
+    move: "Move", remove: "Take off",
+    apTitle: "Add something to the plan",
+    apWhat: "What", apDay: "Day", apFrom: "From", apTo: "To", apAdd: "Add",
+    apHint: "Only the day is required. Anything already booked with a date is placed by its booking — change the slot on the Bookings page instead.",
+    apNone: "Everything is already on the plan.",
+    apPick: "Pick a sight…",
+    votesShort: (n) => `${n} ♥`,
+    bookedBy: "booked by", addedBy: "added by",
+    foot: "No routes and no travel times here — just what happens when. Times are what you enter, not what anything works out.",
   },
   de: {
     kicker: "London · 11.–16. September 2026",
-    headline: "Was wir buchen müssen",
-    lede: "Alles auf der Liste, was Geld kostet oder vorab gebucht werden muss – die vorgegebenen Orte und unsere eigenen. Nimm raus, wogegen wir uns entschieden haben; auf der Abstimmungsseite bleibt es trotzdem.",
-    nameLabel: "Dein Name", namePh: "z. B. Manuel",
+    headline: "Der Plan",
+    lede: "Alles mit Datum gebuchte landet automatisch hier. Alles andere trägst du selbst ein – Tag und ungefähre Zeit wählen, fertig.",
+    nameLabel: "Dein Name",
     navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
     loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
     needName: "Bitte zuerst den Namen eintragen.",
-    needDate: "Zu der Uhrzeit fehlt noch das Datum.",
-    statTotal: "noch zu buchen", statBooked: "gebucht", statBook: "vorab buchen", statOurs: "von uns",
-    fVotes: "Stimmen", fAll: "Alle", fPlus: "+", fType: "Art",
-    fBuiltIn: "Vorgegeben", fAdded: "Von uns", fBookOnly: "Nur Buchung",
-    tagPaid: "Kostet", tagBook: "Vorab buchen", tagAdded: "Von uns", tagLimited: "Begrenzter Einlass",
-    open: "Website", remove: "Buchen wir nicht",
-    markBooked: "Als gebucht markieren", unbook: "Doch nicht gebucht",
-    slotDate: "Datum", slotTime: "Von", slotEnd: "Bis", slotConfirm: "Buchung speichern",
-    slotCancel: "Abbrechen", slotHint: "Leer lassen, wenn es keinen festen Termin gibt.",
-    editSlot: "Termin ändern", noSlot: "kein fester Termin",
-    bookedTitle: "Gebucht", bookedNote: "Erledigt. Hier ist nichts mehr zu tun.",
-    bookedBy: "gebucht von", on: "am",
-    wanted: (n) => `${n} ${n === 1 ? "Stimme" : "Stimmen"}`,
-    noVotes: "Noch keine Stimmen",
-    empty: "Nichts passt zu diesen Filtern.",
-    emptyAll: "Noch kostet nichts auf der Liste etwas. Hak beim Hinzufügen „kostet etwas“ an, dann erscheint es hier.",
-    allDone: "Alles gebucht. Nichts mehr zu erledigen.",
-    goneTitle: "Buchen wir nicht",
-    goneNote: "Stehen weiterhin auf der Abstimmungsseite und behalten ihre Stimmen – wir buchen sie nur nicht.",
-    restore: "Zurück zur Liste", by: "entfernt von",
-    foot: "Preise sind die öffentlich genannten und gelten pro Person, sofern nicht anders angegeben. Vor dem Buchen auf der offiziellen Seite prüfen.",
+    statPlanned: "im Plan", statBooked: "aus Buchungen", statHand: "selbst eingetragen", statDays: "Tage verplant",
+    srcBooked: "gebucht", srcHand: "eingetragen",
+    dayEmpty: "Noch nichts geplant.",
+    stops: (n) => `${n} ${n === 1 ? "Stopp" : "Stopps"}`,
+    noTime: "egal wann",
+    move: "Verschieben", remove: "Entfernen",
+    apTitle: "Etwas in den Plan eintragen",
+    apWhat: "Was", apDay: "Tag", apFrom: "Von", apTo: "Bis", apAdd: "Eintragen",
+    apHint: "Nur der Tag ist nötig. Was mit Datum gebucht ist, wird durch die Buchung eingeplant – ändere den Termin dann auf der Buchungsseite.",
+    apNone: "Alles ist schon im Plan.",
+    apPick: "Ort wählen…",
+    votesShort: (n) => `${n} ♥`,
+    bookedBy: "gebucht von", addedBy: "eingetragen von",
+    foot: "Keine Routen und keine Fahrtzeiten – nur was wann passiert. Die Zeiten sind die, die du einträgst.",
   },
 };
 let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
 const t = () => T[lang];
 
-// The trip this deployment plans. Only used to bound the date picker.
-const TRIP_START = "2026-09-11";
-const TRIP_END   = "2026-09-16";
-
-let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [];
-let booking = null;              // id of the card currently being booked
-let minVotes = 0;
-let kind = "all";        // all | builtin | added | booking
+let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], TRIP = { days: [] };
 
 const nameOf = () => $("#name").value.trim();
 const setStatus = (m) => { $("#status").textContent = m; };
 const title = (s) => (lang === "de" && s.name_de) || s.name;
-const blurb = (s) => (lang === "de" && s.summary_de) || s.summary || "";
-const priceOf = (s) => (lang === "de" && s.priceLabel_de) || s.priceLabel || "";
+const all = () => [...SIGHTS, ...CUSTOM];
+const byId = (id) => all().find((s) => s.id === id);
 
 async function api(path, options) {
   const res = await fetch(path, { ...options, headers: {
@@ -326,249 +363,151 @@ async function api(path, options) {
   return data;
 }
 
-/* ------------------------------------------------------------ the list */
+/* -------------------------------------------------------------- the plan */
 
 /**
- * A sight belongs here if it costs money or has to be booked ahead. Built-ins
- * answer that from their own fields; added ones from what the person ticked.
- * Three built-ins are free but still need booking — Sky Garden, Horizon 22 and
- * the Barbican Conservatory — so cost alone isn't the test.
+ * The plan is two sources merged. A booking with a date places itself; the
+ * server refuses a hand-made entry for one, so nothing can appear twice.
  */
-const costsMoney = (s) => (s.custom ? !!s.costs : s.cost !== "free");
-const needsBooking = (s) => !!s.bookingRequired;
-const bookable = (s) => costsMoney(s) || needsBooking(s);
+function planned() {
+  const fromBookings = STATUS
+    .filter((b) => b.status === "booked" && b.date)
+    .map((b) => ({ id: b.id, day: b.date, start: b.time, end: b.endTime,
+                   who: b.by, source: "booked" }));
 
-const votesFor = (s) => VOTES[s.id] ?? [];
-const statusOf = (id) => STATUS.find((x) => x.id === id) ?? null;
-const stateOf = (id) => statusOf(id)?.status ?? "todo";
+  const byHand = ENTRIES.map((e) => ({ id: e.id, day: e.day, start: e.start,
+                                       end: e.end, who: e.addedBy, source: "hand" }));
 
-const everything = () => [...SIGHTS, ...CUSTOM].filter(bookable);
-const inState = (what) => everything().filter((s) => stateOf(s.id) === what);
-const onList = () => inState("todo");
-
-function matches(s) {
-  if (votesFor(s).length < minVotes) return false;
-  if (kind === "builtin" && s.custom) return false;
-  if (kind === "added" && !s.custom) return false;
-  if (kind === "booking" && !needsBooking(s)) return false;
-  return true;
+  return [...fromBookings, ...byHand].filter((p) => byId(p.id));
 }
 
-const byWant = (a, b) =>
-  votesFor(b).length - votesFor(a).length ||
-  (a.rank ?? 999) - (b.rank ?? 999) ||
-  title(a).localeCompare(title(b));
+// Untimed entries sort to the end of their day — you know the day, not the hour.
+const byClock = (a, b) => (a.start ?? "99:99").localeCompare(b.start ?? "99:99");
 
-/* --------------------------------------------------------------- render */
+const dayLabel = (iso) =>
+  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+    { day: "numeric", month: "long", timeZone: "UTC" });
+const weekday = (iso) =>
+  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+    { weekday: "long", timeZone: "UTC" });
 
-function itemHTML(s) {
+function stopHTML(p) {
   const L = t();
-  const who = votesFor(s);
-  const price = priceOf(s);
-  const limited = !s.custom && s.cost === "free-limited";
+  const s = byId(p.id);
+  const votes = (VOTES[p.id] ?? []).length;
 
-  const tags = [
-    costsMoney(s) ? `<span class="tag paid">${esc(L.tagPaid)}</span>` : "",
-    needsBooking(s) ? `<span class="tag book">${esc(L.tagBook)}</span>` : "",
-    limited ? `<span class="tag book">${esc(L.tagLimited)}</span>` : "",
-    s.custom ? `<span class="tag added">${esc(L.tagAdded)}</span>` : "",
-  ].filter(Boolean).join("");
-
-  return `<article class="item">
-    <div class="itop">
-      <span class="iname">${esc(title(s))}</span>
-      ${price ? `<span class="price">${esc(price)}</span>` : ""}
+  return `<li class="stop">
+    <div class="when${p.start ? "" : " open"}">
+      ${p.start ? esc(p.start) : esc(L.noTime)}
+      ${p.end ? `<em>${esc(p.end)}</em>` : ""}
     </div>
-    <div class="tags">${tags}</div>
-    ${blurb(s) ? `<p class="blurb">${esc(blurb(s).slice(0, 160))}${blurb(s).length > 160 ? "…" : ""}</p>` : ""}
-    <div class="voters">${who.length
-      ? `<b>${esc(L.wanted(who.length))}</b> · ${esc(who.join(", "))}`
-      : esc(L.noVotes)}</div>
-    ${booking === s.id ? slotFormHTML(s) : `<div class="iact">
-      ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(L.open)} ↗</a>` : ""}
-      <button class="btn book" data-open-slot="${esc(s.id)}" type="button">${esc(L.markBooked)}</button>
-      <button class="remove" data-set="skipped" data-id="${esc(s.id)}" type="button">${esc(L.remove)}</button>
-    </div>`}
-  </article>`;
-}
-
-/** Date and time of the slot we hold. Both optional — plenty has no fixed time. */
-function slotFormHTML(s) {
-  const L = t();
-  const st = statusOf(s.id);
-  return `<div class="slot" data-slot="${esc(s.id)}">
-    <div class="slotrow">
-      <label>${esc(L.slotDate)}
-        <input type="date" data-date min="${TRIP_START}" max="${TRIP_END}"
-               value="${esc(st?.date ?? "")}"></label>
-      <label>${esc(L.slotTime)}
-        <input type="time" data-time value="${esc(st?.time ?? "")}"></label>
-      <label>${esc(L.slotEnd)}
-        <input type="time" data-end value="${esc(st?.endTime ?? "")}"></label>
+    <div>
+      <div class="sname">${esc(title(s))}</div>
+      <div class="smeta">
+        <span class="src ${p.source}">${esc(p.source === "booked" ? L.srcBooked : L.srcHand)}</span>
+        ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
+        <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
+      </div>
+      ${p.source === "hand" ? `<div class="stopact">
+        <button type="button" data-remove="${esc(p.id)}">${esc(L.remove)}</button>
+      </div>` : ""}
     </div>
-    <div class="slotrow">
-      <button class="btn book" data-confirm="${esc(s.id)}" type="button">${esc(L.slotConfirm)}</button>
-      <button class="remove" data-cancel type="button">${esc(L.slotCancel)}</button>
-      <span class="voters">${esc(L.slotHint)}</span>
-    </div>
-  </div>`;
+  </li>`;
 }
 
-/** A booked one: same identity, but finished, so it needs far less on it. */
-function bookedHTML(s) {
+function renderAdder() {
   const L = t();
-  const st = statusOf(s.id);
-  const price = priceOf(s);
+  const placed = new Set(planned().map((p) => p.id));
 
-  const slot = st?.date
-    ? new Date(st.date + "T12:00:00Z").toLocaleDateString(
-        lang === "de" ? "de-DE" : "en-GB",
-        { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) +
-      (st.time ? `, ${st.time}${st.endTime ? `\u2013${st.endTime}` : ""}` : "")
-    : L.noSlot;
+  const options = all()
+    .filter((s) => !placed.has(s.id))
+    .sort((a, b) => (VOTES[b.id] ?? []).length - (VOTES[a.id] ?? []).length ||
+                    title(a).localeCompare(title(b)));
 
-  if (booking === s.id)
-    return `<div class="done editing"><span class="n">${esc(title(s))}</span>${slotFormHTML(s)}</div>`;
+  $("#ap-title").textContent = L.apTitle;
+  $("#ap-what-l").firstChild.textContent = L.apWhat + " ";
+  $("#ap-day-l").firstChild.textContent = L.apDay + " ";
+  $("#ap-from-l").firstChild.textContent = L.apFrom + " ";
+  $("#ap-to-l").firstChild.textContent = L.apTo + " ";
+  $("#ap-add").textContent = L.apAdd;
+  $("#ap-hint").textContent = options.length ? L.apHint : L.apNone;
+  $("#ap-add").disabled = !options.length;
 
-  return `<div class="done" data-id="${esc(s.id)}">
-    <span class="tick" aria-hidden="true">✓</span>
-    <span class="n">${esc(title(s))}</span>
-    <span class="slotshown${st?.date ? "" : " none"}">${esc(slot)}</span>
-    ${price ? `<span class="price">${esc(price)}</span>` : ""}
-    <span class="voters">${esc(L.bookedBy)} ${esc(st?.by ?? "?")}</span>
-    <button class="btn" data-open-slot="${esc(s.id)}" type="button">${esc(L.editSlot)}</button>
-    <button class="btn" data-set="null" data-id="${esc(s.id)}" type="button">${esc(L.unbook)}</button>
-  </div>`;
-}
+  const keepWhat = $("#ap-what").value;
+  $("#ap-what").innerHTML = `<option value="">${esc(L.apPick)}</option>` +
+    options.map((s) => {
+      const v = (VOTES[s.id] ?? []).length;
+      return `<option value="${esc(s.id)}">${esc(title(s))}${v ? ` — ${v} ♥` : ""}</option>`;
+    }).join("");
+  if (options.some((s) => s.id === keepWhat)) $("#ap-what").value = keepWhat;
 
-function renderFilters() {
-  const L = t();
-  const pool = onList();
-  const top = pool.reduce((a, s) => Math.max(a, votesFor(s).length), 0);
-
-  // Only offer thresholds the votes can actually tell apart.
-  const steps = Array.from({ length: Math.min(top, 6) + 1 }, (_, n) => n);
-  const countAt = (n) => pool.filter((s) => votesFor(s).length >= n).length;
-
-  const votesBtns = steps.map((n) =>
-    `<button type="button" data-votes="${n}" aria-pressed="${minVotes === n}">${
-      n === 0 ? esc(L.fAll) : n + esc(L.fPlus)} <b>${countAt(n)}</b></button>`).join("");
-
-  const kinds = [
-    ["all", L.fAll, pool.length],
-    ["builtin", L.fBuiltIn, pool.filter((s) => !s.custom).length],
-    ["added", L.fAdded, pool.filter((s) => s.custom).length],
-    ["booking", L.fBookOnly, pool.filter(needsBooking).length],
-  ].map(([k, label, n]) =>
-    `<button type="button" data-kind="${k}" aria-pressed="${kind === k}">${esc(label)} <b>${n}</b></button>`).join("");
-
-  $("#filters").innerHTML =
-    `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}</div>` +
-    `<div class="fgroup"><span class="lbl">${esc(L.fType)}</span>${kinds}</div>`;
+  const keepDay = $("#ap-day").value;
+  $("#ap-day").innerHTML = TRIP.days
+    .map((d) => `<option value="${esc(d)}">${esc(weekday(d))} ${esc(dayLabel(d))}</option>`).join("");
+  if (TRIP.days.includes(keepDay)) $("#ap-day").value = keepDay;
 }
 
 function render() {
   const L = t();
   document.documentElement.lang = lang;
   for (const [id, key] of [["kicker","kicker"],["headline","headline"],["lede","lede"],
-    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],["nav-bookings","navBookings"],["nav-plan","navPlan"]])
+    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],
+    ["nav-bookings","navBookings"],["nav-plan","navPlan"]])
     $("#" + id).textContent = L[key];
   $("#name").placeholder = L.nameLabel;
-  document.title = `${L.kicker.split("·")[0].trim()} — ${L.headline}`;
 
-  const pool = onList();
-  const booked = inState("booked");
+  const list = planned();
+  const days = TRIP.days.map((d) => ({
+    date: d,
+    stops: list.filter((p) => p.day === d).sort(byClock),
+  }));
+
   $("#stats").innerHTML = [
-    [pool.length, L.statTotal],
-    [booked.length, L.statBooked],
-    [pool.filter(needsBooking).length, L.statBook],
-    [pool.filter((s) => s.custom).length, L.statOurs],
+    [list.length, L.statPlanned],
+    [list.filter((p) => p.source === "booked").length, L.statBooked],
+    [list.filter((p) => p.source === "hand").length, L.statHand],
+    [days.filter((d) => d.stops.length).length, L.statDays],
   ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 
-  renderFilters();
+  $("#days").innerHTML = days.map((d) => `<section class="day">
+    <header>
+      <span class="wd">${esc(weekday(d.date))}</span>
+      <h2>${esc(dayLabel(d.date))}</h2>
+      ${d.stops.length ? `<span class="n">${esc(L.stops(d.stops.length))}</span>` : ""}
+    </header>
+    ${d.stops.length
+      ? `<ol class="stops">${d.stops.map(stopHTML).join("")}</ol>`
+      : `<p class="dayempty">${esc(L.dayEmpty)}</p>`}
+  </section>`).join("");
 
-  const shown = pool.filter(matches).sort(byWant);
-  $("#list").innerHTML = shown.map(itemHTML).join("");
-  $("#empty").hidden = shown.length > 0;
-  $("#empty").textContent = !everything().length ? L.emptyAll
-    : pool.length === 0 && booked.length ? L.allDone
-    : L.empty;
-
-  // Booked things are done, so they are shown in full rather than filtered —
-  // hiding a booking behind a vote filter would only make people doubt it.
-  const doneList = booked.slice().sort(byWant);
-  $("#booked").innerHTML = doneList.length
-    ? `<section class="section">
-        <h2>${esc(L.bookedTitle)} <span>${doneList.length}</span></h2>
-        <p class="note">${esc(L.bookedNote)}</p>
-        <div class="donelist">${doneList.map(bookedHTML).join("")}</div>
-      </section>`
-    : "";
-
-  const gone = inState("skipped").sort(byWant);
-  $("#gone").innerHTML = gone.length
-    ? `<details class="gone"><summary>${esc(L.goneTitle)} (${gone.length})</summary>
-        <div class="gonebody"><p class="voters" style="margin:8px 0 4px">${esc(L.goneNote)}</p>
-        ${gone.map((s) => {
-          const h = statusOf(s.id);
-          return `<div class="grow">
-            <span class="n">${esc(title(s))}</span>
-            <span class="voters">${esc(L.by)} ${esc(h?.by ?? "?")}</span>
-            <button class="btn" data-set="null" data-id="${esc(s.id)}" type="button">${esc(L.restore)}</button>
-          </div>`;
-        }).join("")}</div></details>`
-    : "";
+  renderAdder();
 }
 
-/* -------------------------------------------------------------- actions */
+/* ------------------------------------------------------------- actions */
 
 async function mutate(path, body) {
   if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
   setStatus(t().saving);
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
-    CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? []; ENTRIES = d.plan ?? [];
     render();
     setStatus(t().saved);
   } catch (err) { setStatus(err.message); }
 }
 
+$("#ap-add").addEventListener("click", () => {
+  const sightId = $("#ap-what").value;
+  if (!sightId) { $("#ap-what").focus(); return; }
+  const from = $("#ap-from").value || null;
+  const to = $("#ap-to").value || null;
+  mutate("/api/plan/set", { sightId, day: $("#ap-day").value, start: from, end: to });
+  $("#ap-what").value = ""; $("#ap-from").value = ""; $("#ap-to").value = "";
+});
+
 document.addEventListener("click", (ev) => {
-  const openSlot = ev.target.closest("[data-open-slot]");
-  if (openSlot) {
-    if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
-    booking = openSlot.dataset.openSlot;
-    return void render();
-  }
-
-  if (ev.target.closest("[data-cancel]")) { booking = null; return void render(); }
-
-  const confirm = ev.target.closest("[data-confirm]");
-  if (confirm) {
-    const box = confirm.closest("[data-slot]");
-    const date = $("[data-date]", box).value || null;
-    const time = $("[data-time]", box).value || null;
-    const end = $("[data-end]", box).value || null;
-    if (time && !date) { setStatus(t().needDate); return; }
-    booking = null;
-    return void mutate("/api/bookings/status", {
-      sightId: confirm.dataset.confirm, status: "booked",
-      bookedDate: date, bookedTime: time, bookedEnd: end,
-    });
-  }
-
-  const set = ev.target.closest("[data-set]");
-  if (set)
-    return void mutate("/api/bookings/status", {
-      sightId: set.dataset.id,
-      status: set.dataset.set === "null" ? null : set.dataset.set,
-    });
-
-  const v = ev.target.closest("[data-votes]");
-  if (v) { minVotes = Number(v.dataset.votes); return void render(); }
-
-  const k = ev.target.closest("[data-kind]");
-  if (k) { kind = k.dataset.kind; return void render(); }
+  const rm = ev.target.closest("[data-remove]");
+  if (rm) return void mutate("/api/plan/remove", { sightId: rm.dataset.remove });
 
   const lb = ev.target.closest(".langs button");
   if (lb) {
@@ -589,7 +528,8 @@ for (const b of document.querySelectorAll(".langs button"))
   setStatus(t().loading);
   try {
     const d = await api("/api/sights");
-    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes;
+    STATUS = d.bookings ?? []; ENTRIES = d.plan ?? []; TRIP = d.trip ?? { days: [] };
     render();
     setStatus("");
   } catch (err) { setStatus(err.message); }

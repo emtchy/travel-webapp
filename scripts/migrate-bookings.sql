@@ -10,5 +10,17 @@ CREATE TABLE IF NOT EXISTS booking_status (
   marked_by   TEXT    NOT NULL,
   booked_date TEXT,
   booked_time TEXT,
+  booked_end  TEXT,
   created_at  INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS plan_entries (
+  sight_id   TEXT    PRIMARY KEY,
+  day        TEXT    NOT NULL,
+  start_time TEXT,
+  end_time   TEXT,
+  added_by   TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_day ON plan_entries (day, start_time);

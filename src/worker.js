@@ -14,6 +14,23 @@ const bad = (message, status = 400) => json({ error: message }, status);
 
 const BUILT_IN_IDS = new Set(SIGHTS.map((s) => s.id));
 
+/** The trip these pages plan. One place, so no page hardcodes its own dates. */
+const TRIP = {
+  name: "London",
+  days: ["2026-09-11", "2026-09-12", "2026-09-13",
+         "2026-09-14", "2026-09-15", "2026-09-16"],
+};
+const TRIP_DAYS = new Set(TRIP.days);
+
+const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+
+/** null for absent, undefined for malformed — same shape as cleanText. */
+function cleanClock(raw) {
+  if (raw == null || raw === "") return null;
+  if (typeof raw !== "string" || !isTime(raw.trim())) return undefined;
+  return raw.trim();
+}
+
 /** Display name -> stable key. "Anna" and " anna " are the same person. */
 const voterKey = (name) => name.trim().toLowerCase().replace(/\s+/g, " ");
 
@@ -101,7 +118,8 @@ async function getCustom(env) {
  */
 async function getBookingStatus(env) {
   const { results } = await env.DB.prepare(
-    `SELECT sight_id, status, marked_by, booked_date, booked_time, created_at
+    `SELECT sight_id, status, marked_by, booked_date, booked_time, booked_end,
+            created_at
        FROM booking_status ORDER BY created_at ASC`
   ).all();
   return (results ?? []).map((r) => ({
@@ -110,6 +128,7 @@ async function getBookingStatus(env) {
     by: r.marked_by,
     date: r.booked_date,
     time: r.booked_time,
+    endTime: r.booked_end,
     at: r.created_at,
   }));
 }
@@ -146,6 +165,8 @@ const snapshot = async (env) => ({
   votes: await getVotes(env),
   comments: await getComments(env),
   bookings: await getBookingStatus(env),
+  plan: await getPlanEntries(env),
+  trip: TRIP,
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -273,6 +294,7 @@ async function handleDeleteSight(request, env) {
   await env.DB.prepare("DELETE FROM votes WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM comments WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM booking_status WHERE sight_id = ?1").bind(id).run();
+  await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM custom_sights WHERE id = ?1").bind(id).run();
 
   return json({ ok: true, ...(await snapshot(env)) });
@@ -338,6 +360,21 @@ async function handleRemoveComment(request, env) {
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
+/** Sights placed on the plan by hand. Booked ones are not in here. */
+async function getPlanEntries(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT sight_id, day, start_time, end_time, added_by
+       FROM plan_entries ORDER BY day ASC, start_time ASC`
+  ).all();
+  return (results ?? []).map((r) => ({
+    id: r.sight_id,
+    day: r.day,
+    start: r.start_time,
+    end: r.end_time,
+    addedBy: r.added_by,
+  }));
+}
+
 /**
  * Move a sight between the three lists on the Bookings page.
  *
@@ -369,15 +406,19 @@ async function handleBookingStatus(request, env) {
   // The slot we actually hold. Only meaningful for a booking, so anything else
   // clears it rather than leaving a date attached to a decision not to go.
   const date = body?.bookedDate == null || body.bookedDate === "" ? null : body.bookedDate;
-  if (date !== null && (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)))
-    return bad("The date should look like 2026-09-14.");
+  if (date !== null && (typeof date !== "string" || !TRIP_DAYS.has(date)))
+    return bad("That date isn't a day of this trip.");
 
-  const time = body?.bookedTime == null || body.bookedTime === "" ? null : body.bookedTime;
-  if (time !== null && (typeof time !== "string" || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)))
-    return bad("The time should look like 14:30.");
+  const time = cleanClock(body?.bookedTime);
+  if (time === undefined) return bad("The time should look like 14:30.");
+
+  const end = cleanClock(body?.bookedEnd);
+  if (end === undefined) return bad("The end time should look like 17:00.");
 
   if (time && !date) return bad("A time needs a date to go with it.");
-  if (status !== "booked" && (date || time))
+  if (end && !time) return bad("An end time needs a start time.");
+  if (end && time && end <= time) return bad("It has to end after it starts.");
+  if (status !== "booked" && (date || time || end))
     return bad("Only a booking can have a date and time.");
 
   if (status === null) {
@@ -385,19 +426,95 @@ async function handleBookingStatus(request, env) {
       .bind(sightId)
       .run();
   } else {
+    // A booking places the sight itself, so a hand-made entry for it would be
+    // a second copy on the same plan. The booking wins.
+    if (status === "booked" && date)
+      await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1")
+        .bind(sightId).run();
+
     await env.DB.prepare(
       `INSERT INTO booking_status (sight_id, status, marked_by,
-                                   booked_date, booked_time, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+                                   booked_date, booked_time, booked_end, created_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
        ON CONFLICT (sight_id) DO UPDATE SET
          status = excluded.status, marked_by = excluded.marked_by,
          booked_date = excluded.booked_date, booked_time = excluded.booked_time,
-         created_at = excluded.created_at`
+         booked_end = excluded.booked_end, created_at = excluded.created_at`
     )
-      .bind(sightId, status, name, date, time, Date.now())
+      .bind(sightId, status, name, date, time, end, Date.now())
       .run();
   }
 
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+/**
+ * Put a sight on the plan by hand, or move one already there.
+ *
+ * This is for everything with nothing to book — those never get a date any
+ * other way. Anything booked with a date is placed by its booking instead, and
+ * is refused here so the same sight can't appear on the plan twice.
+ */
+async function handlePlanSet(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const name = cleanName(body?.voter);
+  if (!name) return bad("Enter your name first.");
+
+  const { sightId, day } = body ?? {};
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+    return bad("Unknown sight.");
+  if (typeof day !== "string" || !TRIP_DAYS.has(day))
+    return bad("That date isn't a day of this trip.");
+
+  const start = cleanClock(body?.start);
+  if (start === undefined) return bad("The start should look like 10:00.");
+  const end = cleanClock(body?.end);
+  if (end === undefined) return bad("The end should look like 12:30.");
+  if (end && !start) return bad("An end time needs a start time.");
+  if (end && start && end <= start) return bad("It has to end after it starts.");
+
+  const booked = await env.DB.prepare(
+    `SELECT 1 FROM booking_status
+      WHERE sight_id = ?1 AND status = 'booked' AND booked_date IS NOT NULL`
+  ).bind(sightId).first();
+  if (booked)
+    return bad("That one is already on the plan from its booking. Change the slot on the Bookings page.");
+
+  await env.DB.prepare(
+    `INSERT INTO plan_entries (sight_id, day, start_time, end_time, added_by, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+     ON CONFLICT (sight_id) DO UPDATE SET
+       day = excluded.day, start_time = excluded.start_time,
+       end_time = excluded.end_time, added_by = excluded.added_by,
+       created_at = excluded.created_at`
+  )
+    .bind(sightId, day, start, end, name, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+async function handlePlanRemove(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+
+  const { sightId } = body ?? {};
+  if (typeof sightId !== "string") return bad("Unknown sight.");
+
+  await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1")
+    .bind(sightId)
+    .run();
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
@@ -437,6 +554,12 @@ export default {
 
     if (pathname === "/api/bookings/status" && method === "POST")
       return handleBookingStatus(request, env);
+
+    if (pathname === "/api/plan/set" && method === "POST")
+      return handlePlanSet(request, env);
+
+    if (pathname === "/api/plan/remove" && method === "POST")
+      return handlePlanRemove(request, env);
 
     return bad("Not found.", 404);
   },

@@ -374,6 +374,7 @@ footer a{color:var(--maroon)}
     <div class="navlinks">
       <a href="/" aria-current="page" id="nav-sights">Sights</a>
       <a href="/bookings" id="nav-bookings">Bookings</a>
+      <a href="/plan" id="nav-plan">Plan</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
@@ -481,7 +482,7 @@ const esc  = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 const T = {
   en: {
     kicker: "London · 11–16 September 2026",
-    navSights: "Sights", navBookings: "Bookings",
+    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
     addCosts: "It costs something", addPrice: "£25 pp",
     addBooking: "Needs booking ahead",
     addMoneyHint: "Either one puts it on the Bookings page.",
@@ -533,7 +534,7 @@ const T = {
   },
   de: {
     kicker: "London · 11.–16. September 2026",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
     addCosts: "Kostet etwas", addPrice: "25 £ p. P.",
     addBooking: "Muss vorab gebucht werden",
     addMoneyHint: "Beides bringt den Eintrag auf die Buchungsseite.",
@@ -961,6 +962,7 @@ function paintChrome() {
   $("#kicker").textContent   = L.kicker;
   $("#nav-sights").textContent      = L.navSights;
   $("#nav-bookings").textContent    = L.navBookings;
+  $("#nav-plan").textContent        = L.navPlan;
   $("#add-costs-label").textContent = L.addCosts;
   $("#add-price").placeholder       = L.addPrice;
   $("#add-booking-label").textContent = L.addBooking;

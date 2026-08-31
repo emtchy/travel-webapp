@@ -53,6 +53,21 @@ CREATE TABLE IF NOT EXISTS booking_status (
   status      TEXT    NOT NULL CHECK (status IN ('booked', 'skipped')),
   marked_by   TEXT    NOT NULL,     -- as typed
   booked_date TEXT,                 -- YYYY-MM-DD, the slot we actually hold
-  booked_time TEXT,                 -- HH:MM
+  booked_time TEXT,                 -- HH:MM, when it starts
+  booked_end  TEXT,                 -- HH:MM, when we expect to be done
   created_at  INTEGER NOT NULL
 );
+
+-- Sights put on the plan by hand — the ones with nothing to book, so nothing
+-- else would ever place them. Booked sights come from booking_status instead
+-- and never need a row here.
+CREATE TABLE IF NOT EXISTS plan_entries (
+  sight_id   TEXT    PRIMARY KEY,   -- built-in id or "custom-…"
+  day        TEXT    NOT NULL,      -- YYYY-MM-DD
+  start_time TEXT,                  -- HH:MM
+  end_time   TEXT,                  -- HH:MM
+  added_by   TEXT    NOT NULL,      -- as typed
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_day ON plan_entries (day, start_time);
