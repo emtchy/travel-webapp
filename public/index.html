@@ -207,6 +207,41 @@ h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
 }
 
 
+/* ---------------- put a sight on a day ---------------- */
+.planrow{
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:10px 16px;border-top:1px solid var(--line);
+}
+.planchip{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  color:var(--green);border:1px solid var(--green);background:var(--green-soft);
+  border-radius:6px;padding:2px 8px;white-space:nowrap;
+}
+.planchip.booked{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
+.planhint{font-size:11.5px;color:var(--ink-3);flex-basis:100%}
+.planbtn{
+  font-size:12px;font-weight:500;border:1px solid var(--line-2);
+  background:var(--card-2);color:var(--ink-2);padding:5px 10px;
+  border-radius:8px;cursor:pointer;margin-left:auto;
+}
+.planbtn:hover{border-color:var(--ink-3);color:var(--ink)}
+.planbtn[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.planoff{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:5px 2px;cursor:pointer}
+.planoff:hover{color:var(--maroon)}
+.planedit{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  padding:11px 16px;border-top:1px solid var(--line);background:var(--card-2);
+}
+.planedit label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink-2)}
+.planedit select,.planedit input{
+  font:inherit;font-size:12.5px;padding:5px 8px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+}
+.planedit .submit{
+  font-size:12.5px;font-weight:500;padding:5px 12px;border-radius:8px;
+  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
+}
+
 /* ---------------- cost & booking, on an added card ---------------- */
 .editcost{
   font-size:12px;font-weight:500;border:1px solid var(--line-2);
@@ -492,6 +527,9 @@ const openThreads = new Set();   // which cards have their comments expanded
 let SIGHTS = [];
 let CUSTOM = [];
 let COMMENTS = {};
+let PLAN = [];        // sights placed on a day by hand
+let BOOKED = [];      // booking status, since a booked date places a sight too
+let TRIPDAYS = [];
 let VOTES  = {};
 let filter = "all";
 let me     = "";
@@ -508,6 +546,12 @@ const T = {
     kicker: "London · 11–16 September 2026",
     navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
     editCost: "Cost & booking", save: "Save",
+    planIt: "Add to a day", onPlan: "On the plan", changeDay: "Change",
+    takeOff: "Take off the plan", planDay: "Day", planFrom: "From", planTo: "To",
+    planSave: "Put it on", planPick: "Pick a day…",
+    plannedFor: (d) => `On the plan · ${d}`,
+    bookedFor: (d) => `Booked · ${d}`,
+    bookedNote: "Placed by its booking — change the slot on the Bookings page.",
     costsSomething: "Costs something", costsNothing: "Free",
     statSights: "to choose from", statVoted: "have votes",
     statMine: "your picks", statPeople: "voting",
@@ -564,6 +608,12 @@ const T = {
     kicker: "London · 11.–16. September 2026",
     navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
     editCost: "Preis & Buchung", save: "Speichern",
+    planIt: "Auf einen Tag legen", onPlan: "Im Plan", changeDay: "Ändern",
+    takeOff: "Aus dem Plan nehmen", planDay: "Tag", planFrom: "Von", planTo: "Bis",
+    planSave: "Eintragen", planPick: "Tag wählen…",
+    plannedFor: (d) => `Im Plan · ${d}`,
+    bookedFor: (d) => `Gebucht · ${d}`,
+    bookedNote: "Durch die Buchung eingeplant – Termin auf der Buchungsseite ändern.",
     costsSomething: "Kostet etwas", costsNothing: "Kostenlos",
     statSights: "zur Auswahl", statVoted: "mit Stimmen",
     statMine: "deine Wahl", statPeople: "stimmen ab",
@@ -661,6 +711,9 @@ async function load() {
   CUSTOM = data.custom || [];
   VOTES  = data.votes || {};
   COMMENTS = data.comments || {};
+  PLAN = data.plan || [];
+  BOOKED = data.bookings || [];
+  TRIPDAYS = data.trip?.days || TRIPDAYS;
   render();
   loadImages();
 }
@@ -672,6 +725,9 @@ async function refresh() {
     CUSTOM = data.custom || [];
     VOTES  = data.votes || {};
     COMMENTS = data.comments || {};
+    PLAN = data.plan || [];
+    BOOKED = data.bookings || [];
+    TRIPDAYS = data.trip?.days || TRIPDAYS;
     if (CUSTOM.length !== before) render();
     else { paintTallies(); paintThreads(); applyFilter(); }
     setStatus();
@@ -797,6 +853,49 @@ window.imageDebug = () => {
 const COST_KEY = { free: "costFree", "free-limited": "costLimited", paid: "costPaid", mixed: "costMixed" };
 const COST_CLASS = { free: "free", "free-limited": "limited", paid: "paid", mixed: "paid" };
 
+/** Where a sight sits on the plan, if anywhere. A booking places it too. */
+function planStateOf(id) {
+  const b = BOOKED.find((x) => x.id === id && x.status === "booked" && x.date);
+  if (b) return { from: "booked", day: b.date, start: b.time, end: b.endTime };
+  const e = PLAN.find((x) => x.id === id);
+  if (e) return { from: "hand", day: e.day, start: e.start, end: e.end };
+  return null;
+}
+
+const dayShort = (iso) =>
+  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+    { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+
+const whenLabel = (p) =>
+  dayShort(p.day) + (p.start ? `, ${p.start}${p.end ? `–${p.end}` : ""}` : "");
+
+function planControlHTML(s) {
+  const L = t();
+  const p = planStateOf(s.id);
+
+  if (p?.from === "booked")
+    return `<div class="planrow">
+      <span class="planchip booked">${esc(L.bookedFor(whenLabel(p)))}</span>
+      <span class="planhint">${esc(L.bookedNote)}</span>
+    </div>`;
+
+  const days = TRIPDAYS.map((d) =>
+    `<option value="${esc(d)}"${p?.day === d ? " selected" : ""}>${esc(dayShort(d))}</option>`).join("");
+
+  return `<div class="planrow">
+    ${p ? `<span class="planchip">${esc(L.plannedFor(whenLabel(p)))}</span>` : ""}
+    <button class="planbtn" type="button" data-plan="${esc(s.id)}"
+            aria-expanded="false">${esc(p ? L.changeDay : L.planIt)}</button>
+    ${p ? `<button class="planoff" type="button" data-planoff="${esc(s.id)}">${esc(L.takeOff)}</button>` : ""}
+  </div>
+  <div class="planedit" id="plan-${esc(s.id)}" hidden>
+    <label>${esc(L.planDay)}<select data-pday>${days}</select></label>
+    <label>${esc(L.planFrom)}<input type="time" data-pfrom value="${esc(p?.start ?? "")}"></label>
+    <label>${esc(L.planTo)}<input type="time" data-pto value="${esc(p?.end ?? "")}"></label>
+    <button class="submit" type="button" data-psave="${esc(s.id)}">${esc(L.planSave)}</button>
+  </div>`;
+}
+
 function cardHTML(s) {
   const custom = !!s.custom;
   const shot = custom
@@ -859,6 +958,7 @@ function cardHTML(s) {
       </label>
       <button class="submit" type="button" data-esave="${esc(s.id)}">${esc(t().save)}</button>
     </div>` : ""}
+    ${planControlHTML(s)}
     <div class="thread" id="thread-${esc(s.id)}" hidden></div>
   </article>`;
 }
@@ -1130,6 +1230,21 @@ async function onClick(event) {
   const save = event.target.closest("[data-esave]");
   if (save) return onSaveCost(save.dataset.esave);
 
+  const pb = event.target.closest("[data-plan]");
+  if (pb) {
+    const box = document.getElementById(`plan-${pb.dataset.plan}`);
+    if (!box) return;
+    box.hidden = !box.hidden;
+    pb.setAttribute("aria-expanded", String(!box.hidden));
+    return;
+  }
+
+  const psave = event.target.closest("[data-psave]");
+  if (psave) return onPlanSave(psave.dataset.psave);
+
+  const poff = event.target.closest("[data-planoff]");
+  if (poff) return onPlanRemove(poff.dataset.planoff);
+
   const btn = event.target.closest(".want");
   if (!btn || btn.disabled) return;
   if (!me) return $("#name").focus();
@@ -1156,6 +1271,37 @@ async function onClick(event) {
     btn.disabled = !me;
   }
 }
+
+/** Shared by both plan actions: they return the same snapshot. */
+async function planCall(path, body) {
+  if (!me) return $("#name").focus();
+  try {
+    const data = await api(path, { method: "POST", body: JSON.stringify({ voter: me, ...body }) });
+    CUSTOM = data.custom;
+    VOTES = data.votes;
+    COMMENTS = data.comments;
+    PLAN = data.plan || [];
+    BOOKED = data.bookings || [];
+    render();
+  } catch (err) {
+    setStatus(err.message);
+  }
+}
+
+async function onPlanSave(id) {
+  const box = document.getElementById(`plan-${id}`);
+  if (!box) return;
+  const from = box.querySelector("[data-pfrom]").value || null;
+  const to = box.querySelector("[data-pto]").value || null;
+  return planCall("/api/plan/set", {
+    sightId: id,
+    day: box.querySelector("[data-pday]").value,
+    start: from,
+    end: to,
+  });
+}
+
+const onPlanRemove = (id) => planCall("/api/plan/remove", { sightId: id });
 
 async function onSaveCost(id) {
   if (!me) return $("#name").focus();

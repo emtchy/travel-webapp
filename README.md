@@ -66,9 +66,15 @@ Entries come from two places:
 
 - **Booked with a date** — anything marked booked on the Bookings page with a
   slot appears here on its own. Change the slot there and the plan follows.
-- **Added by hand** — everything else. Pick the sight, the day, and optionally a
-  from and to time. Only the day is required; plenty of things are "Tuesday,
-  sometime". Untimed entries sort to the end of their day.
+- **Added by hand** — everything else, free or not. The quickest way is
+  **"Add to a day"** on the sight's own card over on Sights: pick a day and
+  optionally a from and to time. The Plan page has the same thing in a dropdown
+  if you would rather work from there. Only the day is required; plenty of
+  things are "Tuesday, sometime", and those sort to the end of their day.
+
+  A card already on the plan shows when, and offers **Change** or **Take off the
+  plan**. One placed by its booking says so and points at the Bookings page,
+  since its slot belongs there.
 - **Your own entries** — anything that isn't one of the sights at all: a musical
   you already booked, dinner with friends, the train home. Type a name, pick a
   day, add times if there are any. Anyone can remove one.

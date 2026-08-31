@@ -610,6 +610,10 @@ function render() {
       : `<p class="dayempty">${esc(L.dayEmpty)}</p>`}
   </section>`).join("");
 
+  // Nothing planned yet? Then adding is the only thing to do here, so don't
+  // make people find it behind a collapsed panel.
+  if (!list.length) $("#addplan").open = true;
+
   const hidden = list.length - shown.length;
   $("#hiddenby").hidden = !hidden;
   $("#hiddenby").textContent = hidden ? L.filteredOut(hidden) : "";
