@@ -178,5 +178,140 @@ const snap = await (await call("/api/state")).json();
 t2("/api/state returns votes, custom and comments",
    !!snap.votes && Array.isArray(snap.custom) && !!snap.comments);
 
-console.log(`\n${ok + ok2} passed, ${fail + fail2} failed`);
-process.exit(fail + fail2 ? 1 : 0);
+/* ---------------------------------------------------------- bookings list */
+
+console.log("\nbookings list");
+let ok3 = 0, fail3 = 0;
+const t3 = (name, cond) => { cond ? (ok3++, console.log("  ✓", name)) : (fail3++, console.log("  ✗", name)); };
+
+const setStatus = (b) => call("/api/bookings/status", { method: "POST", body: JSON.stringify(b) });
+const hide = (b) => setStatus({ ...b, status: "skipped" });
+const show = (b) => setStatus({ ...b, status: null });
+const stateOf = (snap, id) => snap.bookings.find(x => x.id === id)?.status ?? "todo";
+
+// The rule the page applies: costs money, or has to be booked ahead.
+const costsMoney = (s) => (s.custom ? !!s.costs : s.cost !== "free");
+const onList = (s) => costsMoney(s) || !!s.bookingRequired;
+
+t3("some built-in sights belong on the list", list.sights.filter(onList).length > 0);
+t3("not all of them do", list.sights.filter(onList).length < list.sights.length);
+t3("free sights that must be booked are still included",
+   list.sights.some(s => s.cost === "free" && s.bookingRequired && onList(s)));
+t3("every priced sight has a price label",
+   list.sights.filter(s => s.cost === "paid").every(s => s.priceLabel));
+
+// --- adding a sight now records whether it costs anything
+let added = await (await add({ voter: "Emily", name: "Paid thing",
+  costs: true, priceLabel: "£36 pp", bookingRequired: true })).json();
+const paid = added.custom.find(c => c.name === "Paid thing");
+t3("an added sight can be marked as costing money", paid.costs === true);
+t3("its price is kept", paid.priceLabel === "£36 pp");
+t3("its booking flag is kept", paid.bookingRequired === true);
+t3("and it lands on the list", onList(paid));
+
+added = await (await add({ voter: "Emily", name: "Free thing" })).json();
+const free = added.custom.find(c => c.name === "Free thing");
+t3("an added sight defaults to costing nothing", free.costs === false);
+t3("and stays off the list", !onList(free));
+t3("a price over 40 characters is rejected",
+   (await add({ voter: "Emily", name: "Long price", costs: true,
+                priceLabel: "x".repeat(41) })).status === 400);
+
+// --- hiding takes it off the list only
+await post({ voter: "Maya", sightId: paid.id, wanted: true });
+let h = await (await hide({ voter: "Emily", sightId: paid.id })).json();
+t3("a sight can be taken off the booking list", stateOf(h, paid.id) === "skipped");
+t3("who removed it is recorded",
+   h.bookings.find(x => x.id === paid.id)?.by === "Emily");
+t3("it stays in the sight list", h.custom.some(c => c.id === paid.id));
+t3("it keeps its votes", (h.votes[paid.id] ?? []).includes("Maya"));
+
+h = await (await show({ voter: "Emily", sightId: paid.id })).json();
+t3("and it can be put back", stateOf(h, paid.id) === "todo");
+
+h = await (await hide({ voter: "Maya", sightId: "london-eye" })).json();
+t3("built-in sights can be hidden too", stateOf(h, "london-eye") === "skipped");
+t3("marking twice does not duplicate the row",
+   (await (await hide({ voter: "Emily", sightId: "london-eye" })).json())
+     .bookings.filter(x => x.id === "london-eye").length === 1);
+t3("the most recent person is the one recorded",
+   (await (await call("/api/state")).json()).bookings
+     .find(x => x.id === "london-eye")?.by === "Emily");
+
+// --- booked moves it to its own list
+let b = await (await setStatus({ voter: "Maya", sightId: paid.id, status: "booked" })).json();
+t3("a sight can be marked as booked", stateOf(b, paid.id) === "booked");
+t3("who booked it is recorded", b.bookings.find(x => x.id === paid.id)?.by === "Maya");
+t3("when it was booked is recorded",
+   typeof b.bookings.find(x => x.id === paid.id)?.at === "number");
+t3("booking it keeps it in the sight list", b.custom.some(c => c.id === paid.id));
+t3("booking it keeps its votes", (b.votes[paid.id] ?? []).includes("Maya"));
+
+b = await (await setStatus({ voter: "Maya", sightId: paid.id, status: "skipped" })).json();
+t3("booked and skipped are the same slot, so it cannot be both",
+   b.bookings.filter(x => x.id === paid.id).length === 1 &&
+   stateOf(b, paid.id) === "skipped");
+
+b = await (await setStatus({ voter: "Maya", sightId: paid.id, status: null })).json();
+t3("null returns it to the list still to book", stateOf(b, paid.id) === "todo");
+
+// --- the slot we actually hold
+let sl = await (await setStatus({ voter: "Maya", sightId: "tower-of-london",
+  status: "booked", bookedDate: "2026-09-14", bookedTime: "14:30" })).json();
+const slot = sl.bookings.find(x => x.id === "tower-of-london");
+t3("a booking can record its date", slot?.date === "2026-09-14");
+t3("and its time", slot?.time === "14:30");
+
+sl = await (await setStatus({ voter: "Maya", sightId: "tower-of-london",
+  status: "booked", bookedDate: "2026-09-15" })).json();
+const noTime = sl.bookings.find(x => x.id === "tower-of-london");
+t3("a date without a time is fine", noTime?.date === "2026-09-15" && noTime?.time === null);
+
+sl = await (await setStatus({ voter: "Maya", sightId: "tower-of-london", status: "booked" })).json();
+t3("re-saving without a slot clears the old one",
+   sl.bookings.find(x => x.id === "tower-of-london")?.date === null);
+
+t3("a malformed date is rejected",
+   (await setStatus({ voter: "M", sightId: "tower-of-london", status: "booked",
+                      bookedDate: "14/09/2026" })).status === 400);
+t3("a malformed time is rejected",
+   (await setStatus({ voter: "M", sightId: "tower-of-london", status: "booked",
+                      bookedDate: "2026-09-14", bookedTime: "25:99" })).status === 400);
+t3("a time with no date is rejected",
+   (await setStatus({ voter: "M", sightId: "tower-of-london", status: "booked",
+                      bookedTime: "14:30" })).status === 400);
+t3("a slot on something we are not booking is rejected",
+   (await setStatus({ voter: "M", sightId: "tower-of-london", status: "skipped",
+                      bookedDate: "2026-09-14" })).status === 400);
+{
+  await setStatus({ voter: "M", sightId: "tower-of-london", status: "booked",
+                    bookedDate: "2026-09-14", bookedTime: "14:30" });
+  const back = await (await setStatus({ voter: "M", sightId: "tower-of-london", status: null })).json();
+  t3("un-booking removes the row entirely",
+     !back.bookings.some(x => x.id === "tower-of-london"));
+}
+
+t3("an invalid status is rejected",
+   (await setStatus({ voter: "Emily", sightId: paid.id, status: "maybe" })).status === 400);
+t3("a missing status is rejected",
+   (await setStatus({ voter: "Emily", sightId: paid.id })).status === 400);
+
+t3("hiding needs a name", (await hide({ voter: "", sightId: "london-eye" })).status === 400);
+t3("hiding an unknown sight is rejected",
+   (await hide({ voter: "Emily", sightId: "nope" })).status === 400);
+t3("showing an unknown sight is rejected",
+   (await show({ voter: "Emily", sightId: "nope" })).status === 400);
+
+// --- deleting a custom sight cleans up after itself
+const doomed = (await (await add({ voter: "Emily", name: "Doomed", costs: true })).json())
+  .custom.find(c => c.name === "Doomed");
+await hide({ voter: "Emily", sightId: doomed.id });
+const after = await (await del({ id: doomed.id, voter: "Emily" })).json();
+t3("removing a custom sight clears its booking row",
+   !after.bookings.some(x => x.id === doomed.id));
+
+t3("/api/state carries the booking states",
+   Array.isArray((await (await call("/api/state")).json()).bookings));
+
+console.log(`\n${ok + ok2 + ok3} passed, ${fail + fail2 + fail3} failed`);
+process.exit(fail + fail2 + fail3 ? 1 : 0);

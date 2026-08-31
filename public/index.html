@@ -53,28 +53,55 @@ h1{
 }
 .lede{color:var(--ink-2);max-width:60ch;margin:0;font-size:16px}
 
-/* ---------------- identity bar ---------------- */
-.who{
-  position:sticky;top:0;z-index:30;margin:0 -20px;padding:12px 20px;
-  background:color-mix(in srgb,var(--paper) 93%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
-  display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+/* ---------------- add form: cost ---------------- */
+.money{
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  padding:12px 14px;border:1px solid var(--line);border-radius:11px;
+  background:var(--card-2);
 }
-.who label{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
-}
-.who input{
-  font:inherit;font-size:15px;padding:7px 11px;border-radius:3px;
+.check{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
+.check input{accent-color:var(--maroon);width:16px;height:16px;flex:none;cursor:pointer}
+.money input[type=text]{
+  font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;width:120px;
   border:1px solid var(--line-2);background:var(--card);color:var(--ink);
-  min-width:170px;
 }
-.who input:focus-visible{outline:2px solid var(--maroon);outline-offset:1px}
-.who .status{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
-  color:var(--ink-3);margin-left:auto;
+.money input[type=text]:disabled{opacity:.45}
+.money .hint{flex-basis:100%}
+
+/* ---------------- top nav ---------------- */
+.topnav{position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
+.navinner{max-width:1180px;margin:0 auto;padding:9px 20px;min-height:56px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;
+  letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+.navlinks{display:flex;gap:4px}
+.navlinks a{font-size:14px;font-weight:500;color:var(--ink-3);text-decoration:none;
+  padding:7px 14px;border-radius:9px;transition:color .15s,background .15s}
+.navlinks a:hover{color:var(--ink);background:var(--card-2)}
+.navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
+.navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
+.navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);width:132px}
+.navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
+.navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
+.langs button{padding:6px 10px;font-size:12px;font-weight:600;border:0;
+  background:var(--card);color:var(--ink-3)}
+.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+@media (max-width:700px){
+  .navinner{padding:9px 16px;gap:10px}
+  .brand{flex-basis:auto}
+  .navtools{margin-left:auto;flex-wrap:wrap}
+  .navtools input[type=text]{width:112px}
+  .navstatus{flex-basis:100%;max-width:none;text-align:right}
 }
-.who .status b{color:var(--maroon)}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ---------------- identity bar ---------------- */
 
 /* ---------------- filters ---------------- */
 .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:22px 0 4px}
@@ -240,13 +267,12 @@ h1{
 
 /* ---------------- sticky top bar ---------------- */
 #topbar{
-  position:sticky;top:0;z-index:40;margin:0 -20px;
+  position:sticky;top:56px;z-index:35;margin:0 -20px;
   background:color-mix(in srgb,var(--paper) 94%,transparent);
   backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
 }
-#topbar .who,#topbar .bar{position:static;margin:0;backdrop-filter:none;background:none}
-#topbar .who{border-bottom:1px solid var(--line);padding:10px 20px}
-#topbar .bar{padding:9px 20px;margin:0;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+#topbar .bar{position:static;margin:0;backdrop-filter:none;background:none;
+  padding:9px 20px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
 #topbar .bar::-webkit-scrollbar{display:none}
 #topbar .bar button{flex:0 0 auto}
 
@@ -323,7 +349,6 @@ footer a{color:var(--maroon)}
   #topbar{margin:0 -14px}
   #topbar .who,#topbar .bar{padding-left:14px;padding-right:14px}
   .who input{flex:1 1 140px;min-width:0}
-  .who .status{flex-basis:100%;margin-left:0;font-size:11px}
   header{padding:28px 0 18px}
   .grid{grid-template-columns:1fr;gap:14px}
   .shot{aspect-ratio:3/2}
@@ -338,11 +363,31 @@ footer a{color:var(--maroon)}
 
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:520px){
-  .who .status{margin-left:0;flex-basis:100%}
 }
 </style>
 </head>
 <body>
+
+<nav class="topnav">
+  <div class="navinner">
+    <a class="brand" href="/">London&nbsp;2026</a>
+    <div class="navlinks">
+      <a href="/" aria-current="page" id="nav-sights">Sights</a>
+      <a href="/bookings" id="nav-bookings">Bookings</a>
+    </div>
+    <div class="navtools">
+      <label class="visually-hidden" for="name" id="name-label">Your name</label>
+      <input id="name" type="text" maxlength="32" placeholder="Your name"
+             autocomplete="given-name" spellcheck="false">
+      <span class="langs" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="de" aria-pressed="false">DE</button>
+      </span>
+      <span class="navstatus" id="status">Loading…</span>
+    </div>
+  </div>
+</nav>
+
 <div class="wrap">
 
 <header>
@@ -352,16 +397,6 @@ footer a{color:var(--maroon)}
 </header>
 
 <div id="topbar">
-<div class="who">
-  <label for="name" id="name-label">Your name</label>
-  <input id="name" type="text" maxlength="32" placeholder="e.g. Manuel" autocomplete="given-name" spellcheck="false">
-  <span class="langs" role="group" aria-label="Language">
-    <button type="button" data-lang="en" aria-pressed="true">EN</button>
-    <button type="button" data-lang="de" aria-pressed="false">DE</button>
-  </span>
-  <span class="status" id="status">Loading…</span>
-</div>
-
 <div class="bar" id="filters">
   <span class="lbl" id="filter-label">Show</span>
   <button type="button" data-f="all" aria-pressed="true">All</button>
@@ -387,6 +422,18 @@ footer a{color:var(--maroon)}
     <div>
       <label for="add-desc">Short description <span class="hint" id="add-desc-opt">(optional)</span></label>
       <textarea id="add-desc" maxlength="300" placeholder="Why should we go?"></textarea>
+    </div>
+    <div class="money">
+      <label class="check">
+        <input type="checkbox" id="add-costs">
+        <span id="add-costs-label">It costs something</span>
+      </label>
+      <input id="add-price" type="text" maxlength="40" placeholder="£25 pp" disabled>
+      <label class="check">
+        <input type="checkbox" id="add-booking">
+        <span id="add-booking-label">Needs booking ahead</span>
+      </label>
+      <span class="hint" id="add-money-hint">Either one puts it on the Bookings page.</span>
     </div>
     <div class="row">
       <button class="submit" type="submit" id="add-submit">Add it</button>
@@ -434,6 +481,10 @@ const esc  = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 const T = {
   en: {
     kicker: "London · 11–16 September 2026",
+    navSights: "Sights", navBookings: "Bookings",
+    addCosts: "It costs something", addPrice: "£25 pp",
+    addBooking: "Needs booking ahead",
+    addMoneyHint: "Either one puts it on the Bookings page.",
     headline: "What do you actually want to see?",
     lede: n => `${n} options, ranked: the famous ones and the ones only locals mention. Put your name in, then tap Want this on everything you'd like to do. Add your own at the top if you want to suggest another option.`,
     nameLabel: "Your name",
@@ -482,6 +533,10 @@ const T = {
   },
   de: {
     kicker: "London · 11.–16. September 2026",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen",
+    addCosts: "Kostet etwas", addPrice: "25 £ p. P.",
+    addBooking: "Muss vorab gebucht werden",
+    addMoneyHint: "Beides bringt den Eintrag auf die Buchungsseite.",
     headline: "Sehenswürdigkeiten & Ausflüge",
     lede: n => `${n} Vorschläge, sortiert: Touristenhotspots und "local's places". Zuerst Namen eintragen, dann bei allem auf „Like“ tippen, was euch gefällt. Fehlt etwas, könnt ihr es oben selbst hinzufügen.`,
     nameLabel: "Dein Name",
@@ -904,6 +959,12 @@ function paintChrome() {
   document.documentElement.lang = lang;
   const L = t();
   $("#kicker").textContent   = L.kicker;
+  $("#nav-sights").textContent      = L.navSights;
+  $("#nav-bookings").textContent    = L.navBookings;
+  $("#add-costs-label").textContent = L.addCosts;
+  $("#add-price").placeholder       = L.addPrice;
+  $("#add-booking-label").textContent = L.addBooking;
+  $("#add-money-hint").textContent  = L.addMoneyHint;
   $("#headline").textContent = L.headline;
   $("#lede").textContent     = L.lede(all().length);
   $("#name-label").textContent = L.nameLabel;
@@ -1063,6 +1124,13 @@ $("#grid").addEventListener("submit", async (event) => {
   }
 });
 
+$("#add-costs").addEventListener("change", (ev) => {
+  const price = $("#add-price");
+  price.disabled = !ev.target.checked;
+  if (!ev.target.checked) price.value = "";
+  else price.focus();
+});
+
 $("#addform").addEventListener("submit", async (event) => {
   event.preventDefault();
   const err = $("#add-err");
@@ -1075,11 +1143,15 @@ $("#addform").addEventListener("submit", async (event) => {
     return;
   }
 
+  const costs = $("#add-costs").checked;
   const payload = {
     voter: me,
     name: $("#add-name").value,
     url: $("#add-url").value,
     summary: $("#add-desc").value,
+    costs,
+    bookingRequired: $("#add-booking").checked,
+    priceLabel: costs ? $("#add-price").value || null : null,
   };
 
   const submit = $("#add-submit");
@@ -1094,6 +1166,7 @@ $("#addform").addEventListener("submit", async (event) => {
     VOTES  = data.votes || {};
     COMMENTS = data.comments || {};
     $("#addform").reset();
+    $("#add-price").disabled = true;
     $("#addbox").open = false;
     render(); setStatus(); notify("");
     document.getElementById(`card-${data.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });

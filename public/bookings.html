@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>London — bookings</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎟️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
+  --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
+  --line:#D9DDD4; --line-2:#C4CABD;
+  --maroon:#7B2230; --maroon-soft:#F0E2E3;
+  --green:#1F4A3C; --green-soft:#E1EAE4;
+  --brass:#8A6118; --brass-soft:#F2E9D6;
+  --shadow:0 1px 2px rgba(23,29,25,.06), 0 10px 28px -20px rgba(23,29,25,.35);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#101410; --card:#171C18; --card-2:#1E241F;
+    --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
+    --line:#2A322B; --line-2:#3A443B;
+    --maroon:#E0868F; --maroon-soft:#2E1A1E;
+    --green:#7CBBA0; --green-soft:#152420;
+    --brass:#D9AC59; --brass-soft:#241D0F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -22px rgba(0,0,0,.9);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
+  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+a{color:var(--maroon)}
+
+/* ---- top nav ---- */
+.topnav{position:sticky;top:0;z-index:40;
+  background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
+.navinner{max-width:1180px;margin:0 auto;padding:9px 20px;min-height:56px;
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;
+  letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
+.navlinks{display:flex;gap:4px}
+.navlinks a{font-size:14px;font-weight:500;color:var(--ink-3);text-decoration:none;
+  padding:7px 14px;border-radius:9px;transition:color .15s,background .15s}
+.navlinks a:hover{color:var(--ink);background:var(--card-2)}
+.navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
+.navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
+.navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);width:132px}
+.navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
+.navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
+.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
+.langs button{padding:6px 10px;font-size:12px;font-weight:600;border:0;
+  background:var(--card);color:var(--ink-3)}
+.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media (max-width:700px){
+  .navinner{padding:9px 16px;gap:10px}
+  .navtools{margin-left:auto;flex-wrap:wrap}
+  .navtools input[type=text]{width:112px}
+  .navstatus{flex-basis:100%;max-width:none;text-align:right}
+}
+
+header{padding:40px 0 22px}
+.kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0 0 14px}
+h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
+  font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.02em;margin:0 0 12px}
+.lede{color:var(--ink-2);max-width:62ch;margin:0}
+
+/* ---- identity ---- */
+.who{position:sticky;top:56px;z-index:30;margin:0 -20px;padding:12px 20px;
+  background:color-mix(in srgb,var(--paper) 93%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.who label{font-size:13px;color:var(--ink-2);font-weight:500}
+input[type=text]{font:inherit;font-size:15px;padding:8px 12px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);min-width:150px}
+.status{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);margin-left:auto}
+button{font:inherit;cursor:pointer}
+.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden}
+.langs button{padding:7px 11px;font-size:12px;font-weight:600;border:0;
+  background:var(--card);color:var(--ink-3)}
+.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+
+/* ---- stats ---- */
+.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px}
+.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
+.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- filters ---- */
+.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+  padding:14px 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fgroup .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
+.fgroup button{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2)}
+.fgroup button:hover{border-color:var(--ink-3);color:var(--ink)}
+.fgroup button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  font-weight:500;opacity:.55;margin-left:4px}
+
+/* ---- list ---- */
+.list{display:grid;gap:12px;margin-top:24px}
+@media(min-width:860px){.list{grid-template-columns:repeat(2,1fr)}}
+.item{background:var(--card);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.itop{display:flex;gap:10px;align-items:flex-start}
+.iname{font-weight:600;font-size:16px;line-height:1.3;flex:1}
+.price{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);
+  white-space:nowrap;font-weight:500}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  border-radius:5px;padding:2px 7px;border:1px solid}
+.tag.paid{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
+.tag.book{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
+.tag.added{color:var(--green);border-color:var(--green);background:var(--green-soft)}
+.blurb{font-size:13.5px;color:var(--ink-2);margin:0}
+.voters{font-size:12.5px;color:var(--ink-3)}
+.voters b{color:var(--ink-2);font-weight:600}
+.iact{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding-top:10px;margin-top:auto;border-top:1px dashed var(--line)}
+.iact a{font-size:13px;font-weight:500;text-decoration:none;padding:6px 12px;
+  border-radius:8px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
+.iact a:hover{border-color:var(--ink-3)}
+.remove{font-size:12.5px;border:0;background:none;color:var(--ink-3);
+  padding:6px 4px;margin-left:auto}
+.remove:hover{color:var(--maroon)}
+
+.empty{color:var(--ink-3);font-size:14.5px;padding:40px 0;text-align:center}
+
+/* ---- slot form ---- */
+.slot{padding-top:11px;margin-top:auto;border-top:1px dashed var(--line);
+  display:grid;gap:9px}
+.slotrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.slot label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
+.slot input{font:inherit;font-size:13px;padding:5px 9px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
+.slotshown{font-family:"IBM Plex Mono",monospace;font-size:12.5px;
+  color:var(--green);border:1px solid var(--green);border-radius:6px;
+  padding:1px 8px;white-space:nowrap}
+.slotshown.none{color:var(--ink-3);border-color:var(--line-2)}
+.done.editing{display:block}
+.done.editing .n{display:block;margin-bottom:2px}
+
+/* ---- booked ---- */
+.section{margin-top:34px}
+.section h2{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:600;
+  margin:0 0 4px;display:flex;align-items:baseline;gap:9px}
+.section h2 span{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;color:var(--ink-3);font-weight:500}
+.section .note{font-size:13px;color:var(--ink-3);margin:0 0 14px}
+.donelist{display:grid;gap:8px}
+.done{display:flex;gap:11px;align-items:center;flex-wrap:wrap;
+  background:var(--green-soft);border:1px solid var(--line);
+  border-radius:11px;padding:11px 15px}
+.done .tick{color:var(--green);font-weight:700;flex:none}
+.done .n{font-weight:600;font-size:15px;flex:1;min-width:150px}
+.done .voters{font-size:12.5px;color:var(--ink-3)}
+.btn.book{border-color:var(--green);color:var(--green)}
+.btn.book:hover{background:var(--green);color:var(--paper);border-color:var(--green)}
+details.gone{margin-top:26px;background:var(--card);border:1px solid var(--line);
+  border-radius:13px;overflow:hidden}
+details.gone>summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14.5px}
+.gonebody{padding:6px 18px 14px;border-top:1px solid var(--line)}
+.grow{display:flex;gap:10px;align-items:center;padding:9px 0;flex-wrap:wrap;
+  border-bottom:1px dashed var(--line)}
+.grow:last-child{border-bottom:0}
+.grow .n{flex:1;min-width:160px;font-size:14.5px}
+.btn{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
+.btn:hover{border-color:var(--ink-3)}
+footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="navinner">
+    <a class="brand" href="/">London&nbsp;2026</a>
+    <div class="navlinks">
+      <a href="/" id="nav-sights">Sights</a>
+      <a href="/bookings" aria-current="page" id="nav-bookings">Bookings</a>
+    </div>
+    <div class="navtools">
+      <label class="visually-hidden" for="name" id="name-label">Your name</label>
+      <input id="name" type="text" maxlength="32" placeholder="Your name"
+             autocomplete="given-name" spellcheck="false">
+      <span class="langs" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="de" aria-pressed="false">DE</button>
+      </span>
+      <span class="navstatus" id="status">Loading…</span>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+<header>
+  <p class="kicker" id="kicker">London · 11–16 September 2026</p>
+  <h1 id="headline">What we need to book</h1>
+  <p class="lede" id="lede"></p>
+</header>
+
+<div class="stats" id="stats"></div>
+<div class="filters" id="filters"></div>
+<div class="list" id="list"></div>
+<p class="empty" id="empty" hidden></p>
+<div id="booked"></div>
+<div id="gone"></div>
+
+<footer><span id="foot"></span></footer>
+</div>
+
+<script type="module">
+const $ = (s, r = document) => r.querySelector(s);
+const NAME_KEY = "london-vote-name";
+const CODE_KEY = "london-vote-code";
+const LANG_KEY = "london-vote-lang";
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const T = {
+  en: {
+    kicker: "London · 11–16 September 2026",
+    headline: "What we need to book",
+    lede: "Everything on the list that costs money or has to be booked ahead — the built-in sights and the ones we added ourselves. Take anything off that we've decided against; it stays on the voting page either way.",
+    nameLabel: "Your name", namePh: "e.g. Manuel",
+    navSights: "Sights", navBookings: "Bookings",
+    loading: "Loading…", saving: "Saving…", saved: "Saved",
+    needName: "Enter your name first.",
+    needDate: "Pick a date to go with that time.",
+    statTotal: "still to book", statBooked: "booked", statBook: "need booking", statOurs: "added by us",
+    fVotes: "Votes", fAll: "All", fPlus: "+", fType: "Kind",
+    fBuiltIn: "Built-in", fAdded: "Added by us", fBookOnly: "Booking only",
+    tagPaid: "Paid", tagBook: "Book ahead", tagAdded: "Added by us", tagLimited: "Limited entry",
+    open: "Open site", remove: "Not booking this",
+    markBooked: "Mark as booked", unbook: "Not booked after all",
+    slotDate: "Date", slotTime: "Time", slotConfirm: "Save booking",
+    slotCancel: "Cancel", slotHint: "Leave blank if there's no fixed slot.",
+    editSlot: "Change slot", noSlot: "no fixed slot",
+    bookedTitle: "Booked", bookedNote: "Sorted. Nothing left to do for these.",
+    bookedBy: "booked by", on: "on",
+    wanted: (n) => `${n} ${n === 1 ? "vote" : "votes"}`,
+    noVotes: "No votes yet",
+    empty: "Nothing matches those filters.",
+    emptyAll: "Nothing on the list costs anything yet. Tick “it costs something” when adding a sight and it will show up here.",
+    allDone: "Everything is booked. Nothing left to sort out.",
+    goneTitle: "Not booking these",
+    goneNote: "Still on the voting page, still keeping their votes — just not something we're booking.",
+    restore: "Back to the list", by: "removed by",
+    foot: "Prices are what the sight lists publicly and are per person unless it says otherwise. Check the official site before booking.",
+  },
+  de: {
+    kicker: "London · 11.–16. September 2026",
+    headline: "Was wir buchen müssen",
+    lede: "Alles auf der Liste, was Geld kostet oder vorab gebucht werden muss – die vorgegebenen Orte und unsere eigenen. Nimm raus, wogegen wir uns entschieden haben; auf der Abstimmungsseite bleibt es trotzdem.",
+    nameLabel: "Dein Name", namePh: "z. B. Manuel",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen",
+    loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
+    needName: "Bitte zuerst den Namen eintragen.",
+    needDate: "Zu der Uhrzeit fehlt noch das Datum.",
+    statTotal: "noch zu buchen", statBooked: "gebucht", statBook: "vorab buchen", statOurs: "von uns",
+    fVotes: "Stimmen", fAll: "Alle", fPlus: "+", fType: "Art",
+    fBuiltIn: "Vorgegeben", fAdded: "Von uns", fBookOnly: "Nur Buchung",
+    tagPaid: "Kostet", tagBook: "Vorab buchen", tagAdded: "Von uns", tagLimited: "Begrenzter Einlass",
+    open: "Website", remove: "Buchen wir nicht",
+    markBooked: "Als gebucht markieren", unbook: "Doch nicht gebucht",
+    slotDate: "Datum", slotTime: "Uhrzeit", slotConfirm: "Buchung speichern",
+    slotCancel: "Abbrechen", slotHint: "Leer lassen, wenn es keinen festen Termin gibt.",
+    editSlot: "Termin ändern", noSlot: "kein fester Termin",
+    bookedTitle: "Gebucht", bookedNote: "Erledigt. Hier ist nichts mehr zu tun.",
+    bookedBy: "gebucht von", on: "am",
+    wanted: (n) => `${n} ${n === 1 ? "Stimme" : "Stimmen"}`,
+    noVotes: "Noch keine Stimmen",
+    empty: "Nichts passt zu diesen Filtern.",
+    emptyAll: "Noch kostet nichts auf der Liste etwas. Hak beim Hinzufügen „kostet etwas“ an, dann erscheint es hier.",
+    allDone: "Alles gebucht. Nichts mehr zu erledigen.",
+    goneTitle: "Buchen wir nicht",
+    goneNote: "Stehen weiterhin auf der Abstimmungsseite und behalten ihre Stimmen – wir buchen sie nur nicht.",
+    restore: "Zurück zur Liste", by: "entfernt von",
+    foot: "Preise sind die öffentlich genannten und gelten pro Person, sofern nicht anders angegeben. Vor dem Buchen auf der offiziellen Seite prüfen.",
+  },
+};
+let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
+const t = () => T[lang];
+
+// The trip this deployment plans. Only used to bound the date picker.
+const TRIP_START = "2026-09-11";
+const TRIP_END   = "2026-09-16";
+
+let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [];
+let booking = null;              // id of the card currently being booked
+let minVotes = 0;
+let kind = "all";        // all | builtin | added | booking
+
+const nameOf = () => $("#name").value.trim();
+const setStatus = (m) => { $("#status").textContent = m; };
+const title = (s) => (lang === "de" && s.name_de) || s.name;
+const blurb = (s) => (lang === "de" && s.summary_de) || s.summary || "";
+const priceOf = (s) => (lang === "de" && s.priceLabel_de) || s.priceLabel || "";
+
+async function api(path, options) {
+  const res = await fetch(path, { ...options, headers: {
+    "content-type": "application/json",
+    ...(localStorage.getItem(CODE_KEY) ? { "x-access-code": localStorage.getItem(CODE_KEY) } : {}),
+  }});
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) {
+    const entered = window.prompt("Access code / Zugangscode:");
+    if (entered) { localStorage.setItem(CODE_KEY, entered); return api(path, options); }
+  }
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+/* ------------------------------------------------------------ the list */
+
+/**
+ * A sight belongs here if it costs money or has to be booked ahead. Built-ins
+ * answer that from their own fields; added ones from what the person ticked.
+ * Three built-ins are free but still need booking — Sky Garden, Horizon 22 and
+ * the Barbican Conservatory — so cost alone isn't the test.
+ */
+const costsMoney = (s) => (s.custom ? !!s.costs : s.cost !== "free");
+const needsBooking = (s) => !!s.bookingRequired;
+const bookable = (s) => costsMoney(s) || needsBooking(s);
+
+const votesFor = (s) => VOTES[s.id] ?? [];
+const statusOf = (id) => STATUS.find((x) => x.id === id) ?? null;
+const stateOf = (id) => statusOf(id)?.status ?? "todo";
+
+const everything = () => [...SIGHTS, ...CUSTOM].filter(bookable);
+const inState = (what) => everything().filter((s) => stateOf(s.id) === what);
+const onList = () => inState("todo");
+
+function matches(s) {
+  if (votesFor(s).length < minVotes) return false;
+  if (kind === "builtin" && s.custom) return false;
+  if (kind === "added" && !s.custom) return false;
+  if (kind === "booking" && !needsBooking(s)) return false;
+  return true;
+}
+
+const byWant = (a, b) =>
+  votesFor(b).length - votesFor(a).length ||
+  (a.rank ?? 999) - (b.rank ?? 999) ||
+  title(a).localeCompare(title(b));
+
+/* --------------------------------------------------------------- render */
+
+function itemHTML(s) {
+  const L = t();
+  const who = votesFor(s);
+  const price = priceOf(s);
+  const limited = !s.custom && s.cost === "free-limited";
+
+  const tags = [
+    costsMoney(s) ? `<span class="tag paid">${esc(L.tagPaid)}</span>` : "",
+    needsBooking(s) ? `<span class="tag book">${esc(L.tagBook)}</span>` : "",
+    limited ? `<span class="tag book">${esc(L.tagLimited)}</span>` : "",
+    s.custom ? `<span class="tag added">${esc(L.tagAdded)}</span>` : "",
+  ].filter(Boolean).join("");
+
+  return `<article class="item">
+    <div class="itop">
+      <span class="iname">${esc(title(s))}</span>
+      ${price ? `<span class="price">${esc(price)}</span>` : ""}
+    </div>
+    <div class="tags">${tags}</div>
+    ${blurb(s) ? `<p class="blurb">${esc(blurb(s).slice(0, 160))}${blurb(s).length > 160 ? "…" : ""}</p>` : ""}
+    <div class="voters">${who.length
+      ? `<b>${esc(L.wanted(who.length))}</b> · ${esc(who.join(", "))}`
+      : esc(L.noVotes)}</div>
+    ${booking === s.id ? slotFormHTML(s) : `<div class="iact">
+      ${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(L.open)} ↗</a>` : ""}
+      <button class="btn book" data-open-slot="${esc(s.id)}" type="button">${esc(L.markBooked)}</button>
+      <button class="remove" data-set="skipped" data-id="${esc(s.id)}" type="button">${esc(L.remove)}</button>
+    </div>`}
+  </article>`;
+}
+
+/** Date and time of the slot we hold. Both optional — plenty has no fixed time. */
+function slotFormHTML(s) {
+  const L = t();
+  const st = statusOf(s.id);
+  return `<div class="slot" data-slot="${esc(s.id)}">
+    <div class="slotrow">
+      <label>${esc(L.slotDate)}
+        <input type="date" data-date min="${TRIP_START}" max="${TRIP_END}"
+               value="${esc(st?.date ?? "")}"></label>
+      <label>${esc(L.slotTime)}
+        <input type="time" data-time value="${esc(st?.time ?? "")}"></label>
+    </div>
+    <div class="slotrow">
+      <button class="btn book" data-confirm="${esc(s.id)}" type="button">${esc(L.slotConfirm)}</button>
+      <button class="remove" data-cancel type="button">${esc(L.slotCancel)}</button>
+      <span class="voters">${esc(L.slotHint)}</span>
+    </div>
+  </div>`;
+}
+
+/** A booked one: same identity, but finished, so it needs far less on it. */
+function bookedHTML(s) {
+  const L = t();
+  const st = statusOf(s.id);
+  const price = priceOf(s);
+
+  const slot = st?.date
+    ? new Date(st.date + "T12:00:00Z").toLocaleDateString(
+        lang === "de" ? "de-DE" : "en-GB",
+        { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }) +
+      (st.time ? `, ${st.time}` : "")
+    : L.noSlot;
+
+  if (booking === s.id)
+    return `<div class="done editing"><span class="n">${esc(title(s))}</span>${slotFormHTML(s)}</div>`;
+
+  return `<div class="done" data-id="${esc(s.id)}">
+    <span class="tick" aria-hidden="true">✓</span>
+    <span class="n">${esc(title(s))}</span>
+    <span class="slotshown${st?.date ? "" : " none"}">${esc(slot)}</span>
+    ${price ? `<span class="price">${esc(price)}</span>` : ""}
+    <span class="voters">${esc(L.bookedBy)} ${esc(st?.by ?? "?")}</span>
+    <button class="btn" data-open-slot="${esc(s.id)}" type="button">${esc(L.editSlot)}</button>
+    <button class="btn" data-set="null" data-id="${esc(s.id)}" type="button">${esc(L.unbook)}</button>
+  </div>`;
+}
+
+function renderFilters() {
+  const L = t();
+  const pool = onList();
+  const top = pool.reduce((a, s) => Math.max(a, votesFor(s).length), 0);
+
+  // Only offer thresholds the votes can actually tell apart.
+  const steps = Array.from({ length: Math.min(top, 6) + 1 }, (_, n) => n);
+  const countAt = (n) => pool.filter((s) => votesFor(s).length >= n).length;
+
+  const votesBtns = steps.map((n) =>
+    `<button type="button" data-votes="${n}" aria-pressed="${minVotes === n}">${
+      n === 0 ? esc(L.fAll) : n + esc(L.fPlus)} <b>${countAt(n)}</b></button>`).join("");
+
+  const kinds = [
+    ["all", L.fAll, pool.length],
+    ["builtin", L.fBuiltIn, pool.filter((s) => !s.custom).length],
+    ["added", L.fAdded, pool.filter((s) => s.custom).length],
+    ["booking", L.fBookOnly, pool.filter(needsBooking).length],
+  ].map(([k, label, n]) =>
+    `<button type="button" data-kind="${k}" aria-pressed="${kind === k}">${esc(label)} <b>${n}</b></button>`).join("");
+
+  $("#filters").innerHTML =
+    `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}</div>` +
+    `<div class="fgroup"><span class="lbl">${esc(L.fType)}</span>${kinds}</div>`;
+}
+
+function render() {
+  const L = t();
+  document.documentElement.lang = lang;
+  for (const [id, key] of [["kicker","kicker"],["headline","headline"],["lede","lede"],
+    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],["nav-bookings","navBookings"]])
+    $("#" + id).textContent = L[key];
+  $("#name").placeholder = L.nameLabel;
+  document.title = `${L.kicker.split("·")[0].trim()} — ${L.headline}`;
+
+  const pool = onList();
+  const booked = inState("booked");
+  $("#stats").innerHTML = [
+    [pool.length, L.statTotal],
+    [booked.length, L.statBooked],
+    [pool.filter(needsBooking).length, L.statBook],
+    [pool.filter((s) => s.custom).length, L.statOurs],
+  ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
+
+  renderFilters();
+
+  const shown = pool.filter(matches).sort(byWant);
+  $("#list").innerHTML = shown.map(itemHTML).join("");
+  $("#empty").hidden = shown.length > 0;
+  $("#empty").textContent = !everything().length ? L.emptyAll
+    : pool.length === 0 && booked.length ? L.allDone
+    : L.empty;
+
+  // Booked things are done, so they are shown in full rather than filtered —
+  // hiding a booking behind a vote filter would only make people doubt it.
+  const doneList = booked.slice().sort(byWant);
+  $("#booked").innerHTML = doneList.length
+    ? `<section class="section">
+        <h2>${esc(L.bookedTitle)} <span>${doneList.length}</span></h2>
+        <p class="note">${esc(L.bookedNote)}</p>
+        <div class="donelist">${doneList.map(bookedHTML).join("")}</div>
+      </section>`
+    : "";
+
+  const gone = inState("skipped").sort(byWant);
+  $("#gone").innerHTML = gone.length
+    ? `<details class="gone"><summary>${esc(L.goneTitle)} (${gone.length})</summary>
+        <div class="gonebody"><p class="voters" style="margin:8px 0 4px">${esc(L.goneNote)}</p>
+        ${gone.map((s) => {
+          const h = statusOf(s.id);
+          return `<div class="grow">
+            <span class="n">${esc(title(s))}</span>
+            <span class="voters">${esc(L.by)} ${esc(h?.by ?? "?")}</span>
+            <button class="btn" data-set="null" data-id="${esc(s.id)}" type="button">${esc(L.restore)}</button>
+          </div>`;
+        }).join("")}</div></details>`
+    : "";
+}
+
+/* -------------------------------------------------------------- actions */
+
+async function mutate(path, body) {
+  if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
+  setStatus(t().saving);
+  try {
+    const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
+    CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    render();
+    setStatus(t().saved);
+  } catch (err) { setStatus(err.message); }
+}
+
+document.addEventListener("click", (ev) => {
+  const openSlot = ev.target.closest("[data-open-slot]");
+  if (openSlot) {
+    if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
+    booking = openSlot.dataset.openSlot;
+    return void render();
+  }
+
+  if (ev.target.closest("[data-cancel]")) { booking = null; return void render(); }
+
+  const confirm = ev.target.closest("[data-confirm]");
+  if (confirm) {
+    const box = confirm.closest("[data-slot]");
+    const date = $("[data-date]", box).value || null;
+    const time = $("[data-time]", box).value || null;
+    if (time && !date) { setStatus(t().needDate); return; }
+    booking = null;
+    return void mutate("/api/bookings/status", {
+      sightId: confirm.dataset.confirm, status: "booked",
+      bookedDate: date, bookedTime: time,
+    });
+  }
+
+  const set = ev.target.closest("[data-set]");
+  if (set)
+    return void mutate("/api/bookings/status", {
+      sightId: set.dataset.id,
+      status: set.dataset.set === "null" ? null : set.dataset.set,
+    });
+
+  const v = ev.target.closest("[data-votes]");
+  if (v) { minVotes = Number(v.dataset.votes); return void render(); }
+
+  const k = ev.target.closest("[data-kind]");
+  if (k) { kind = k.dataset.kind; return void render(); }
+
+  const lb = ev.target.closest(".langs button");
+  if (lb) {
+    lang = lb.dataset.lang;
+    localStorage.setItem(LANG_KEY, lang);
+    for (const b of document.querySelectorAll(".langs button"))
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    render();
+  }
+});
+
+$("#name").addEventListener("input", () => localStorage.setItem(NAME_KEY, nameOf()));
+$("#name").value = localStorage.getItem(NAME_KEY) || "";
+for (const b of document.querySelectorAll(".langs button"))
+  b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+
+(async () => {
+  setStatus(t().loading);
+  try {
+    const d = await api("/api/sights");
+    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    render();
+    setStatus("");
+  } catch (err) { setStatus(err.message); }
+})();
+</script>
+</body>
+</html>

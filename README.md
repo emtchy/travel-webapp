@@ -1,21 +1,60 @@
-# London sights — vote page
+# London sights — vote and book
 
-One page, 33 sights, shared votes. Everyone types their name, taps **Want this**
-on what they'd like to do, and sees everyone else's picks live.
+Two pages. On **Sights**, everyone types their name, taps **Want this** on what
+they'd like to do, and sees everyone else's picks live. On **Bookings**, the
+same list filtered down to what costs money or has to be booked ahead, so you
+can see what actually needs arranging.
 
 Runs entirely on Cloudflare's free tier: one Worker serves both the page and the
 API, and votes live in D1 (Cloudflare's SQLite). No build step, no framework,
 no npm dependencies at runtime.
 
 ```
-public/index.html      the whole frontend — HTML, CSS and JS in one file
+public/index.html      the vote page — HTML, CSS and JS in one file
+public/bookings.html   the bookings overview
 src/worker.js          the API, and the static-file fallthrough
-src/sights.js          the 33 sights (generated; edit freely)
-schema.sql             one table
+src/sights.js          the 55 sights (generated; edit freely)
+schema.sql             four tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-images.mjs   optional: self-host the photos
+scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
+                              existing database
 ```
+
+## The Bookings page
+
+`/bookings`, linked from the bar at the top of every page. It shows everything
+that **costs money or has to be booked ahead** — not simply everything paid,
+because Sky Garden, Horizon 22 and the Barbican Conservatory are free and still
+need a slot reserved.
+
+- **Filters** by vote count (All / 1+ / 2+ / 3+ …) and by kind (built-in, added
+  by us, booking-only). Each button carries its own count, so you can see what a
+  filter will do before pressing it. Thresholds above the highest vote count
+  aren't offered, since they'd all show the same thing.
+- **Sorted by votes**, most wanted first, with who voted for each one.
+Every entry sits in one of three lists, and moving between them never touches
+the sight itself — it stays on the voting page with every vote intact.
+
+- **Still to book** — the main list, with the filters above it.
+- **Booked** — press **"Mark as booked"** and the card asks for the slot you
+  actually hold: a date and, if there is one, a time. Both optional, since
+  plenty of things are booked for a day rather than an hour. It then moves down
+  to its own list showing the slot, the price and who booked it. **"Change
+  slot"** edits it; **"Not booked after all"** puts it back.
+- **Not booking these** — **"Not booking this"** for anything you have decided
+  against. Collapsed at the bottom with who removed it, one click to restore.
+
+The filters apply to the main list only. A booked entry is done, and hiding one
+behind a vote filter would just make people wonder whether it really got booked.
+
+### Sights you add yourself
+
+The "Add a sight" form asks whether it **costs something** (with an optional
+price) and whether it **needs booking ahead**. Either one puts it on the
+Bookings page alongside the built-ins. Neither is required — a free viewpoint
+just never appears there.
 
 ## Deploy (about five minutes)
 
@@ -34,6 +73,14 @@ npm run deploy    # ships it
 
 `npm run setup` is safe to re-run — it reuses an existing database rather than
 making a second one.
+
+Upgrading a database that predates the Bookings page needs the one-off column
+migration, because `CREATE TABLE IF NOT EXISTS` can't alter a table that already
+exists:
+
+```bash
+npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-bookings.sql
+```
 
 Wrangler prints the URL — something like
 `https://london-sights-vote.<your-subdomain>.workers.dev`. Send that to the
@@ -130,9 +177,12 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-40 checks against a SQLite-backed mock of the Worker — voting, un-voting,
-duplicate names, adding and removing options, URL sanitising, and the access
-code. No network and no Cloudflare account needed.
+93 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+duplicate names, adding and removing options, URL sanitising, the access code,
+and the bookings list: what belongs on it, the cost fields on added sights, and
+moving entries between still-to-book, booked and not-booking without touching
+their votes, and the date and time of a booked slot. No network and no Cloudflare account
+needed.
 
 Most Wikimedia images are CC-licensed and need attribution. `CREDITS.json`
 records the source page for each one — check the licence before using any of
@@ -191,7 +241,7 @@ entries get a plain coloured strip instead — no photo needed.
   station: "Tower Hill",
   cost: "paid",               // "free" | "free-limited" | "paid" | "mixed"
   priceLabel: "£37",
-  bookingRequired: true,
+  bookingRequired: true,      // shows on /bookings even when it is free
   url: "https://www.hrp.org.uk/tower-of-london/",
   wiki: "Tower of London",    // Wikipedia article title, for the photo
 }
@@ -212,6 +262,7 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/vote`    | `{ sightId, voter, wanted }` → toggles one vote      |
 | POST   | `/api/sights/add`    | `{ voter, name, url?, summary? }` → adds an option |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
+| POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime? }` → `"booked"`, `"skipped"` or `null` |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.
