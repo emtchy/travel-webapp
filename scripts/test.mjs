@@ -265,6 +265,71 @@ t3("an over-long price is rejected",
    (await edit({ voter: "E", id: plain.id, costs: true, bookingRequired: false,
                  priceLabel: "x".repeat(41) })).status === 400);
 
+// --- an address, so an added sight can be routed to
+const setAddr = (b) => call("/api/sights/address", { method: "POST", body: JSON.stringify(b) });
+const geo = (b) => call("/api/geocode", { method: "POST", body: JSON.stringify(b) });
+
+const noAddr = (await (await add({ voter: "Maya", name: "A walking tour" })).json())
+  .custom.find(c => c.name === "A walking tour");
+t3("an added sight starts with no location",
+   noAddr.lat === null && noAddr.lon === null);
+
+let ad = await (await setAddr({ voter: "Emily", id: noAddr.id,
+  address: "Tower Hill, London", lat: 51.5098, lon: -0.0767 })).json();
+let located = ad.custom.find(c => c.id === noAddr.id);
+t3("an address can be added afterwards", located.lat === 51.5098 && located.lon === -0.0767);
+t3("the address text is kept", located.address === "Tower Hill, London");
+t3("anyone can add it, not only whoever added the sight", located.lat !== null);
+
+ad = await (await setAddr({ voter: "Emily", id: noAddr.id,
+  address: null, lat: null, lon: null })).json();
+located = ad.custom.find(c => c.id === noAddr.id);
+t3("and it can be cleared again",
+   located.lat === null && located.lon === null && located.address === null);
+
+t3("built-in sights are refused",
+   (await setAddr({ voter: "E", id: "tower-of-london", lat: 51.5, lon: -0.1 })).status === 400);
+t3("half a coordinate is refused",
+   (await setAddr({ voter: "E", id: noAddr.id, lat: 51.5 })).status === 400);
+t3("an impossible latitude is refused",
+   (await setAddr({ voter: "E", id: noAddr.id, lat: 999, lon: 0 })).status === 400);
+t3("an over-long address is refused",
+   (await setAddr({ voter: "E", id: noAddr.id, address: "x".repeat(201),
+                    lat: 51.5, lon: -0.1 })).status === 400);
+t3("setting an address needs a name",
+   (await setAddr({ voter: "", id: noAddr.id, lat: 51.5, lon: -0.1 })).status === 400);
+t3("a sight that is gone gives a 404",
+   (await setAddr({ voter: "E", id: "custom-nope", lat: 51.5, lon: -0.1 })).status === 404);
+
+// The lookup: link and coordinate parsing is offline, so it is safe to assert.
+const pasted = await (await geo({ voter: "M",
+  q: "https://www.google.com/maps/place/X/@51.1,-0.1,17z/data=!4m6!3m5!8m2!3d51.4994!4d-0.1632" })).json();
+t3("a pasted Google link resolves without a search",
+   pasted.results[0].lat === 51.4994 && pasted.results[0].from === "google");
+const coords = await (await geo({ voter: "M", q: "51.5074, -0.1278" })).json();
+t3("raw coordinates are accepted", coords.results[0].lon === -0.1278);
+t3("an empty search is refused", (await geo({ voter: "M", q: "" })).status === 400);
+t3("looking up needs a name", (await geo({ voter: "", q: "Harrods" })).status === 400);
+
+// --- what it is all for: the sight now appears in a day's route
+{
+  const { routeLinks } = await import("../public/route.js");
+  await setAddr({ voter: "E", id: noAddr.id, address: "Tower Hill",
+                  lat: 51.5098, lon: -0.0767 });
+  const snap = await (await call("/api/sights")).json();
+  const get = (id) => snap.sights.find(x => x.id === id) ?? snap.custom.find(x => x.id === id);
+  const withAddr = routeLinks([get("tower-of-london"), get(noAddr.id), get("tate-modern")]);
+  t3("an added sight with an address joins the route",
+     withAddr.used === 3 && withAddr.skipped === 0);
+
+  await setAddr({ voter: "E", id: noAddr.id, address: null, lat: null, lon: null });
+  const snap2 = await (await call("/api/sights")).json();
+  const get2 = (id) => snap2.sights.find(x => x.id === id) ?? snap2.custom.find(x => x.id === id);
+  const without = routeLinks([get2("tower-of-london"), get2(noAddr.id), get2("tate-modern")]);
+  t3("and drops out of it when the address is removed",
+     without.used === 2 && without.skipped === 1);
+}
+
 // --- hiding takes it off the list only
 await post({ voter: "Maya", sightId: paid.id, wanted: true });
 let h = await (await hide({ voter: "Emily", sightId: paid.id })).json();

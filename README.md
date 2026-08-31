@@ -16,6 +16,7 @@ public/plan.html       the day-by-day plan
 public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
+src/maplink.js         reads coordinates out of a pasted maps link
 schema.sql             six tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
@@ -24,6 +25,7 @@ scripts/fetch-images.mjs   optional: self-host the photos
 scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
                               existing database
 scripts/migrate-plan-notes.sql  one-off: adds your own plan entries
+scripts/migrate-custom-address.sql  one-off: lets added sights hold a location
 ```
 
 ## The Bookings page
@@ -98,9 +100,18 @@ no "where are we starting from" to configure.
 things off, nothing to keep in sync between four phones — you just tap the one
 you are heading to next.
 
-Stops with no location — your own entries, and added sights, which have no
-coordinates yet — are left out of the route and the day says how many. They are
-never sent as a text guess, which can fail the whole route.
+Stops with no location are left out of the route and the day says how many.
+They are never sent as a text guess, which can resolve somewhere plausible and
+wrong, or fail the whole route.
+
+An added sight without a location shows **no address yet** and an **Add an
+address** button on the plan. The form only opens when you press it — one open
+on every stop would bury the plan itself. It takes an address, a place name, a
+pasted Google or Apple Maps link, or raw coordinates, which between them cover
+a walking tour whose only fixed point is a meeting place. Pick a result and it
+saves; the sight joins the route from then on.
+
+Your own entries still can't have an address.
 
 The same filters sit above the days: a vote threshold (preset buttons plus a box
 for any number) and a source filter for **Bookings** or **By hand**. These only
@@ -149,6 +160,7 @@ exists:
 ```bash
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-bookings.sql
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-plan-notes.sql
+npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-custom-address.sql
 ```
 
 Wrangler prints the URL — something like
@@ -246,7 +258,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-177 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+194 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -333,6 +345,8 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/vote`    | `{ sightId, voter, wanted }` → toggles one vote      |
 | POST   | `/api/sights/add`    | `{ voter, name, url?, summary? }` → adds an option |
 | POST   | `/api/sights/edit`   | `{ voter, id, costs, bookingRequired, priceLabel? }` → anyone |
+| POST   | `/api/sights/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
+| POST   | `/api/geocode`       | `{ voter, q }` → address, maps link or coordinates → a place |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
 | POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |
 | POST   | `/api/plan/set`      | `{ voter, sightId, day, start?, end? }` → onto the plan |

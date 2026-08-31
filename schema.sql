@@ -24,7 +24,12 @@ CREATE TABLE IF NOT EXISTS custom_sights (
   -- their `cost` and `bookingRequired` fields; added ones have to be asked.
   costs            INTEGER NOT NULL DEFAULT 0,
   price_label      TEXT,
-  booking_required INTEGER NOT NULL DEFAULT 0
+  booking_required INTEGER NOT NULL DEFAULT 0,
+  -- Filled in later, from the plan page. Without lat and lon an added sight is
+  -- simply left out of a day's route.
+  address          TEXT,
+  lat              REAL,
+  lon              REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_custom_created ON custom_sights (created_at);

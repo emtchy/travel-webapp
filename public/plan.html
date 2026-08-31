@@ -133,6 +133,22 @@ li.stop:last-child{border-bottom:0}
 .fromhere{font-size:11.5px;color:var(--ink-3);text-decoration:none;
   border-bottom:1px solid var(--line-2)}
 .fromhere:hover{color:var(--maroon);border-color:var(--maroon)}
+.noloc{font-size:11px;color:var(--maroon);border:1px solid var(--maroon);
+  background:var(--maroon-soft);border-radius:5px;padding:1px 6px}
+.addrform{margin-top:8px;padding:10px;border:1px solid var(--line-2);
+  border-radius:10px;background:var(--card-2)}
+.addrrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.addrrow input{font:inherit;font-size:12.5px;padding:6px 9px;border-radius:8px;flex:1;
+  min-width:170px;border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
+.linky{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:5px 3px;cursor:pointer}
+.linky:hover{color:var(--maroon)}
+.addrhits{display:grid;gap:3px;margin-top:7px}
+.addrhits button{text-align:left;font-size:12px;padding:6px 9px;border-radius:7px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);cursor:pointer}
+.addrhits button:hover{border-color:var(--maroon);color:var(--ink)}
+.addrhits button b{color:var(--green);font-size:10px;text-transform:uppercase;
+  letter-spacing:.06em;margin-right:5px}
+.addrnote{font-size:11.5px;color:var(--ink-3)}
 
 /* ---- add to the plan ---- */
 .addplan{margin-top:26px;background:var(--card);border:1px solid var(--line);
@@ -365,6 +381,12 @@ const T = {
     routeSkipped: (n) => `${n} without a location left out`,
     routeCapped: "Google's link takes the first 9 stops.",
     routeNone: "Nothing here has a location to route to.",
+    addAddress: "Add an address", changeAddress: "Change address",
+    addrPh: "Address, place name, maps link or coordinates",
+    addrFind: "Find", addrSave: "Save", addrClear: "Remove", addrCancel: "Cancel",
+    addrNoHits: "Nothing found. Open it in Google or Apple Maps, copy the link, and paste that.",
+    addrPick: "Pick one:", noLocation: "no address yet",
+    addrOnly: "Added sights can be given an address. Your own entries can't yet.",
     apTitle: "Add something to the plan",
     apWhat: "What", apDay: "Day", apFrom: "From", apTo: "To", apAdd: "Add",
     apHint: "Only the day is required. Anything already booked with a date is placed by its booking — change the slot on the Bookings page instead.",
@@ -403,6 +425,12 @@ const T = {
     routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
     routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
     routeNone: "Nichts hier hat einen Ort für eine Route.",
+    addAddress: "Adresse hinzufügen", changeAddress: "Adresse ändern",
+    addrPh: "Adresse, Ortsname, Maps-Link oder Koordinaten",
+    addrFind: "Suchen", addrSave: "Speichern", addrClear: "Entfernen", addrCancel: "Abbrechen",
+    addrNoHits: "Nichts gefunden. In Google oder Apple Maps öffnen, Link kopieren und einfügen.",
+    addrPick: "Auswählen:", noLocation: "noch keine Adresse",
+    addrOnly: "Hinzugefügte Orte können eine Adresse bekommen, eigene Einträge noch nicht.",
     apTitle: "Etwas in den Plan eintragen",
     apWhat: "Was", apDay: "Tag", apFrom: "Von", apTo: "Bis", apAdd: "Eintragen",
     apHint: "Nur der Tag ist nötig. Was mit Datum gebucht ist, wird durch die Buchung eingeplant – ändere den Termin dann auf der Buchungsseite.",
@@ -423,6 +451,7 @@ const t = () => T[lang];
 
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
 let minVotes = 0;
+let editingAddress = null;   // sight id whose address form is open
 let source = "all";       // all | booked | hand
 
 const nameOf = () => $("#name").value.trim();
@@ -508,6 +537,7 @@ function stopHTML(p, i, stops) {
       ${own ? `<div class="stopact">
         <button type="button" data-note-rm="${esc(p.id)}">${esc(L.remove)}</button>
       </div>` : ""}
+      ${addressControlHTML(p, s)}
       ${onward && i > 0 ? `<div class="stopact">
         <a class="fromhere" href="${esc(onward.google)}" target="_blank" rel="noopener"
            >${esc(L.routeFromHere)} ↗</a>
@@ -537,6 +567,36 @@ function dayRouteHTML(stops) {
     <a href="${esc(r.apple)}" target="_blank" rel="noopener">${esc(L.routeApple)} ↗</a>
     ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
     ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
+  </div>`;
+}
+
+/**
+ * Shown on a stop that has no location, and on one that has an address you may
+ * want to change. Collapsed until asked for — a form open on every stop would
+ * bury the plan itself.
+ */
+function addressControlHTML(p, s) {
+  const L = t();
+  if (p.source === "own") return "";          // your own entries have no place field
+  if (!s || !s.custom) return "";             // built-ins already have coordinates
+
+  const placed = hasPlace(s);
+  if (editingAddress !== s.id)
+    return `<div class="stopact">
+      ${placed ? "" : `<span class="noloc">${esc(L.noLocation)}</span>`}
+      <button type="button" data-addr="${esc(s.id)}">${
+        esc(placed ? L.changeAddress : L.addAddress)}</button>
+    </div>`;
+
+  return `<div class="addrform" data-addrbox="${esc(s.id)}">
+    <div class="addrrow">
+      <input type="text" data-addrq maxlength="500" placeholder="${esc(L.addrPh)}"
+             value="${esc(s.address ?? s.name)}">
+      <button class="btn" type="button" data-addrfind="${esc(s.id)}">${esc(L.addrFind)}</button>
+      <button type="button" class="linky" data-addrcancel>${esc(L.addrCancel)}</button>
+      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(s.id)}">${esc(L.addrClear)}</button>` : ""}
+    </div>
+    <div class="addrhits" data-addrhits="${esc(s.id)}"></div>
   </div>`;
 }
 
@@ -669,6 +729,29 @@ function render() {
 
 /* ------------------------------------------------------------- actions */
 
+async function lookUp(id) {
+  const L = t();
+  const box = $(`[data-addrbox="${CSS.escape(id)}"]`);
+  const hits = $("[data-addrhits]", box);
+  const q = $("[data-addrq]", box).value;
+  hits.innerHTML = `<span class="addrnote">${esc(L.loading)}</span>`;
+
+  try {
+    const d = await api("/api/geocode", {
+      method: "POST",
+      body: JSON.stringify({ voter: nameOf() || "?", q }),
+    });
+    hits.innerHTML = d.results.length
+      ? `<span class="addrnote">${esc(L.addrPick)}</span>` + d.results.map((r) =>
+          `<button type="button" data-hit-id="${esc(id)}" data-hit-lat="${r.lat}"
+                   data-hit-lon="${r.lon}" data-hit-label="${esc(r.label)}">${
+            r.from ? `<b>${esc(r.from)}</b>` : ""}${esc(r.label)}</button>`).join("")
+      : `<span class="addrnote">${esc(L.addrNoHits)}</span>`;
+  } catch (err) {
+    hits.innerHTML = `<span class="addrnote">${esc(err.message)}</span>`;
+  }
+}
+
 async function mutate(path, body) {
   if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
   setStatus(t().saving);
@@ -701,6 +784,12 @@ $("#own-add").addEventListener("click", () => {
   $("#own-what").value = ""; $("#own-from").value = ""; $("#own-to").value = "";
 });
 
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter" || !ev.target.matches("[data-addrq]")) return;
+  ev.preventDefault();
+  lookUp(ev.target.closest("[data-addrbox]").dataset.addrbox);
+});
+
 $("#own-what").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter") { ev.preventDefault(); $("#own-add").click(); }
 });
@@ -729,6 +818,43 @@ document.addEventListener("click", (ev) => {
 
   const nrm = ev.target.closest("[data-note-rm]");
   if (nrm) return void mutate("/api/plan/note/remove", { id: nrm.dataset.noteRm });
+
+  const openAddr = ev.target.closest("[data-addr]");
+  if (openAddr) {
+    if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
+    editingAddress = openAddr.dataset.addr;
+    render();
+    $(`[data-addrbox="${CSS.escape(editingAddress)}"] [data-addrq]`)?.focus();
+    return;
+  }
+
+  if (ev.target.closest("[data-addrcancel]")) {
+    editingAddress = null;
+    return void render();
+  }
+
+  const clear = ev.target.closest("[data-addrclear]");
+  if (clear) {
+    editingAddress = null;
+    return void mutate("/api/sights/address",
+      { id: clear.dataset.addrclear, address: null, lat: null, lon: null });
+  }
+
+  const find = ev.target.closest("[data-addrfind]");
+  if (find) return void lookUp(find.dataset.addrfind);
+
+  // Choosing a result saves it — one step, since picking it *is* the decision.
+  const hit = ev.target.closest("[data-hit-lat]");
+  if (hit) {
+    const id = hit.dataset.hitId;
+    editingAddress = null;
+    return void mutate("/api/sights/address", {
+      id,
+      address: hit.dataset.hitLabel,
+      lat: Number(hit.dataset.hitLat),
+      lon: Number(hit.dataset.hitLon),
+    });
+  }
 
   const lb = ev.target.closest(".langs button");
   if (lb) {

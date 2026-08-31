@@ -1,4 +1,5 @@
 import { SIGHTS } from "./sights.js";
+import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -19,6 +20,9 @@ const TRIP = {
   name: "London",
   days: ["2026-09-11", "2026-09-12", "2026-09-13",
          "2026-09-14", "2026-09-15", "2026-09-16"],
+  // Roughly the middle of where we are going. Only used to bias address
+  // searches, so a "National Gallery" finds this one and not another country's.
+  near: { lat: 51.5074, lon: -0.1278 },
 };
 const TRIP_DAYS = new Set(TRIP.days);
 
@@ -94,7 +98,7 @@ async function getVotes(env) {
 async function getCustom(env) {
   const { results } = await env.DB.prepare(
     `SELECT id, name, summary, url, added_by, created_at,
-            costs, price_label, booking_required
+            costs, price_label, booking_required, address, lat, lon
        FROM custom_sights ORDER BY created_at ASC`
   ).all();
 
@@ -108,6 +112,9 @@ async function getCustom(env) {
     costs: !!row.costs,
     priceLabel: row.price_label,
     bookingRequired: !!row.booking_required,
+    address: row.address,
+    lat: row.lat,
+    lon: row.lon,
     custom: true,
   }));
 }
@@ -307,6 +314,118 @@ async function handleEditSight(request, env) {
       WHERE id = ?4`
   )
     .bind(costs ? 1 : 0, costs ? priceLabel : null, bookingRequired ? 1 : 0, id)
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+/**
+ * Turn what someone typed into coordinates.
+ *
+ * Accepts a place name, an address, a pasted Google or Apple Maps link, or raw
+ * coordinates — because for a walking tour with a meeting point, the link is
+ * often the only thing anyone has. Parsing links is offline; only a shortened
+ * share link needs the redirect followed.
+ *
+ * OpenStreetMap's Nominatim does the searching: no key, and its policy asks for
+ * an identifying User-Agent and about one call a second, which is fine for a
+ * group filling in a handful. A public version would need a cache and a limit.
+ */
+async function handleGeocode(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+
+  const q = cleanText(body?.q, 500);
+  if (q === undefined) return bad("That's too long to look up.");
+  if (!q) return bad("Type an address, or paste a maps link.");
+
+  const pasted = parseMapLink(q);
+  if (pasted)
+    return json({ ok: true, results: [{ label: `${pasted.lat}, ${pasted.lon}`,
+      lat: pasted.lat, lon: pasted.lon, from: pasted.source }] });
+
+  if (isShortMapLink(q)) {
+    let resolved = null;
+    try {
+      const res = await fetch(q, { redirect: "follow",
+        headers: { "user-agent": "travel-webapp/1.0 (group trip planner)" } });
+      resolved = parseMapLink(res.url);
+    } catch { /* fall through */ }
+
+    if (resolved)
+      return json({ ok: true, results: [{ label: `${resolved.lat}, ${resolved.lon}`,
+        lat: resolved.lat, lon: resolved.lon, from: resolved.source }] });
+
+    return bad("That short link couldn't be opened. Open it in Maps and copy the " +
+               "full address bar URL, or paste coordinates like \"51.5074, -0.1278\".");
+  }
+
+  // A maps link with a name but no coordinates: search for the name, not the URL.
+  const term = mapSearchTerm(q) ?? q;
+  const { lat, lon } = TRIP.near;
+  const d = 0.6; // roughly 60 km, wide enough for a day trip out of town
+
+  let results;
+  try {
+    const res = await fetch(
+      "https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=0" +
+      `&viewbox=${lon - d},${lat + d},${lon + d},${lat - d}` +
+      `&q=${encodeURIComponent(term)}`,
+      { headers: { "user-agent": "travel-webapp/1.0 (group trip planner)" } });
+    if (!res.ok) return bad(`The lookup service answered ${res.status}. Try again shortly.`, 502);
+    results = await res.json();
+  } catch {
+    return bad("Couldn't reach the lookup service. Try again shortly.", 502);
+  }
+
+  return json({ ok: true, results: (Array.isArray(results) ? results : []).slice(0, 5)
+    .map((r) => ({ label: r.display_name,
+                   lat: Math.round(Number(r.lat) * 10000) / 10000,
+                   lon: Math.round(Number(r.lon) * 10000) / 10000 })) });
+}
+
+/** Give an added sight a location, or take it away again. */
+async function handleSightAddress(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const name = cleanName(body?.voter);
+  if (!name) return bad("Enter your name first.");
+
+  const { id, lat, lon } = body ?? {};
+  if (typeof id !== "string" || !id.startsWith("custom-"))
+    return bad("Only added sights need an address filling in.");
+
+  const row = await env.DB.prepare("SELECT 1 FROM custom_sights WHERE id = ?1")
+    .bind(id).first();
+  if (!row) return bad("That sight is already gone.", 404);
+
+  const address = cleanText(body?.address, 200);
+  if (address === undefined) return bad("That address is too long.");
+
+  // Both or neither: half a coordinate is worse than none, because the route
+  // would silently place the stop on the equator.
+  const clearing = lat == null && lon == null;
+  if (!clearing) {
+    if (typeof lat !== "number" || typeof lon !== "number" ||
+        !Number.isFinite(lat) || !Number.isFinite(lon) ||
+        lat < -90 || lat > 90 || lon < -180 || lon > 180)
+      return bad("Those coordinates don't look right.");
+  }
+
+  await env.DB.prepare(
+    "UPDATE custom_sights SET address = ?1, lat = ?2, lon = ?3 WHERE id = ?4"
+  )
+    .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id)
     .run();
 
   return json({ ok: true, ...(await snapshot(env)) });
@@ -662,6 +781,12 @@ export default {
 
     if (pathname === "/api/sights/add" && method === "POST")
       return handleAddSight(request, env);
+
+    if (pathname === "/api/geocode" && method === "POST")
+      return handleGeocode(request, env);
+
+    if (pathname === "/api/sights/address" && method === "POST")
+      return handleSightAddress(request, env);
 
     if (pathname === "/api/sights/edit" && method === "POST")
       return handleEditSight(request, env);
