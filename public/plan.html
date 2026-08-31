@@ -91,8 +91,18 @@ a{color:var(--maroon)}
 .fmanual .plus{font-size:13px;color:var(--ink-3)}
 .fmanual b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-3)}
 .hiddenby{font-size:12.5px;color:var(--ink-3);margin:14px 0 0}
+.locbtn{
+  margin-left:auto;width:36px;height:36px;flex:none;font-size:15px;line-height:1;
+  border:1px solid var(--line-2);background:var(--card);border-radius:10px;cursor:pointer;
+  filter:grayscale(1);opacity:.65;
+}
+.locbtn:hover{border-color:var(--ink);opacity:1}
+.locbtn[aria-pressed="true"]{filter:none;opacity:1;border-color:var(--green);background:var(--green-soft)}
+.fromyou{font-size:11px;color:var(--green);border:1px solid var(--green);
+  background:var(--green-soft);border-radius:5px;padding:1px 7px}
+
 .addbtn{
-  margin-left:auto;width:36px;height:36px;flex:none;
+  margin-left:0;width:36px;height:36px;flex:none;
   font-size:20px;line-height:1;font-weight:400;
   border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
   border-radius:10px;cursor:pointer;
@@ -414,6 +424,9 @@ const T = {
     apNone: "Everything is already on the plan.",
     apPick: "Pick a sight…",
     addNew: "Add to the plan", addClose: "Close",
+    useLoc: "Start routes from where I am", locOn: "Routes start from you",
+    locAsking: "Asking your browser…", locDenied: "Your browser wouldn't share it.",
+    locFrom: "from you",
     modeSight: "One of the sights", modeOwn: "Something of my own",
     ownTitle: "Or add your own entry",
     ownWhat: "What", ownPh: "Musical · Dinner with Anna · Train home",
@@ -460,6 +473,9 @@ const T = {
     apNone: "Alles ist schon im Plan.",
     apPick: "Ort wählen…",
     addNew: "In den Plan eintragen", addClose: "Schließen",
+    useLoc: "Routen bei meinem Standort starten", locOn: "Routen starten bei dir",
+    locAsking: "Browser wird gefragt…", locDenied: "Der Browser hat den Standort nicht geteilt.",
+    locFrom: "ab dir",
     modeSight: "Eine Sehenswürdigkeit", modeOwn: "Etwas Eigenes",
     ownTitle: "Oder einen eigenen Eintrag",
     ownWhat: "Was", ownPh: "Musical · Abendessen mit Anna · Zug zurück",
@@ -479,6 +495,9 @@ let minVotes = 0;
 let editingAddress = null;   // sight id whose address form is open
 let addMode = "sight";       // which half of the add panel is showing
 let openedOnce = false;      // so an empty plan opens it once, not on every render
+// Where you are. Kept in memory only: it is nobody else's business, least of
+// all the shared plan's.
+let myPos = null;
 let source = "all";       // all | booked | hand
 
 const nameOf = () => $("#name").value.trim();
@@ -555,7 +574,7 @@ function stopHTML(p, i, stops) {
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
   // "I have done the first two" — a link on each stop covering it and the rest.
-  const onward = routeFrom(stops.map(placeOf), i);
+  const onward = routeFrom(stops.map(placeOf), i, "transit", myPos);
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
   const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
@@ -600,12 +619,13 @@ const passes = (p) =>
 function dayRouteHTML(stops) {
   const L = t();
   if (!stops.length) return "";
-  const r = routeLinks(stops.map(placeOf));
+  const r = routeLinks(stops.map(placeOf), "transit", myPos);
   if (!r) return `<div class="dayroute"><span class="routenote">${esc(L.routeNone)}</span></div>`;
 
   return `<div class="dayroute">
     <a href="${esc(r.google)}" target="_blank" rel="noopener">${esc(L.routeGoogle)} ↗</a>
     <a href="${esc(r.apple)}" target="_blank" rel="noopener">${esc(L.routeApple)} ↗</a>
+    ${r.from ? `<span class="fromyou">${esc(L.locFrom)}</span>` : ""}
     ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
     ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
   </div>`;
@@ -681,6 +701,9 @@ function renderFilters() {
   $("#filters").innerHTML =
     `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
     `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
+    `<button class="locbtn" id="loctoggle" type="button" aria-pressed="${!!myPos}"
+             title="${esc(myPos ? L.locOn : L.useLoc)}"
+             aria-label="${esc(myPos ? L.locOn : L.useLoc)}">📍</button>` +
     `<button class="addbtn" id="addtoggle" type="button" aria-expanded="${open}"
              title="${esc(open ? L.addClose : L.addNew)}"
              aria-label="${esc(open ? L.addClose : L.addNew)}">${open ? "×" : "+"}</button>`;
@@ -811,7 +834,15 @@ async function mutate(path, body) {
   setStatus(t().saving);
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
-    CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? []; ENTRIES = d.plan ?? [];
+    // Every one of these can change on any mutation — a booking places a
+    // sight, an address changes a route. Missing one leaves the page showing
+    // something the server no longer believes.
+    CUSTOM = d.custom ?? CUSTOM;
+    VOTES = d.votes ?? VOTES;
+    STATUS = d.bookings ?? [];
+    ENTRIES = d.plan ?? [];
+    NOTES = d.notes ?? [];
+    TRIP = d.trip ?? TRIP;
     render();
     setStatus(t().saved);
   } catch (err) { setStatus(err.message); }
@@ -861,6 +892,23 @@ document.addEventListener("input", (ev) => {
 });
 
 document.addEventListener("click", (ev) => {
+  const loc = ev.target.closest("#loctoggle");
+  if (loc) {
+    if (myPos) { myPos = null; return void render(); }   // press again to stop
+    if (!navigator.geolocation) { setStatus(t().locDenied); return; }
+    setStatus(t().locAsking);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+        setStatus("");
+        render();
+      },
+      () => setStatus(t().locDenied),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
+    );
+    return;
+  }
+
   const toggle = ev.target.closest("#addtoggle");
   if (toggle) {
     const box = $("#addplan");

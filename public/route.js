@@ -1,10 +1,11 @@
 /**
  * Maps links for a day on the plan.
  *
- * The origin is deliberately left out of both URLs: Google and Apple then start
- * from wherever the device is. That is what you want when you are standing in
- * London holding a phone — and it means there is no "where are we starting
- * from" to configure or keep in sync.
+ * The origin is where you are. Pass one and it goes in the URL; pass nothing
+ * and it is left out, which Apple reads as "current location" and Google
+ * treats as a blank field for you to fill. Leaving it out is the fallback, not
+ * the goal: an explicit origin is what actually gets you routed from where you
+ * are standing.
  *
  * Only stops with coordinates go in. A stop without them would either be
  * dropped silently or sent as a text query that can fail the whole route, so
@@ -25,7 +26,7 @@ export const MAX_WAYPOINTS = 8;
  * @returns {{google:string, apple:string, used:number, skipped:number,
  *            capped:boolean} | null}  null when there is nothing to route
  */
-export function routeLinks(stops, mode = "transit") {
+export function routeLinks(stops, mode = "transit", origin = null) {
   const all = Array.isArray(stops) ? stops : [];
   const usable = all.filter(hasPlace);
   const skipped = all.length - usable.length;
@@ -37,8 +38,11 @@ export function routeLinks(stops, mode = "transit") {
   const waypoints = usable.slice(0, -1);
   const capped = waypoints.length > MAX_WAYPOINTS;
 
+  const from = hasPlace(origin) ? origin : null;
+
   const google =
     "https://www.google.com/maps/dir/?api=1" +
+    (from ? `&origin=${encodeURIComponent(pt(from))}` : "") +
     `&destination=${encodeURIComponent(pt(destination))}` +
     (waypoints.length
       ? `&waypoints=${encodeURIComponent(
@@ -48,15 +52,16 @@ export function routeLinks(stops, mode = "transit") {
 
   const apple =
     "https://maps.apple.com/?" +
+    (from ? `saddr=${encodeURIComponent(pt(from))}&` : "") +
     `daddr=${encodeURIComponent(usable.map(pt).join(" to:"))}` +
     `&dirflg=${mode === "walking" ? "w" : "r"}`;
 
-  return { google, apple, used: usable.length, skipped, capped };
+  return { google, apple, used: usable.length, skipped, capped, from: !!from };
 }
 
 /** The rest of the day: this stop and everything after it. */
-export function routeFrom(stops, index, mode = "transit") {
+export function routeFrom(stops, index, mode = "transit", origin = null) {
   const all = Array.isArray(stops) ? stops : [];
   if (index < 0 || index >= all.length) return null;
-  return routeLinks(all.slice(index), mode);
+  return routeLinks(all.slice(index), mode, origin);
 }

@@ -13,6 +13,8 @@
     "results": "npx --yes wrangler@4 d1 execute london-votes --remote --command \"SELECT sight_id, COUNT(*) AS votes, GROUP_CONCAT(voter_name, ', ') AS who FROM votes GROUP BY sight_id ORDER BY votes DESC\"",
     "images": "node scripts/fetch-images.mjs",
     "test": "node scripts/test.mjs",
-    "geo": "node scripts/fetch-geo.mjs"
+    "geo": "node scripts/fetch-geo.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "migrate:remote": "node scripts/migrate.mjs --remote"
   }
 }

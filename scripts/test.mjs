@@ -671,6 +671,24 @@ t5("an index past the end gives nothing", routeFrom(day, 99) === null);
 t5("a negative index gives nothing", routeFrom(day, -1) === null);
 t5("hasPlace rejects a missing coordinate", !hasPlace({ lat: 51.5 }) && !hasPlace(null));
 
+// --- starting from where you are
+const ME = { lat: 51.5116, lon: -0.0773 };
+const fromMe = routeLinks(day, "transit", ME);
+t5("an origin goes into the Google link",
+   fromMe.google.includes(`origin=${encodeURIComponent("51.5116,-0.0773")}`));
+t5("and into the Apple link",
+   fromMe.apple.includes(`saddr=${encodeURIComponent("51.5116,-0.0773")}`));
+t5("the result says it has one", fromMe.from === true);
+t5("without one, neither link carries a start",
+   whole.from === false && !whole.google.includes("origin=") && !whole.apple.includes("saddr="));
+t5("a malformed origin is ignored rather than trusted",
+   routeLinks(day, "transit", { lat: "x", lon: 1 }).from === false);
+t5("a null origin is fine", routeLinks(day, "transit", null).from === false);
+t5("the stops are the same either way",
+   routeLinks(day, "transit", ME).used === whole.used);
+t5("a partial route can start from you too",
+   routeFrom(day, 1, "transit", ME).from === true);
+
 t5("a long day is capped and says so", (() => {
   const many = Array.from({ length: 12 }, (_, i) => ({ lat: 51.5 + i / 1000, lon: -0.1 }));
   const r = routeLinks(many);

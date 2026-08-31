@@ -22,11 +22,8 @@ wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-geo.mjs      fills in coordinates from Wikipedia
 scripts/fetch-images.mjs   optional: self-host the photos
-scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
-                              existing database
-scripts/migrate-plan-notes.sql  one-off: adds your own plan entries
-scripts/migrate-custom-address.sql  one-off: lets added sights hold a location
-scripts/migrate-note-address.sql    one-off: same for your own entries
+scripts/migrate.mjs        applies every migration below, skipping done ones
+scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
 
 ## The Bookings page
@@ -97,9 +94,17 @@ which is which, and the last two can be taken off again.
 Every day with somewhere to go carries **Route · Google** and **Route · Apple**
 links covering the whole day in order.
 
-Neither URL includes a starting point, so both apps begin from wherever your
-phone is. That is right when you are standing in London, and it means there is
-no "where are we starting from" to configure.
+The **📍** button beside the **+** starts routes from where you actually are.
+Press it once, allow your browser to share your location, and both links get an
+explicit origin. Press it again to stop.
+
+Without it the origin is simply left out — Apple reads that as your current
+location, Google leaves the field blank for you to fill. That is the fallback,
+not the goal, which is why the button exists.
+
+Your location stays in the browser's memory for that visit. It is never sent to
+the app or stored, because where you are standing is nobody else's business,
+least of all the shared plan's.
 
 **Already done the first two stops?** Every stop from the second onward has a
 **Route from here** link covering that stop and the rest of the day. No ticking
@@ -161,16 +166,21 @@ npm run deploy    # ships it
 `npm run setup` is safe to re-run — it reuses an existing database rather than
 making a second one.
 
-Upgrading a database that predates the Bookings page needs the one-off column
-migration, because `CREATE TABLE IF NOT EXISTS` can't alter a table that already
-exists:
+`CREATE TABLE IF NOT EXISTS` can't add a column to a table that already exists,
+so schema changes come as numbered migrations. Run them all with one command —
+it skips whatever is already applied, so it is safe every time:
 
 ```bash
-npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-bookings.sql
-npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-plan-notes.sql
-npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-custom-address.sql
-npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-note-address.sql
+npm run migrate          # the local dev database
+npm run migrate:remote   # the live one
 ```
+
+**Run `npm run migrate:remote` before every deploy.** Forgetting one leaves the
+Worker querying a column that isn't there.
+
+They are numbered because they are ordered — 004 alters a table 002 creates.
+A new one goes in as `scripts/migrate-NNN-name.sql`; the runner refuses to
+guess at an unnumbered file.
 
 Wrangler prints the URL — something like
 `https://london-sights-vote.<your-subdomain>.workers.dev`. Send that to the
@@ -267,7 +277,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-207 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+215 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
