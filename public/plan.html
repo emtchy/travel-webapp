@@ -91,13 +91,14 @@ a{color:var(--maroon)}
 .fmanual .plus{font-size:13px;color:var(--ink-3)}
 .fmanual b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-3)}
 .hiddenby{font-size:12.5px;color:var(--ink-3);margin:14px 0 0}
-.locbtn{
-  margin-left:auto;width:36px;height:36px;flex:none;font-size:15px;line-height:1;
-  border:1px solid var(--line-2);background:var(--card);border-radius:10px;cursor:pointer;
-  filter:grayscale(1);opacity:.65;
-}
-.locbtn:hover{border-color:var(--ink);opacity:1}
-.locbtn[aria-pressed="true"]{filter:none;opacity:1;border-color:var(--green);background:var(--green-soft)}
+.startgroup{margin-left:auto}
+.baseedit{font-size:12px;padding:6px 9px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-3);cursor:pointer}
+.baseedit:hover{border-color:var(--ink-3);color:var(--ink)}
+.baseform{margin-top:14px;padding:12px 14px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px}
+.baseform .addrrow{margin-top:0}
+.basewhere{font-size:12.5px;color:var(--ink-3);margin:0 0 8px}
 .fromyou{font-size:11px;color:var(--green);border:1px solid var(--green);
   background:var(--green-soft);border-radius:5px;padding:1px 7px}
 
@@ -337,6 +338,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 
 <div class="stats" id="stats"></div>
 <div class="filters" id="filters"></div>
+<div class="baseform" id="baseform" hidden></div>
 <div class="adder" id="addplan" hidden>
   <div class="addermodes">
     <button type="button" data-mode="sight" aria-pressed="true" id="mode-sight">One of the sights</button>
@@ -424,9 +426,14 @@ const T = {
     apNone: "Everything is already on the plan.",
     apPick: "Pick a sight…",
     addNew: "Add to the plan", addClose: "Close",
-    useLoc: "Start routes from where I am", locOn: "Routes start from you",
+    startLbl: "Start", startBase: "Hotel", startMe: "Me", startNone: "—",
+    startBaseTitle: "Start routes where we're staying",
+    startMeTitle: "Start routes from where I am now",
+    startNoneTitle: "No starting point — the app you open decides",
     locAsking: "Asking your browser…", locDenied: "Your browser wouldn't share it.",
-    locFrom: "from you",
+    locFrom: "from you", baseFrom: "from the hotel",
+    baseEdit: "Change", baseNone: "No address set for where we're staying.",
+    basePh: "Hotel address, maps link or coordinates",
     modeSight: "One of the sights", modeOwn: "Something of my own",
     ownTitle: "Or add your own entry",
     ownWhat: "What", ownPh: "Musical · Dinner with Anna · Train home",
@@ -473,9 +480,14 @@ const T = {
     apNone: "Alles ist schon im Plan.",
     apPick: "Ort wählen…",
     addNew: "In den Plan eintragen", addClose: "Schließen",
-    useLoc: "Routen bei meinem Standort starten", locOn: "Routen starten bei dir",
+    startLbl: "Start", startBase: "Hotel", startMe: "Ich", startNone: "—",
+    startBaseTitle: "Routen bei der Unterkunft starten",
+    startMeTitle: "Routen bei meinem Standort starten",
+    startNoneTitle: "Kein Startpunkt – die geöffnete App entscheidet",
     locAsking: "Browser wird gefragt…", locDenied: "Der Browser hat den Standort nicht geteilt.",
-    locFrom: "ab dir",
+    locFrom: "ab dir", baseFrom: "ab der Unterkunft",
+    baseEdit: "Ändern", baseNone: "Für die Unterkunft ist keine Adresse hinterlegt.",
+    basePh: "Adresse der Unterkunft, Maps-Link oder Koordinaten",
     modeSight: "Eine Sehenswürdigkeit", modeOwn: "Etwas Eigenes",
     ownTitle: "Oder einen eigenen Eintrag",
     ownWhat: "Was", ownPh: "Musical · Abendessen mit Anna · Zug zurück",
@@ -498,6 +510,10 @@ let openedOnce = false;      // so an empty plan opens it once, not on every ren
 // Where you are. Kept in memory only: it is nobody else's business, least of
 // all the shared plan's.
 let myPos = null;
+// "base" | "me" | "none". The hotel is the sensible default: it is where every
+// morning starts. Personal to this browser — it changes links, not the plan.
+let startFrom = localStorage.getItem("london-plan-start") || "base";
+let editingBase = false;
 let source = "all";       // all | booked | hand
 
 const nameOf = () => $("#name").value.trim();
@@ -545,6 +561,13 @@ function planned() {
 // Untimed entries sort to the end of their day — you know the day, not the hour.
 const byClock = (a, b) => (a.start ?? "99:99").localeCompare(b.start ?? "99:99");
 
+/** The origin the links should use right now, or null for none. */
+function originNow() {
+  if (startFrom === "me") return myPos;
+  if (startFrom === "base") return TRIP.base ?? null;
+  return null;
+}
+
 const dayLabel = (iso) =>
   new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
     { day: "numeric", month: "long", timeZone: "UTC" });
@@ -574,7 +597,7 @@ function stopHTML(p, i, stops) {
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
   // "I have done the first two" — a link on each stop covering it and the rest.
-  const onward = routeFrom(stops.map(placeOf), i, "transit", myPos);
+  const onward = routeFrom(stops.map(placeOf), i, "transit", originNow());
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
   const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
@@ -619,13 +642,13 @@ const passes = (p) =>
 function dayRouteHTML(stops) {
   const L = t();
   if (!stops.length) return "";
-  const r = routeLinks(stops.map(placeOf), "transit", myPos);
+  const r = routeLinks(stops.map(placeOf), "transit", originNow());
   if (!r) return `<div class="dayroute"><span class="routenote">${esc(L.routeNone)}</span></div>`;
 
   return `<div class="dayroute">
     <a href="${esc(r.google)}" target="_blank" rel="noopener">${esc(L.routeGoogle)} ↗</a>
     <a href="${esc(r.apple)}" target="_blank" rel="noopener">${esc(L.routeApple)} ↗</a>
-    ${r.from ? `<span class="fromyou">${esc(L.locFrom)}</span>` : ""}
+    ${r.from ? `<span class="fromyou">${esc(startFrom === "me" ? L.locFrom : L.baseFrom)}</span>` : ""}
     ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
     ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
   </div>`;
@@ -701,12 +724,38 @@ function renderFilters() {
   $("#filters").innerHTML =
     `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
     `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
-    `<button class="locbtn" id="loctoggle" type="button" aria-pressed="${!!myPos}"
-             title="${esc(myPos ? L.locOn : L.useLoc)}"
-             aria-label="${esc(myPos ? L.locOn : L.useLoc)}">📍</button>` +
+    `<div class="fgroup startgroup"><span class="lbl">${esc(L.startLbl)}</span>` +
+    [["base", L.startBase, L.startBaseTitle],
+     ["me", L.startMe, L.startMeTitle],
+     ["none", L.startNone, L.startNoneTitle]].map(([k, label, title]) =>
+      `<button type="button" data-start="${k}" aria-pressed="${startFrom === k}"
+               title="${esc(title)}">${esc(label)}</button>`).join("") +
+    `<button type="button" class="baseedit" id="baseedit" title="${esc(L.baseEdit)}"
+             aria-label="${esc(L.baseEdit)}">✎</button></div>` +
     `<button class="addbtn" id="addtoggle" type="button" aria-expanded="${open}"
              title="${esc(open ? L.addClose : L.addNew)}"
              aria-label="${esc(open ? L.addClose : L.addNew)}">${open ? "×" : "+"}</button>`;
+}
+
+/** Where the days start. Collapsed unless you press the pencil. */
+function renderBaseForm() {
+  const L = t();
+  const box = $("#baseform");
+  box.hidden = !editingBase;
+  if (!editingBase) return;
+
+  box.innerHTML =
+    `<p class="basewhere">${esc(TRIP.base ? TRIP.base.name ?? "" : L.baseNone)}</p>
+     <div class="addrform" data-addrbox="__base__">
+       <div class="addrrow">
+         <input type="text" data-addrq maxlength="500" placeholder="${esc(L.basePh)}"
+                value="${esc(TRIP.base?.name ?? "")}">
+         <button class="btn" type="button" data-addrfind="__base__">${esc(L.addrFind)}</button>
+         <button type="button" class="linky" data-basecancel>${esc(L.addrCancel)}</button>
+         ${TRIP.base ? `<button type="button" class="linky" data-baseclear>${esc(L.addrClear)}</button>` : ""}
+       </div>
+       <div class="addrhits" data-addrhits="__base__"></div>
+     </div>`;
 }
 
 function renderAdder() {
@@ -782,6 +831,7 @@ function render() {
   ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 
   renderFilters();
+  renderBaseForm();
   $("#days").innerHTML = days.map((d) => `<section class="day">
     <header>
       <span class="wd">${esc(weekday(d.date))}</span>
@@ -892,21 +942,32 @@ document.addEventListener("input", (ev) => {
 });
 
 document.addEventListener("click", (ev) => {
-  const loc = ev.target.closest("#loctoggle");
-  if (loc) {
-    if (myPos) { myPos = null; return void render(); }   // press again to stop
-    if (!navigator.geolocation) { setStatus(t().locDenied); return; }
-    setStatus(t().locAsking);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        setStatus("");
-        render();
-      },
-      () => setStatus(t().locDenied),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
-    );
-    return;
+  const st = ev.target.closest("[data-start]");
+  if (st) {
+    startFrom = st.dataset.start;
+    localStorage.setItem("london-plan-start", startFrom);
+    // Only "me" needs permission, and only the first time.
+    if (startFrom === "me" && !myPos) {
+      if (!navigator.geolocation) { setStatus(t().locDenied); return void render(); }
+      setStatus(t().locAsking);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+          setStatus("");
+          render();
+        },
+        () => { setStatus(t().locDenied); render(); },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
+      );
+    }
+    return void render();
+  }
+
+  if (ev.target.closest("#baseedit")) { editingBase = !editingBase; return void render(); }
+  if (ev.target.closest("[data-basecancel]")) { editingBase = false; return void render(); }
+  if (ev.target.closest("[data-baseclear]")) {
+    editingBase = false;
+    return void mutate("/api/trip/base", { name: null, lat: null, lon: null });
   }
 
   const toggle = ev.target.closest("#addtoggle");
@@ -959,6 +1020,14 @@ document.addEventListener("click", (ev) => {
 
   // Choosing a result saves it — one step, since picking it *is* the decision.
   const hit = ev.target.closest("[data-hit-lat]");
+  if (hit && hit.dataset.hitId === "__base__") {
+    editingBase = false;
+    return void mutate("/api/trip/base", {
+      name: hit.dataset.hitLabel,
+      lat: Number(hit.dataset.hitLat),
+      lon: Number(hit.dataset.hitLon),
+    });
+  }
   if (hit) {
     const id = hit.dataset.hitId;
     editingAddress = null;

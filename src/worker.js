@@ -174,7 +174,7 @@ const snapshot = async (env) => ({
   bookings: await getBookingStatus(env),
   plan: await getPlanEntries(env),
   notes: await getPlanNotes(env),
-  trip: TRIP,
+  trip: { ...TRIP, base: await getTripBase(env) },
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -628,6 +628,54 @@ async function handleBookingStatus(request, env) {
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
+/** Where the days start. Null until someone sets it. */
+async function getTripBase(env) {
+  const row = await env.DB.prepare(
+    "SELECT base_name, base_lat, base_lon, set_by FROM trip_settings WHERE id = 1"
+  ).first();
+  if (!row || row.base_lat == null || row.base_lon == null) return null;
+  return { name: row.base_name, lat: row.base_lat, lon: row.base_lon, setBy: row.set_by };
+}
+
+/** Change where the days start, or clear it. */
+async function handleTripBase(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const who = cleanName(body?.voter);
+  if (!who) return bad("Enter your name first.");
+
+  const { lat, lon } = body ?? {};
+  const name = cleanText(body?.name, 200);
+  if (name === undefined) return bad("That address is too long.");
+
+  const clearing = lat == null && lon == null;
+  if (!clearing) {
+    if (typeof lat !== "number" || typeof lon !== "number" ||
+        !Number.isFinite(lat) || !Number.isFinite(lon) ||
+        lat < -90 || lat > 90 || lon < -180 || lon > 180)
+      return bad("Those coordinates don't look right.");
+  }
+
+  await env.DB.prepare(
+    `INSERT INTO trip_settings (id, base_name, base_lat, base_lon, set_by, updated_at)
+     VALUES (1, ?1, ?2, ?3, ?4, ?5)
+     ON CONFLICT (id) DO UPDATE SET
+       base_name = excluded.base_name, base_lat = excluded.base_lat,
+       base_lon = excluded.base_lon, set_by = excluded.set_by,
+       updated_at = excluded.updated_at`
+  )
+    .bind(clearing ? null : name, clearing ? null : lat, clearing ? null : lon,
+          who, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
 async function getPlanNotes(env) {
   const { results } = await env.DB.prepare(
     `SELECT id, day, start_time, end_time, label, added_by, address, lat, lon
@@ -810,6 +858,9 @@ export default {
 
     if (pathname === "/api/plan/note/address" && method === "POST")
       return handleNoteAddress(request, env);
+
+    if (pathname === "/api/trip/base" && method === "POST")
+      return handleTripBase(request, env);
 
     if (pathname === "/api/sights/edit" && method === "POST")
       return handleEditSight(request, env);

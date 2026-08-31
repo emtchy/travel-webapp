@@ -96,3 +96,22 @@ CREATE TABLE IF NOT EXISTS plan_notes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notes_day ON plan_notes (day, start_time);
+
+-- Where the days start: the hotel, or whatever we are staying in. One row.
+-- Routes can begin here instead of from wherever a phone happens to be, which
+-- is what you want at nine in the morning.
+CREATE TABLE IF NOT EXISTS trip_settings (
+  id         INTEGER PRIMARY KEY CHECK (id = 1),
+  base_name  TEXT,
+  base_lat   REAL,
+  base_lon   REAL,
+  set_by     TEXT,
+  updated_at INTEGER
+);
+
+-- Seeded here as well as in the migration, so a database built fresh from this
+-- file and one brought forward by migrations end up identical. Drift between
+-- those two is the kind of difference that only shows up in production.
+INSERT OR IGNORE INTO trip_settings (id, base_name, base_lat, base_lon, set_by, updated_at)
+VALUES (1, 'Leonardo Royal Hotel London City, 8–14 Cooper''s Row, EC3N 2BQ',
+        51.5116, -0.0773, 'setup', 0);

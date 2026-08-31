@@ -612,6 +612,45 @@ t4("an over-long address is refused",
    (await noteAddr({ voter: "E", id: dinner.id, address: "x".repeat(201),
                      lat: 51.5, lon: -0.1 })).status === 400);
 
+// --- where the days start
+const setBase = (b) => call("/api/trip/base", { method: "POST", body: JSON.stringify(b) });
+
+const seeded = (await (await call("/api/sights")).json()).trip.base;
+t4("a fresh database comes with somewhere to start from", !!seeded);
+t4("and it is the hotel", seeded?.lat === 51.5116 && seeded?.lon === -0.0773);
+
+let tb = await (await setBase({ voter: "Emily", name: "Somewhere else",
+  lat: 51.52, lon: -0.1 })).json();
+t4("it can be changed", tb.trip.base.lat === 51.52 && tb.trip.base.name === "Somewhere else");
+t4("who changed it is recorded", tb.trip.base.setBy === "Emily");
+
+tb = await (await setBase({ voter: "Emily", name: null, lat: null, lon: null })).json();
+t4("it can be cleared", tb.trip.base === null);
+
+tb = await (await setBase({ voter: "Emily", name: "Leonardo Royal",
+  lat: 51.5116, lon: -0.0773 })).json();
+t4("and set again", tb.trip.base.lat === 51.5116);
+
+t4("half a coordinate is refused", (await setBase({ voter: "E", lat: 51.5 })).status === 400);
+t4("an impossible latitude is refused",
+   (await setBase({ voter: "E", lat: 999, lon: 0 })).status === 400);
+t4("changing it needs a name", (await setBase({ voter: "", lat: 51.5, lon: -0.1 })).status === 400);
+t4("an over-long address is refused",
+   (await setBase({ voter: "E", name: "x".repeat(201), lat: 51.5, lon: -0.1 })).status === 400);
+
+{
+  // The point of it: routes can leave from the hotel rather than from nowhere.
+  const { routeLinks } = await import("../public/route.js");
+  const snap = await (await call("/api/sights")).json();
+  const two = [snap.sights.find(s => s.id === "tower-of-london"),
+               snap.sights.find(s => s.id === "tate-modern")];
+  const fromHotel = routeLinks(two, "transit", snap.trip.base);
+  t4("a route can start at the hotel",
+     fromHotel.from === true &&
+     fromHotel.google.includes(`origin=${encodeURIComponent("51.5116,-0.0773")}`));
+  t4("and without it there is no origin", routeLinks(two).from === false);
+}
+
 t4("/api/state carries your own entries",
    Array.isArray((await (await call("/api/state")).json()).notes));
 {

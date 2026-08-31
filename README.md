@@ -17,7 +17,7 @@ public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
 src/maplink.js         reads coordinates out of a pasted maps link
-schema.sql             six tables
+schema.sql             seven tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-geo.mjs      fills in coordinates from Wikipedia
@@ -94,17 +94,19 @@ which is which, and the last two can be taken off again.
 Every day with somewhere to go carries **Route · Google** and **Route · Apple**
 links covering the whole day in order.
 
-The **📍** button beside the **+** starts routes from where you actually are.
-Press it once, allow your browser to share your location, and both links get an
-explicit origin. Press it again to stop.
+**Start** beside the **+** decides where a route begins:
 
-Without it the origin is simply left out — Apple reads that as your current
-location, Google leaves the field blank for you to fill. That is the fallback,
-not the goal, which is why the button exists.
+- **Hotel** — wherever you're staying. The default, because that is where every
+  morning starts. The pencil next to it changes the address; it is stored, so
+  the whole group gets the same one.
+- **Me** — your phone's actual position. The browser asks permission the first
+  time. It stays in memory for that visit only, never sent to the app or
+  stored, because where you are standing is nobody else's business.
+- **—** — no starting point. Apple reads that as your current location, Google
+  leaves the field blank for you to fill.
 
-Your location stays in the browser's memory for that visit. It is never sent to
-the app or stored, because where you are standing is nobody else's business,
-least of all the shared plan's.
+Which one you pick is remembered in your browser, so four people can each start
+routes their own way from the same plan.
 
 **Already done the first two stops?** Every stop from the second onward has a
 **Route from here** link covering that stop and the rest of the day. No ticking
@@ -277,7 +279,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-215 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+227 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -373,6 +375,7 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/plan/note/add` | `{ voter, label, day, start?, end? }` → your own entry |
 | POST   | `/api/plan/note/remove` | `{ voter, id }` → remove one                    |
 | POST   | `/api/plan/note/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
+| POST   | `/api/trip/base`     | `{ voter, name?, lat?, lon? }` → where the days start |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.
