@@ -30,10 +30,15 @@ that **costs money or has to be booked ahead** — not simply everything paid,
 because Sky Garden, Horizon 22 and the Barbican Conservatory are free and still
 need a slot reserved.
 
-- **Filters** by vote count (All / 1+ / 2+ / 3+ …) and by kind (built-in, added
-  by us, booking-only). Each button carries its own count, so you can see what a
-  filter will do before pressing it. Thresholds above the highest vote count
-  aren't offered, since they'd all show the same thing.
+- **Filters** by vote count and by kind (built-in, added by us, booking-only).
+  Each button carries its own count, so you can see what a filter will do before
+  pressing it.
+
+  The preset buttons stop at the highest vote count anyone has actually reached,
+  since buttons above that would all show the same thing. Next to them is a box
+  you can **type any threshold into** — useful once the group is larger than the
+  presets go, or when you want to jump straight to "6+" without clicking
+  through.
 - **Sorted by votes**, most wanted first, with who voted for each one.
 Every entry sits in one of three lists, and moving between them never touches
 the sight itself — it stays on the voting page with every vote intact.
@@ -66,6 +71,11 @@ Entries come from two places:
 
 Each stop is labelled **booked** or **by hand** so it is obvious which is which,
 and hand-added ones can be taken off again.
+
+The same filters sit above the days: a vote threshold (preset buttons plus a box
+for any number) and a source filter for **Bookings** or **By hand**. These only
+change what is shown — a line under the days says how many stops the filters are
+hiding, so a filtered plan never looks like an empty one.
 
 A sight can't be on the plan twice. If you book something that was already
 placed by hand, the booking takes over and the hand entry goes; the API refuses

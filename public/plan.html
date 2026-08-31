@@ -70,6 +70,28 @@ a{color:var(--maroon)}
 }
 
 
+/* ---- filters ---- */
+.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
+  padding:14px 0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.fgroup .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
+.fgroup button{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2)}
+.fgroup button:hover{border-color:var(--ink-3);color:var(--ink)}
+.fgroup button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  font-weight:500;opacity:.55;margin-left:4px}
+.fmanual{display:flex;gap:5px;align-items:center}
+.fmanual .or{font-size:12px;color:var(--ink-3);margin:0 1px}
+.fmanual input{font:inherit;font-size:13px;width:64px;padding:6px 8px;border-radius:8px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
+.fmanual input.on{border-color:var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
+.fmanual input::placeholder{color:var(--ink-3);font-size:11.5px}
+.fmanual .plus{font-size:13px;color:var(--ink-3)}
+.fmanual b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-3)}
+.hiddenby{font-size:12.5px;color:var(--ink-3);margin:14px 0 0}
+
 /* ---- day columns ---- */
 .days{display:grid;gap:18px;margin-top:26px}
 @media(min-width:900px){.days{grid-template-columns:repeat(2,1fr)}}
@@ -261,7 +283,9 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 </header>
 
 <div class="stats" id="stats"></div>
+<div class="filters" id="filters"></div>
 <div class="days" id="days"></div>
+<p class="hiddenby" id="hiddenby" hidden></p>
 
 <details class="addplan" id="addplan">
   <summary id="ap-title">Add something to the plan</summary>
@@ -299,6 +323,11 @@ const T = {
     navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
     loading: "Loading…", saving: "Saving…", saved: "Saved",
     needName: "Enter your name first.",
+    fVotes: "Votes", fAll: "All", fPlus: "+", fSource: "From",
+    fOr: "or", fCustom: "any number",
+    fCustomTitle: "Type a threshold — 3 means three votes or more",
+    fBooked: "Bookings", fHand: "By hand",
+    filteredOut: (n) => `${n} hidden by the filters`,
     statPlanned: "on the plan", statBooked: "from bookings", statHand: "added by hand", statDays: "days with plans",
     srcBooked: "booked", srcHand: "by hand",
     dayEmpty: "Nothing planned yet.",
@@ -322,6 +351,11 @@ const T = {
     navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
     loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
     needName: "Bitte zuerst den Namen eintragen.",
+    fVotes: "Stimmen", fAll: "Alle", fPlus: "+", fSource: "Quelle",
+    fOr: "oder", fCustom: "beliebig",
+    fCustomTitle: "Schwelle eintippen – 3 heißt drei Stimmen oder mehr",
+    fBooked: "Buchungen", fHand: "Eingetragen",
+    filteredOut: (n) => `${n} durch Filter ausgeblendet`,
     statPlanned: "im Plan", statBooked: "aus Buchungen", statHand: "selbst eingetragen", statDays: "Tage verplant",
     srcBooked: "gebucht", srcHand: "eingetragen",
     dayEmpty: "Noch nichts geplant.",
@@ -342,6 +376,8 @@ let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de
 const t = () => T[lang];
 
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], TRIP = { days: [] };
+let minVotes = 0;
+let source = "all";       // all | booked | hand
 
 const nameOf = () => $("#name").value.trim();
 const setStatus = (m) => { $("#status").textContent = m; };
@@ -415,6 +451,46 @@ function stopHTML(p) {
   </li>`;
 }
 
+const votesOf = (id) => (VOTES[id] ?? []).length;
+
+/** Filters narrow what the plan *shows*; nothing is removed by using them. */
+const passes = (p) =>
+  votesOf(p.id) >= minVotes && (source === "all" || source === p.source);
+
+function renderFilters() {
+  const L = t();
+  const list = planned();
+  const top = list.reduce((a, p) => Math.max(a, votesOf(p.id)), 0);
+  const steps = Array.from({ length: Math.min(top, 6) + 1 }, (_, n) => n);
+  const countAt = (n) => list.filter((p) => votesOf(p.id) >= n &&
+    (source === "all" || source === p.source)).length;
+
+  const votesBtns = steps.map((n) =>
+    `<button type="button" data-votes="${n}" aria-pressed="${minVotes === n}">${
+      n === 0 ? esc(L.fAll) : n + esc(L.fPlus)} <b>${countAt(n)}</b></button>`).join("");
+
+  const typed = !steps.includes(minVotes);
+  const manual =
+    `<span class="fmanual"><span class="or">${esc(L.fOr)}</span>` +
+    `<input type="number" id="vmin" min="0" max="99" step="1"` +
+    ` title="${esc(L.fCustomTitle)}" aria-label="${esc(L.fCustomTitle)}"` +
+    ` placeholder="${esc(L.fCustom)}" value="${typed ? minVotes : ""}"` +
+    `${typed ? ' class="on"' : ""}>` +
+    `<span class="plus">${esc(L.fPlus)}</span>` +
+    `${typed ? `<b>${countAt(minVotes)}</b>` : ""}</span>`;
+
+  const sources = [
+    ["all", L.fAll, list.length],
+    ["booked", L.fBooked, list.filter((p) => p.source === "booked").length],
+    ["hand", L.fHand, list.filter((p) => p.source === "hand").length],
+  ].map(([k, label, n]) =>
+    `<button type="button" data-source="${k}" aria-pressed="${source === k}">${esc(label)} <b>${n}</b></button>`).join("");
+
+  $("#filters").innerHTML =
+    `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
+    `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>`;
+}
+
 function renderAdder() {
   const L = t();
   const placed = new Set(planned().map((p) => p.id));
@@ -457,9 +533,10 @@ function render() {
   $("#name").placeholder = L.nameLabel;
 
   const list = planned();
+  const shown = list.filter(passes);
   const days = TRIP.days.map((d) => ({
     date: d,
-    stops: list.filter((p) => p.day === d).sort(byClock),
+    stops: shown.filter((p) => p.day === d).sort(byClock),
   }));
 
   $("#stats").innerHTML = [
@@ -469,6 +546,7 @@ function render() {
     [days.filter((d) => d.stops.length).length, L.statDays],
   ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 
+  renderFilters();
   $("#days").innerHTML = days.map((d) => `<section class="day">
     <header>
       <span class="wd">${esc(weekday(d.date))}</span>
@@ -479,6 +557,10 @@ function render() {
       ? `<ol class="stops">${d.stops.map(stopHTML).join("")}</ol>`
       : `<p class="dayempty">${esc(L.dayEmpty)}</p>`}
   </section>`).join("");
+
+  const hidden = list.length - shown.length;
+  $("#hiddenby").hidden = !hidden;
+  $("#hiddenby").textContent = hidden ? L.filteredOut(hidden) : "";
 
   renderAdder();
 }
@@ -505,7 +587,25 @@ $("#ap-add").addEventListener("click", () => {
   $("#ap-what").value = ""; $("#ap-from").value = ""; $("#ap-to").value = "";
 });
 
+document.addEventListener("input", (ev) => {
+  if (ev.target.id !== "vmin") return;
+  const raw = ev.target.value.trim();
+  const n = raw === "" ? 0 : Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > 99) return;
+  minVotes = n;
+  const at = ev.target.selectionStart;
+  render();
+  const again = $("#vmin");
+  if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch {} }
+});
+
 document.addEventListener("click", (ev) => {
+  const v = ev.target.closest("[data-votes]");
+  if (v) { minVotes = Number(v.dataset.votes); return void render(); }
+
+  const sc = ev.target.closest("[data-source]");
+  if (sc) { source = sc.dataset.source; return void render(); }
+
   const rm = ev.target.closest("[data-remove]");
   if (rm) return void mutate("/api/plan/remove", { sightId: rm.dataset.remove });
 
