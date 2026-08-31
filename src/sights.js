@@ -32,7 +32,9 @@ export const SIGHTS = [
     "wiki": "Tower of London",
     "name_de": "Tower of London",
     "summary_de": "Neunhundert Jahre normannischer Bergfried, Gefängnis und Schatzkammer – die Menschenmengen sind verdient. Die Führungen der Yeoman Warder sind im Ticket enthalten und die besten der Stadt.",
-    "priceLabel_de": "37 £"
+    "priceLabel_de": "37 £",
+    "lat": 51.5081,
+    "lon": -0.0761
   },
   {
     "id": "british-museum",
@@ -63,7 +65,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.britishmuseum.org/visit",
-    "wiki": "British Museum"
+    "wiki": "British Museum",
+    "lat": 51.5194,
+    "lon": -0.1269
   },
   {
     "id": "the-painted-hall-old-royal-naval-college",
@@ -97,7 +101,9 @@ export const SIGHTS = [
     "wiki": "Old Royal Naval College",
     "name_de": "Painted Hall, Old Royal Naval College",
     "summary_de": "Thornhill hat neunzehn Jahre an dieser Decke gemalt, und man sieht es. Ein barocker Rausch über einem Speisesaal für Marineveteranen. Kostenlose Kurzführungen alle 30 Minuten.",
-    "priceLabel_de": "19 £"
+    "priceLabel_de": "19 £",
+    "lat": 51.4836,
+    "lon": -0.0058
   },
   {
     "id": "sir-john-soane-s-museum",
@@ -127,7 +133,9 @@ export const SIGHTS = [
     "wiki": "Sir John Soane's Museum",
     "name_de": "Sir John Soane's Museum",
     "summary_de": "Der außergewöhnlichste Innenraum Londons – und er kostet nichts. Ein Architektenhaus, seit 1837 unverändert: Spiegel, farbige Oberlichter, der Sarkophag Sethos' I. im Keller.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.517,
+    "lon": -0.1174
   },
   {
     "id": "westminster-abbey-diamond-jubilee-galleries",
@@ -159,7 +167,9 @@ export const SIGHTS = [
     "wiki": "Westminster Abbey",
     "name_de": "Westminster Abbey + Diamond Jubilee Galleries",
     "summary_de": "Die Krönungskirche. Für 5 £ Aufpreis bringen die Galerien Sie ins mittelalterliche Triforium, zwanzig Meter hoch, mit Blick das Kirchenschiff hinunter. Sonntags für Besucher geschlossen.",
-    "priceLabel_de": "31 £ + 5 £ Galerien"
+    "priceLabel_de": "31 £ + 5 £ Galerien",
+    "lat": 51.4994,
+    "lon": -0.1275
   },
   {
     "id": "st-paul-s-cathedral-the-dome-climb",
@@ -192,7 +202,9 @@ export const SIGHTS = [
     "wiki": "St Paul's Cathedral",
     "name_de": "St Paul's Cathedral – der Aufstieg zur Kuppel",
     "summary_de": "528 Stufen, kein Aufzug, und die Golden Gallery oben ist der schönste erarbeitete Ausblick der Stadt. Sonntags sind nur die Galerien geöffnet – deutlich günstiger.",
-    "priceLabel_de": "27 £ · sonntags nur Kuppel, deutlich günstiger"
+    "priceLabel_de": "27 £ · sonntags nur Kuppel, deutlich günstiger",
+    "lat": 51.5138,
+    "lon": -0.0983
   },
   {
     "id": "national-gallery",
@@ -223,7 +235,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.nationalgallery.org.uk/visiting",
-    "wiki": "National Gallery"
+    "wiki": "National Gallery",
+    "lat": 51.5089,
+    "lon": -0.1283
   },
   {
     "id": "horizon-22",
@@ -254,7 +268,9 @@ export const SIGHTS = [
     "wiki": "22 Bishopsgate",
     "name_de": "Horizon 22",
     "summary_de": "Europas höchste kostenlose Aussichtsplattform, 58. Stock, mit dem Lift in 41 Sekunden. Besser als der Shard, weil man von hier aus den Shard auch sieht.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5145,
+    "lon": -0.0829
   },
   {
     "id": "leadenhall-market-the-lloyd-s-building",
@@ -288,7 +304,9 @@ export const SIGHTS = [
     "wiki": "Leadenhall Market",
     "name_de": "Leadenhall Market & das Lloyd's Building",
     "summary_de": "Viktorianisches Schmiedeeisen und Glas in Bordeaux, Creme und Grün – und die Kulisse der Winkelgasse. Nebenan steht Richard Rogers' nach außen gestülptes Lloyd's Building.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5128,
+    "lon": -0.0835
   },
   {
     "id": "victoria-and-albert-museum",
@@ -322,7 +340,9 @@ export const SIGHTS = [
     "wiki": "Victoria and Albert Museum",
     "name_de": "Victoria and Albert Museum",
     "summary_de": "Das schönste Museumsgebäude Großbritanniens, und das, in dem man planlos umherlaufen sollte. Freitags bis 22 Uhr geöffnet.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.4967,
+    "lon": -0.1719
   },
   {
     "id": "warner-bros-studio-tour-the-making-of-harry-potter",
@@ -355,7 +375,9 @@ export const SIGHTS = [
     "wiki": "Warner Bros. Studio Tour London – The Making of Harry Potter",
     "name_de": "Warner Bros. Studio Tour – The Making of Harry Potter",
     "summary_de": "Kein Freizeitpark: die echten Kulissen, Requisiten und Kostüme. Große Halle, Winkelgasse, das Hogwarts-Modell. Planen Sie den ganzen Tag ein.",
-    "priceLabel_de": "ca. 56–58,50 £"
+    "priceLabel_de": "ca. 56–58,50 £",
+    "lat": 51.6933,
+    "lon": -0.4197
   },
   {
     "id": "borough-market-the-south-bank-walk",
@@ -387,7 +409,9 @@ export const SIGHTS = [
     "wiki": "Borough Market",
     "name_de": "Borough Market & der South-Bank-Spaziergang",
     "summary_de": "Drei kostenlose Stunden am Fluss entlang, mit einem Käsetoast am Ende. Am schönsten in der Dämmerung. Montags ist der Markt geschlossen.",
-    "priceLabel_de": "Kostenlos begehbar"
+    "priceLabel_de": "Kostenlos begehbar",
+    "lat": 51.5056,
+    "lon": -0.0908
   },
   {
     "id": "big-ben-westminster-bridge",
@@ -418,7 +442,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.parliament.uk/visiting/",
-    "wiki": "Big Ben"
+    "wiki": "Big Ben",
+    "lat": 51.5007,
+    "lon": -0.1245
   },
   {
     "id": "tate-modern",
@@ -449,7 +475,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.tate.org.uk/visit/tate-modern",
-    "wiki": "Tate Modern"
+    "wiki": "Tate Modern",
+    "lat": 51.5078,
+    "lon": -0.0994
   },
   {
     "id": "eltham-palace",
@@ -483,7 +511,9 @@ export const SIGHTS = [
     "wiki": "Eltham Palace",
     "name_de": "Eltham Palace",
     "summary_de": "Eine Art-déco-Villa der 1930er, aufgesetzt auf die mittelalterliche Halle Eduards IV. Das Bad aus Onyx, schwarzem Marmor und Goldmosaik ist der Höhepunkt.",
-    "priceLabel_de": "Nur Mo 14. Sept. kostenlos"
+    "priceLabel_de": "Nur Mo 14. Sept. kostenlos",
+    "lat": 51.4472,
+    "lon": 0.0481
   },
   {
     "id": "two-temple-place",
@@ -511,7 +541,9 @@ export const SIGHTS = [
     "wiki": "Two Temple Place",
     "name_de": "Two Temple Place",
     "summary_de": "Astors neugotische Fantasie am Embankment – Hammerbalkendecke, Ebenholzsäulen, Buntglas. Nur an einer Handvoll Tage im Jahr geöffnet.",
-    "priceLabel_de": "Nur So 13. Sept. kostenlos"
+    "priceLabel_de": "Nur So 13. Sept. kostenlos",
+    "lat": 51.5116,
+    "lon": -0.1124
   },
   {
     "id": "hampstead-the-heath-and-kenwood-house",
@@ -543,7 +575,9 @@ export const SIGHTS = [
     "wiki": "Kenwood House",
     "name_de": "Hampstead, die Heath und Kenwood House",
     "summary_de": "Der beste Tag Londons für Leute, die gerne laufen. Über die Heath zum Parliament Hill, dann Kenwood: kostenlos, mit einem Vermeer und einem späten Rembrandt.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5714,
+    "lon": -0.1675
   },
   {
     "id": "kew-gardens-the-palm-house",
@@ -577,7 +611,9 @@ export const SIGHTS = [
     "wiki": "Palm House, Kew Gardens",
     "name_de": "Kew Gardens – das Palmenhaus",
     "summary_de": "Der letzte Blick auf das Palmenhaus von 1848 für fünf Jahre: 2027 beginnt die Sanierung. Das Temperate House ist das größte viktorianische Gewächshaus der Welt.",
-    "priceLabel_de": "Eintritt – online günstiger"
+    "priceLabel_de": "Eintritt – online günstiger",
+    "lat": 51.4792,
+    "lon": -0.2928
   },
   {
     "id": "sky-garden",
@@ -608,7 +644,9 @@ export const SIGHTS = [
     "wiki": "20 Fenchurch Street",
     "name_de": "Sky Garden",
     "summary_de": "Drei Stockwerke Bepflanzung unter einer Glaskuppel auf dem Walkie-Talkie, mit Freiluftterrasse zum Shard. Niedriger und voller als Horizon 22, aber der Raum selbst ist die Attraktion.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5113,
+    "lon": -0.0835
   },
   {
     "id": "natural-history-museum-hintze-hall",
@@ -639,7 +677,9 @@ export const SIGHTS = [
     "wiki": "Natural History Museum, London",
     "name_de": "Natural History Museum – Hintze Hall",
     "summary_de": "Kommen Sie wegen des Raums, nicht wegen der Dinosaurier. Eine Terrakotta-Kathedrale der Natur von 1881, mit einem Blauwalskelett in der Mitte.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.4961,
+    "lon": -0.1764
   },
   {
     "id": "highgate-cemetery",
@@ -672,7 +712,9 @@ export const SIGHTS = [
     "wiki": "Highgate Cemetery",
     "name_de": "Highgate Cemetery",
     "summary_de": "Viktorianischer Totenkult in voller Lautstärke: die Egyptian Avenue, der Circle of Lebanon um eine 300 Jahre alte Zeder. Der Westteil nur mit Führung.",
-    "priceLabel_de": "Eintritt"
+    "priceLabel_de": "Eintritt",
+    "lat": 51.567,
+    "lon": -0.147
   },
   {
     "id": "the-wallace-collection",
@@ -705,7 +747,9 @@ export const SIGHTS = [
     "wiki": "Wallace Collection",
     "name_de": "The Wallace Collection",
     "summary_de": "Fragonards „Die Schaukel“ und der „Lachende Kavalier“ in seidenbespannten Räumen, in denen fast niemand ist. Dazu die beste Rüstkammer außerhalb der Royal Armouries.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5175,
+    "lon": -0.153
   },
   {
     "id": "st-dunstan-in-the-east",
@@ -737,7 +781,9 @@ export const SIGHTS = [
     "wiki": "St Dunstan-in-the-East",
     "name_de": "St Dunstan-in-the-East",
     "summary_de": "Eine im Blitz ausgebrannte Wren-Kirche, nie wieder aufgebaut, heute ein öffentlicher Garten – Efeu und Feigen wachsen durch das gotische Maßwerk.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5097,
+    "lon": -0.0827
   },
   {
     "id": "guildhall-roman-amphitheatre",
@@ -769,7 +815,9 @@ export const SIGHTS = [
     "wiki": "London Roman Amphitheatre",
     "name_de": "Römisches Amphitheater der Guildhall",
     "summary_de": "Londons römisches Amphitheater im Keller der Guildhall, stimmungsvoll beleuchtet, mit projizierten Zuschauern. Oben im Hof zeichnet eine schwarze Linie seinen Umriss nach.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5159,
+    "lon": -0.092
   },
   {
     "id": "columbia-road-flower-market",
@@ -797,7 +845,9 @@ export const SIGHTS = [
     "wiki": "Columbia Road",
     "name_de": "Columbia Road Flower Market",
     "summary_de": "Das sonntäglichste Erlebnis Londons: eine schmale viktorianische Straße voller Blumen und schreiender Händler. Vor 9 Uhr kommt man durch, nach 14 Uhr fallen die Preise.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5294,
+    "lon": -0.0694
   },
   {
     "id": "tower-bridge-and-the-engine-rooms",
@@ -828,7 +878,9 @@ export const SIGHTS = [
     "wiki": "Tower Bridge",
     "name_de": "Tower Bridge und die Maschinenräume",
     "summary_de": "Ein Glasboden, auf dem man steht, während unten ein Bus durchfährt. Übersehen wird meist der beste Teil: die viktorianischen Dampfmaschinen, die die Brücke hoben.",
-    "priceLabel_de": "18 £"
+    "priceLabel_de": "18 £",
+    "lat": 51.5056,
+    "lon": -0.0753
   },
   {
     "id": "hampton-court-palace",
@@ -863,7 +915,9 @@ export const SIGHTS = [
     "wiki": "Hampton Court Palace",
     "name_de": "Hampton Court Palace",
     "summary_de": "Zwei Paläste in einem – Heinrichs VIII. Tudor-Küchen gehen in Wrens barocke Staatsgemächer über. Dazu das Heckenlabyrinth und 24 Hektar Gärten.",
-    "priceLabel_de": "29 £ / 32 £ (Wochenende)"
+    "priceLabel_de": "29 £ / 32 £ (Wochenende)",
+    "lat": 51.4033,
+    "lon": -0.3375
   },
   {
     "id": "imperial-war-museum-london",
@@ -896,7 +950,9 @@ export const SIGHTS = [
     "wiki": "Imperial War Museum",
     "name_de": "Imperial War Museum London",
     "summary_de": "Kostenlos, täglich geöffnet, und die Holocaust-Galerien gehören zu den sorgfältigsten Museumsräumen überhaupt. Nehmen Sie sich Zeit dafür.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.4958,
+    "lon": -0.1086
   },
   {
     "id": "barbican-conservatory",
@@ -926,7 +982,9 @@ export const SIGHTS = [
     "wiki": "Barbican Centre",
     "name_de": "Barbican Conservatory",
     "summary_de": "Zweitausend tropische Arten, die durch rohen Beton wachsen – Londons zweitgrößtes Gewächshaus, versteckt auf Ebene 4 eines Kulturzentrums.",
-    "priceLabel_de": "Kostenlos, aber Ticket nötig"
+    "priceLabel_de": "Kostenlos, aber Ticket nötig",
+    "lat": 51.5202,
+    "lon": -0.095
   },
   {
     "id": "buckingham-palace-state-rooms",
@@ -960,7 +1018,9 @@ export const SIGHTS = [
     "wiki": "Buckingham Palace",
     "name_de": "Buckingham Palace – die Staatsgemächer",
     "summary_de": "Neunzehn Staatsgemächer, Thronsaal, Gemäldegalerie. Geöffnet nur bis 27. September. Der Weiße Salon ist dieses Jahr wegen Restaurierung geschlossen.",
-    "priceLabel_de": "33 £ vorab / 37 £ vor Ort"
+    "priceLabel_de": "33 £ vorab / 37 £ vor Ort",
+    "lat": 51.5008,
+    "lon": -0.1419
   },
   {
     "id": "changing-of-the-guard",
@@ -991,7 +1051,9 @@ export const SIGHTS = [
       "Dates confirmed only ~a month ahead; cancelled in bad weather"
     ],
     "url": "https://www.householddivision.org.uk/changing-the-guard-calendar",
-    "wiki": "Changing of the guard"
+    "wiki": "Changing of the guard",
+    "lat": 51.5008,
+    "lon": -0.143
   },
   {
     "id": "platform-9-3-4",
@@ -1022,7 +1084,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://harrypottershop.co.uk/pages/kings-cross",
-    "wiki": "Platform 9¾"
+    "wiki": "Platform 9¾",
+    "lat": 51.5324,
+    "lon": -0.123
   },
   {
     "id": "house-of-minalima",
@@ -1053,7 +1117,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://minalima.com/visit-us/",
-    "wiki": "MinaLima"
+    "wiki": "MinaLima",
+    "lat": 51.5133,
+    "lon": -0.1304
   },
   {
     "id": "millennium-bridge",
@@ -1084,7 +1150,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.cityoflondon.gov.uk/things-to-do/visit-the-city/attractions/millennium-bridge",
-    "wiki": "Millennium Bridge, London"
+    "wiki": "Millennium Bridge, London",
+    "lat": 51.5102,
+    "lon": -0.0984
   },
   {
     "id": "st-pancras-international",
@@ -1115,7 +1183,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://stpancras.com/",
-    "wiki": "St Pancras railway station"
+    "wiki": "St Pancras railway station",
+    "lat": 51.53,
+    "lon": -0.1253
   },
   {
     "id": "rangers-house-bridgerton",
@@ -1144,7 +1214,9 @@ export const SIGHTS = [
       "Weekends only; closes for the season 21 Sept"
     ],
     "url": "https://www.english-heritage.org.uk/visit/places/rangers-house-the-wernher-collection/",
-    "wiki": "Ranger's House"
+    "wiki": "Ranger's House",
+    "lat": 51.4734,
+    "lon": -0.0016
   },
   {
     "id": "royal-observatory-greenwich",
@@ -1174,7 +1246,9 @@ export const SIGHTS = [
     "bookingRequired": true,
     "flags": [],
     "url": "https://www.rmg.co.uk/royal-observatory",
-    "wiki": "Royal Observatory, Greenwich"
+    "wiki": "Royal Observatory, Greenwich",
+    "lat": 51.477,
+    "lon": 0
   },
   {
     "id": "shakespeares-globe",
@@ -1205,7 +1279,9 @@ export const SIGHTS = [
     "bookingRequired": true,
     "flags": [],
     "url": "https://www.shakespearesglobe.com/visit/",
-    "wiki": "Shakespeare's Globe"
+    "wiki": "Shakespeare's Globe",
+    "lat": 51.5081,
+    "lon": -0.0972
   },
   {
     "id": "london-eye",
@@ -1238,7 +1314,9 @@ export const SIGHTS = [
       "Horizon 22 and Sky Garden are free and higher"
     ],
     "url": "https://www.londoneye.com/",
-    "wiki": "London Eye"
+    "wiki": "London Eye",
+    "lat": 51.5033,
+    "lon": -0.1194
   },
   {
     "id": "view-from-the-shard",
@@ -1270,7 +1348,9 @@ export const SIGHTS = [
       "Horizon 22 is free, higher-value, and includes the Shard in the view"
     ],
     "url": "https://www.theviewfromtheshard.com/",
-    "wiki": "The Shard"
+    "wiki": "The Shard",
+    "lat": 51.5045,
+    "lon": -0.0865
   },
   {
     "id": "trafalgar-square",
@@ -1300,7 +1380,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.london.gov.uk/about-us/our-building-and-squares/trafalgar-square",
-    "wiki": "Trafalgar Square"
+    "wiki": "Trafalgar Square",
+    "lat": 51.5081,
+    "lon": -0.1281
   },
   {
     "id": "covent-garden-piazza",
@@ -1331,7 +1413,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.coventgarden.london/",
-    "wiki": "Covent Garden"
+    "wiki": "Covent Garden",
+    "lat": 51.5125,
+    "lon": -0.1225
   },
   {
     "id": "neal-s-yard-seven-dials-and-cecil-court",
@@ -1363,7 +1447,9 @@ export const SIGHTS = [
     "wiki": "Neal's Yard",
     "name_de": "Neal's Yard, Seven Dials und Cecil Court",
     "summary_de": "Drei Minuten voneinander entfernt: ein winziger bunter Innenhof, eine Sternkreuzung von 1690 und eine intakte viktorianische Buchhändlergasse.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5144,
+    "lon": -0.1265
   },
   {
     "id": "piccadilly-circus",
@@ -1393,7 +1479,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.visitlondon.com/things-to-do/place/389944-piccadilly-circus",
-    "wiki": "Piccadilly Circus"
+    "wiki": "Piccadilly Circus",
+    "lat": 51.51,
+    "lon": -0.1344
   },
   {
     "id": "camden-market",
@@ -1424,7 +1512,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://camdenmarket.com/visit-us",
-    "wiki": "Camden Market"
+    "wiki": "Camden Market",
+    "lat": 51.5414,
+    "lon": -0.1464
   },
   {
     "id": "notting-hill-portobello",
@@ -1451,7 +1541,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://visitportobello.com/where/",
-    "wiki": "Portobello Road"
+    "wiki": "Portobello Road",
+    "lat": 51.5162,
+    "lon": -0.2052
   },
   {
     "id": "abbey-road-crossing",
@@ -1482,7 +1574,9 @@ export const SIGHTS = [
     "bookingRequired": "",
     "flags": [],
     "url": "https://www.abbeyroad.com/crossing",
-    "wiki": "Abbey Road"
+    "wiki": "Abbey Road",
+    "lat": 51.532,
+    "lon": -0.1782
   },
   {
     "id": "richmond-park-in-rut-season",
@@ -1516,7 +1610,9 @@ export const SIGHTS = [
     "wiki": "Richmond Park",
     "name_de": "Richmond Park zur Brunftzeit",
     "summary_de": "Sechshundert frei lebende Hirsche – und im September ist Brunft. Die Hirsche röhren und kämpfen. Mindestens 50 Meter Abstand halten.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.4433,
+    "lon": -0.275
   },
   {
     "id": "regent-s-canal-little-venice-to-camden",
@@ -1547,7 +1643,9 @@ export const SIGHTS = [
     "wiki": "Regent's Canal",
     "name_de": "Regent's Canal: Little Venice nach Camden",
     "summary_de": "45 Minuten Treidelpfad von einem Becken voller Hausboote bis zum Camden Lock, vorbei am Regent's Park und der Vogelvoliere des Zoos.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.523,
+    "lon": -0.1833
   },
   {
     "id": "museum-of-the-home",
@@ -1578,7 +1676,9 @@ export const SIGHTS = [
     "wiki": "Museum of the Home",
     "name_de": "Museum of the Home",
     "summary_de": "Echte Wohnzimmer von 1600 bis heute, in Armenhäusern des 18. Jahrhunderts – darunter ein viktorianischer Séance-Salon und ein Shoreditch-Loft von 1998.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5317,
+    "lon": -0.0762
   },
   {
     "id": "postman-s-park",
@@ -1609,7 +1709,9 @@ export const SIGHTS = [
     "wiki": "Postman's Park",
     "name_de": "Postman's Park",
     "summary_de": "Ein Gartenwinkel hinter St Paul's mit einer Kachelwand, die an einfache Viktorianer erinnert, die beim Retten Fremder starben. Jede Kachel ein Satz.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5168,
+    "lon": -0.0976
   },
   {
     "id": "royal-courts-of-justice",
@@ -1641,7 +1743,9 @@ export const SIGHTS = [
     "wiki": "Royal Courts of Justice",
     "name_de": "Royal Courts of Justice",
     "summary_de": "Viktorianische Neugotik am Strand – die Great Hall ist frei zugänglich, und man kann sich in die Zuschauergalerie einer laufenden Berufungsverhandlung setzen.",
-    "priceLabel_de": "Kostenlos"
+    "priceLabel_de": "Kostenlos",
+    "lat": 51.5136,
+    "lon": -0.1133
   },
   {
     "id": "battersea-power-station",
@@ -1673,7 +1777,9 @@ export const SIGHTS = [
     "wiki": "Battersea Power Station",
     "name_de": "Battersea Power Station",
     "summary_de": "Giles Gilbert Scotts Kathedrale der Elektrizität, heute frei begehbar – Turbinenhalle A im Art déco, Halle B im Edelstahl der 1950er.",
-    "priceLabel_de": "Kostenlos begehbar"
+    "priceLabel_de": "Kostenlos begehbar",
+    "lat": 51.4817,
+    "lon": -0.1447
   },
   {
     "id": "hyde-park-kensington-gardens",
@@ -1703,7 +1809,9 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.royalparks.org.uk/visit/parks/hyde-park",
-    "wiki": "Hyde Park, London"
+    "wiki": "Hyde Park, London",
+    "lat": 51.5086,
+    "lon": -0.1636
   },
   {
     "id": "liberty-and-the-arcades",
@@ -1734,6 +1842,8 @@ export const SIGHTS = [
     "bookingRequired": false,
     "flags": [],
     "url": "https://www.libertylondon.com/",
-    "wiki": "Liberty (department store)"
+    "wiki": "Liberty (department store)",
+    "lat": 51.5139,
+    "lon": -0.1402
   }
 ];

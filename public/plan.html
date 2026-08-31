@@ -124,6 +124,15 @@ li.stop:last-child{border-bottom:0}
 .stopact button{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:3px 3px}
 .stopact button:hover{color:var(--maroon)}
 .dayempty{padding:20px 17px;color:var(--ink-3);font-size:13px}
+.dayroute{display:flex;gap:7px;align-items:center;flex-wrap:wrap;
+  padding:11px 17px;border-top:1px solid var(--line);background:var(--card-2)}
+.dayroute a{font-size:12.5px;font-weight:500;text-decoration:none;padding:6px 11px;
+  border-radius:8px;border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
+.dayroute a:hover{border-color:var(--ink-3)}
+.routenote{font-size:11.5px;color:var(--ink-3);flex-basis:100%}
+.fromhere{font-size:11.5px;color:var(--ink-3);text-decoration:none;
+  border-bottom:1px solid var(--line-2)}
+.fromhere:hover{color:var(--maroon);border-color:var(--maroon)}
 
 /* ---- add to the plan ---- */
 .addplan{margin-top:26px;background:var(--card);border:1px solid var(--line);
@@ -322,6 +331,8 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 </div>
 
 <script type="module">
+import { routeLinks, routeFrom, hasPlace } from "/route.js";
+
 const $ = (s, r = document) => r.querySelector(s);
 const NAME_KEY = "london-vote-name";
 const CODE_KEY = "london-vote-code";
@@ -349,6 +360,11 @@ const T = {
     stops: (n) => `${n} ${n === 1 ? "stop" : "stops"}`,
     noTime: "any time",
     move: "Move", remove: "Take off",
+    routeGoogle: "Route · Google", routeApple: "Route · Apple",
+    routeFromHere: "Route from here",
+    routeSkipped: (n) => `${n} without a location left out`,
+    routeCapped: "Google's link takes the first 9 stops.",
+    routeNone: "Nothing here has a location to route to.",
     apTitle: "Add something to the plan",
     apWhat: "What", apDay: "Day", apFrom: "From", apTo: "To", apAdd: "Add",
     apHint: "Only the day is required. Anything already booked with a date is placed by its booking — change the slot on the Bookings page instead.",
@@ -382,6 +398,11 @@ const T = {
     stops: (n) => `${n} ${n === 1 ? "Stopp" : "Stopps"}`,
     noTime: "egal wann",
     move: "Verschieben", remove: "Entfernen",
+    routeGoogle: "Route · Google", routeApple: "Route · Apple",
+    routeFromHere: "Route ab hier",
+    routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
+    routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
+    routeNone: "Nichts hier hat einen Ort für eine Route.",
     apTitle: "Etwas in den Plan eintragen",
     apWhat: "Was", apDay: "Tag", apFrom: "Von", apTo: "Bis", apAdd: "Eintragen",
     apHint: "Nur der Tag ist nötig. Was mit Datum gebucht ist, wird durch die Buchung eingeplant – ändere den Termin dann auf der Buchungsseite.",
@@ -456,10 +477,15 @@ const weekday = (iso) =>
   new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
     { weekday: "long", timeZone: "UTC" });
 
-function stopHTML(p) {
+/** The place a stop routes to. Your own entries have none. */
+const placeOf = (p) => (p.source === "own" ? null : byId(p.id));
+
+function stopHTML(p, i, stops) {
   const L = t();
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
+  // "I have done the first two" — a link on each stop covering it and the rest.
+  const onward = routeFrom(stops.map(placeOf), i);
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
   const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
@@ -482,6 +508,10 @@ function stopHTML(p) {
       ${own ? `<div class="stopact">
         <button type="button" data-note-rm="${esc(p.id)}">${esc(L.remove)}</button>
       </div>` : ""}
+      ${onward && i > 0 ? `<div class="stopact">
+        <a class="fromhere" href="${esc(onward.google)}" target="_blank" rel="noopener"
+           >${esc(L.routeFromHere)} ↗</a>
+      </div>` : ""}
     </div>
   </li>`;
 }
@@ -494,6 +524,21 @@ const passes = (p) =>
   // quietly hide the musical you already paid for.
   (p.source === "own" || votesOf(p.id) >= minVotes) &&
   (source === "all" || source === p.source);
+
+/** The whole day, start to finish, from wherever you are now. */
+function dayRouteHTML(stops) {
+  const L = t();
+  if (!stops.length) return "";
+  const r = routeLinks(stops.map(placeOf));
+  if (!r) return `<div class="dayroute"><span class="routenote">${esc(L.routeNone)}</span></div>`;
+
+  return `<div class="dayroute">
+    <a href="${esc(r.google)}" target="_blank" rel="noopener">${esc(L.routeGoogle)} ↗</a>
+    <a href="${esc(r.apple)}" target="_blank" rel="noopener">${esc(L.routeApple)} ↗</a>
+    ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
+    ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
+  </div>`;
+}
 
 function renderFilters() {
   const L = t();
@@ -606,8 +651,9 @@ function render() {
       ${d.stops.length ? `<span class="n">${esc(L.stops(d.stops.length))}</span>` : ""}
     </header>
     ${d.stops.length
-      ? `<ol class="stops">${d.stops.map(stopHTML).join("")}</ol>`
+      ? `<ol class="stops">${d.stops.map((p, i) => stopHTML(p, i, d.stops)).join("")}</ol>`
       : `<p class="dayempty">${esc(L.dayEmpty)}</p>`}
+    ${dayRouteHTML(d.stops)}
   </section>`).join("");
 
   // Nothing planned yet? Then adding is the only thing to do here, so don't

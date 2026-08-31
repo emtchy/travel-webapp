@@ -508,5 +508,63 @@ t4("/api/state carries your own entries",
      !both.plan.some(e => e.id.startsWith("note-")));
 }
 
-console.log(`\n${ok + ok2 + ok3 + ok4} passed, ${fail + fail2 + fail3 + fail4} failed`);
-process.exit(fail + fail2 + fail3 + fail4 ? 1 : 0);
+/* ------------------------------------------------------------- maps routes */
+
+console.log("\nroutes");
+let ok5 = 0, fail5 = 0;
+const t5 = (name, cond) => { cond ? (ok5++, console.log("  ✓", name)) : (fail5++, console.log("  ✗", name)); };
+
+const { routeLinks, routeFrom, hasPlace, MAX_WAYPOINTS } =
+  await import("../public/route.js");
+
+const A = { name: "A", lat: 51.5081, lon: -0.0761 };
+const B = { name: "B", lat: 51.5055, lon: -0.0754 };
+const C = { name: "C", lat: 51.5055, lon: -0.0910 };
+const NOWHERE = { name: "Dinner" };
+const day = [A, B, NOWHERE, C];
+
+const whole = routeLinks(day);
+t5("a day with places gets a route", !!whole);
+t5("stops without a place are left out, not silently dropped",
+   whole.used === 3 && whole.skipped === 1);
+t5("the last stop is the destination", whole.google.includes(encodeURIComponent("51.5055,-0.091")));
+t5("the earlier ones are waypoints", whole.google.includes("waypoints="));
+t5("no origin, so it starts from where you are", !whole.google.includes("origin="));
+t5("the Apple link has no saddr either", !whole.apple.includes("saddr="));
+t5("both are valid URLs", (() => {
+  try { new URL(whole.google); new URL(whole.apple); return true; } catch { return false; }
+})());
+t5("transit is the default", whole.google.includes("travelmode=transit"));
+t5("walking can be asked for", routeLinks(day, "walking").google.includes("travelmode=walking"));
+
+// --- the point of the exercise: you have already done the first two
+const rest = routeFrom(day, 2);
+t5("a route can start partway through the day", rest.used === 1);
+const restFromB = routeFrom(day, 1);
+t5("starting at the second stop covers it and everything after", restFromB.used === 2);
+t5("and leaves out what came before",
+   !restFromB.google.includes(encodeURIComponent("51.5081,-0.0761")));
+t5("the last stop's route is just that stop",
+   routeFrom(day, 3).used === 1);
+
+t5("an empty day has no route", routeLinks([]) === null);
+t5("a day with nothing placeable has no route", routeLinks([NOWHERE, NOWHERE]) === null);
+t5("a single stop still gets a route", routeLinks([A]).used === 1);
+t5("an index past the end gives nothing", routeFrom(day, 99) === null);
+t5("a negative index gives nothing", routeFrom(day, -1) === null);
+t5("hasPlace rejects a missing coordinate", !hasPlace({ lat: 51.5 }) && !hasPlace(null));
+
+t5("a long day is capped and says so", (() => {
+  const many = Array.from({ length: 12 }, (_, i) => ({ lat: 51.5 + i / 1000, lon: -0.1 }));
+  const r = routeLinks(many);
+  return r.capped && r.google.split("%7C").length - 1 === MAX_WAYPOINTS - 1;
+})());
+
+// --- the data those routes depend on
+t5("every built-in sight has coordinates",
+   list.sights.every(s => typeof s.lat === "number" && typeof s.lon === "number"));
+t5("and all of them are in Greater London",
+   list.sights.every(s => s.lat > 51.2 && s.lat < 51.8 && s.lon > -0.65 && s.lon < 0.4));
+
+console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
+process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

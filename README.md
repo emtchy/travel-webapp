@@ -13,11 +13,13 @@ no npm dependencies at runtime.
 public/index.html      the vote page — HTML, CSS and JS in one file
 public/bookings.html   the bookings overview
 public/plan.html       the day-by-day plan
+public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
 schema.sql             six tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
+scripts/fetch-geo.mjs      fills in coordinates from Wikipedia
 scripts/fetch-images.mjs   optional: self-host the photos
 scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
                               existing database
@@ -79,8 +81,26 @@ Entries come from two places:
   you already booked, dinner with friends, the train home. Type a name, pick a
   day, add times if there are any. Anyone can remove one.
 
-Each stop is labelled **booked** or **by hand** so it is obvious which is which,
-and hand-added ones can be taken off again.
+Each stop is labelled **booked**, **by hand** or **yours** so it is obvious
+which is which, and the last two can be taken off again.
+
+### Routes
+
+Every day with somewhere to go carries **Route · Google** and **Route · Apple**
+links covering the whole day in order.
+
+Neither URL includes a starting point, so both apps begin from wherever your
+phone is. That is right when you are standing in London, and it means there is
+no "where are we starting from" to configure.
+
+**Already done the first two stops?** Every stop from the second onward has a
+**Route from here** link covering that stop and the rest of the day. No ticking
+things off, nothing to keep in sync between four phones — you just tap the one
+you are heading to next.
+
+Stops with no location — your own entries, and added sights, which have no
+coordinates yet — are left out of the route and the day says how many. They are
+never sent as a text guess, which can fail the whole route.
 
 The same filters sit above the days: a vote threshold (preset buttons plus a box
 for any number) and a source filter for **Bookings** or **By hand**. These only
@@ -226,13 +246,13 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-155 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+177 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
-their votes, the date and time of a booked slot, and the plan: placing a sight
-by hand, a booking taking over from a hand entry, and the rules that keep one
-sight from appearing twice. No network and no Cloudflare account
+their votes, the date and time of a booked slot, the plan (placing a sight by
+hand, a booking taking over from a hand entry, and the rules that keep one sight
+from appearing twice), and the maps routes. No network and no Cloudflare account
 needed.
 
 Most Wikimedia images are CC-licensed and need attribution. `CREDITS.json`
