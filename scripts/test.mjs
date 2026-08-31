@@ -560,6 +560,58 @@ t4("a sight id is not accepted as an entry id",
 t4("removing one needs a name",
    (await noteRm({ voter: "", id: "note-whatever" })).status === 400);
 
+// --- your own entries can be routed to as well
+const noteAddr = (b) => call("/api/plan/note/address", { method: "POST", body: JSON.stringify(b) });
+
+const dinner = (await (await noteAdd({ voter: "Emily", label: "Dinner with Anna",
+  day: "2026-09-13", start: "19:00", end: "21:00" })).json())
+  .notes.find(n => n.label === "Dinner with Anna");
+t4("an entry of your own starts with no location",
+   dinner.lat === null && dinner.lon === null);
+
+let da = await (await noteAddr({ voter: "Maya", id: dinner.id,
+  address: "Dishoom Shoreditch", lat: 51.5246, lon: -0.0777 })).json();
+let placedNote = da.notes.find(n => n.id === dinner.id);
+t4("it can be given one", placedNote.lat === 51.5246 && placedNote.lon === -0.0777);
+t4("the address text is kept", placedNote.address === "Dishoom Shoreditch");
+t4("anyone can set it, not only whoever added the entry", placedNote.lat !== null);
+
+{
+  const { routeLinks } = await import("../public/route.js");
+  const snap = await (await call("/api/sights")).json();
+  const tower = snap.sights.find(s => s.id === "tower-of-london");
+  const withDinner = routeLinks([tower, snap.notes.find(n => n.id === dinner.id)]);
+  t4("and then joins a day's route", withDinner.used === 2 && withDinner.skipped === 0);
+}
+
+da = await (await noteAddr({ voter: "Maya", id: dinner.id,
+  address: null, lat: null, lon: null })).json();
+placedNote = da.notes.find(n => n.id === dinner.id);
+t4("clearing it removes address and coordinates together",
+   placedNote.lat === null && placedNote.lon === null && placedNote.address === null);
+
+{
+  const { routeLinks } = await import("../public/route.js");
+  const snap = await (await call("/api/sights")).json();
+  const tower = snap.sights.find(s => s.id === "tower-of-london");
+  const without = routeLinks([tower, snap.notes.find(n => n.id === dinner.id)]);
+  t4("and it drops back out of the route", without.used === 1 && without.skipped === 1);
+}
+
+t4("a sight id is refused by the entry endpoint",
+   (await noteAddr({ voter: "E", id: "custom-x", lat: 51.5, lon: -0.1 })).status === 400);
+t4("half a coordinate is refused",
+   (await noteAddr({ voter: "E", id: dinner.id, lat: 51.5 })).status === 400);
+t4("an impossible longitude is refused",
+   (await noteAddr({ voter: "E", id: dinner.id, lat: 51.5, lon: 999 })).status === 400);
+t4("an entry that is gone gives a 404",
+   (await noteAddr({ voter: "E", id: "note-nope", lat: 51.5, lon: -0.1 })).status === 404);
+t4("setting one needs a name",
+   (await noteAddr({ voter: "", id: dinner.id, lat: 51.5, lon: -0.1 })).status === 400);
+t4("an over-long address is refused",
+   (await noteAddr({ voter: "E", id: dinner.id, address: "x".repeat(201),
+                     lat: 51.5, lon: -0.1 })).status === 400);
+
 t4("/api/state carries your own entries",
    Array.isArray((await (await call("/api/state")).json()).notes));
 {

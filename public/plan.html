@@ -91,6 +91,23 @@ a{color:var(--maroon)}
 .fmanual .plus{font-size:13px;color:var(--ink-3)}
 .fmanual b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-3)}
 .hiddenby{font-size:12.5px;color:var(--ink-3);margin:14px 0 0}
+.addbtn{
+  margin-left:auto;width:36px;height:36px;flex:none;
+  font-size:20px;line-height:1;font-weight:400;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
+  border-radius:10px;cursor:pointer;
+}
+.addbtn:hover{border-color:var(--ink);color:var(--ink)}
+.addbtn[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ---- the add panel ---- */
+.adder{margin-top:18px;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.addermodes{display:flex;gap:6px;padding:14px 18px 0}
+.addermodes button{font-size:13px;font-weight:500;padding:7px 13px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink-2);cursor:pointer}
+.addermodes button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.adder .apbody{border-top:0;padding-top:14px}
 
 /* ---- day columns ---- */
 .days{display:grid;gap:18px;margin-top:26px}
@@ -310,12 +327,13 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 
 <div class="stats" id="stats"></div>
 <div class="filters" id="filters"></div>
-<div class="days" id="days"></div>
-<p class="hiddenby" id="hiddenby" hidden></p>
+<div class="adder" id="addplan" hidden>
+  <div class="addermodes">
+    <button type="button" data-mode="sight" aria-pressed="true" id="mode-sight">One of the sights</button>
+    <button type="button" data-mode="own" aria-pressed="false" id="mode-own">Something of my own</button>
+  </div>
 
-<details class="addplan" id="addplan">
-  <summary id="ap-title">Add something to the plan</summary>
-  <div class="apbody">
+  <div class="apbody" id="form-sight">
     <label id="ap-what-l">What
       <select id="ap-what"></select></label>
     <label id="ap-day-l">Day
@@ -328,8 +346,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
     <p class="aphint" id="ap-hint"></p>
   </div>
 
-  <div class="apbody own">
-    <p class="apown" id="own-title">Or add your own entry</p>
+  <div class="apbody" id="form-own" hidden>
     <label id="own-what-l">What
       <input id="own-what" type="text" maxlength="80" placeholder=""></label>
     <label id="own-day-l">Day
@@ -341,7 +358,11 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
     <button class="btn" id="own-add" type="button">Add it</button>
     <p class="aphint" id="own-hint"></p>
   </div>
-</details>
+</div>
+<div class="days" id="days"></div>
+<p class="hiddenby" id="hiddenby" hidden></p>
+
+
 
 <footer><span id="foot"></span></footer>
 </div>
@@ -386,12 +407,14 @@ const T = {
     addrFind: "Find", addrSave: "Save", addrClear: "Remove", addrCancel: "Cancel",
     addrNoHits: "Nothing found. Open it in Google or Apple Maps, copy the link, and paste that.",
     addrPick: "Pick one:", noLocation: "no address yet",
-    addrOnly: "Added sights can be given an address. Your own entries can't yet.",
+
     apTitle: "Add something to the plan",
     apWhat: "What", apDay: "Day", apFrom: "From", apTo: "To", apAdd: "Add",
     apHint: "Only the day is required. Anything already booked with a date is placed by its booking — change the slot on the Bookings page instead.",
     apNone: "Everything is already on the plan.",
     apPick: "Pick a sight…",
+    addNew: "Add to the plan", addClose: "Close",
+    modeSight: "One of the sights", modeOwn: "Something of my own",
     ownTitle: "Or add your own entry",
     ownWhat: "What", ownPh: "Musical · Dinner with Anna · Train home",
     ownAdd: "Add it",
@@ -430,12 +453,14 @@ const T = {
     addrFind: "Suchen", addrSave: "Speichern", addrClear: "Entfernen", addrCancel: "Abbrechen",
     addrNoHits: "Nichts gefunden. In Google oder Apple Maps öffnen, Link kopieren und einfügen.",
     addrPick: "Auswählen:", noLocation: "noch keine Adresse",
-    addrOnly: "Hinzugefügte Orte können eine Adresse bekommen, eigene Einträge noch nicht.",
+
     apTitle: "Etwas in den Plan eintragen",
     apWhat: "Was", apDay: "Tag", apFrom: "Von", apTo: "Bis", apAdd: "Eintragen",
     apHint: "Nur der Tag ist nötig. Was mit Datum gebucht ist, wird durch die Buchung eingeplant – ändere den Termin dann auf der Buchungsseite.",
     apNone: "Alles ist schon im Plan.",
     apPick: "Ort wählen…",
+    addNew: "In den Plan eintragen", addClose: "Schließen",
+    modeSight: "Eine Sehenswürdigkeit", modeOwn: "Etwas Eigenes",
     ownTitle: "Oder einen eigenen Eintrag",
     ownWhat: "Was", ownPh: "Musical · Abendessen mit Anna · Zug zurück",
     ownAdd: "Eintragen",
@@ -452,6 +477,8 @@ const t = () => T[lang];
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
 let minVotes = 0;
 let editingAddress = null;   // sight id whose address form is open
+let addMode = "sight";       // which half of the add panel is showing
+let openedOnce = false;      // so an empty plan opens it once, not on every render
 let source = "all";       // all | booked | hand
 
 const nameOf = () => $("#name").value.trim();
@@ -506,8 +533,22 @@ const weekday = (iso) =>
   new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
     { weekday: "long", timeZone: "UTC" });
 
-/** The place a stop routes to. Your own entries have none. */
-const placeOf = (p) => (p.source === "own" ? null : byId(p.id));
+/** The place a stop routes to, whatever kind of stop it is. */
+const placeOf = (p) =>
+  p.source === "own" ? NOTES.find((n) => n.id === p.id) ?? null : byId(p.id);
+
+/**
+ * The thing whose address can be edited, and where to send it. Built-in sights
+ * already have coordinates, so they answer null.
+ */
+function locatable(p) {
+  if (p.source === "own") {
+    const n = NOTES.find((x) => x.id === p.id);
+    return n && { it: n, name: n.label, path: "/api/plan/note/address" };
+  }
+  const s = byId(p.id);
+  return s?.custom ? { it: s, name: s.name, path: "/api/sights/address" } : null;
+}
 
 function stopHTML(p, i, stops) {
   const L = t();
@@ -537,7 +578,7 @@ function stopHTML(p, i, stops) {
       ${own ? `<div class="stopact">
         <button type="button" data-note-rm="${esc(p.id)}">${esc(L.remove)}</button>
       </div>` : ""}
-      ${addressControlHTML(p, s)}
+      ${addressControlHTML(p)}
       ${onward && i > 0 ? `<div class="stopact">
         <a class="fromhere" href="${esc(onward.google)}" target="_blank" rel="noopener"
            >${esc(L.routeFromHere)} ↗</a>
@@ -575,30 +616,36 @@ function dayRouteHTML(stops) {
  * want to change. Collapsed until asked for — a form open on every stop would
  * bury the plan itself.
  */
-function addressControlHTML(p, s) {
+function addressControlHTML(p) {
   const L = t();
-  if (p.source === "own") return "";          // your own entries have no place field
-  if (!s || !s.custom) return "";             // built-ins already have coordinates
+  const target = locatable(p);
+  if (!target) return "";                    // built-ins already have coordinates
 
-  const placed = hasPlace(s);
-  if (editingAddress !== s.id)
+  const { it, name } = target;
+  const placed = hasPlace(it);
+
+  if (editingAddress !== it.id)
     return `<div class="stopact">
       ${placed ? "" : `<span class="noloc">${esc(L.noLocation)}</span>`}
-      <button type="button" data-addr="${esc(s.id)}">${
+      <button type="button" data-addr="${esc(it.id)}">${
         esc(placed ? L.changeAddress : L.addAddress)}</button>
     </div>`;
 
-  return `<div class="addrform" data-addrbox="${esc(s.id)}">
+  return `<div class="addrform" data-addrbox="${esc(it.id)}">
     <div class="addrrow">
       <input type="text" data-addrq maxlength="500" placeholder="${esc(L.addrPh)}"
-             value="${esc(s.address ?? s.name)}">
-      <button class="btn" type="button" data-addrfind="${esc(s.id)}">${esc(L.addrFind)}</button>
+             value="${esc(it.address ?? name)}">
+      <button class="btn" type="button" data-addrfind="${esc(it.id)}">${esc(L.addrFind)}</button>
       <button type="button" class="linky" data-addrcancel>${esc(L.addrCancel)}</button>
-      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(s.id)}">${esc(L.addrClear)}</button>` : ""}
+      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(it.id)}">${esc(L.addrClear)}</button>` : ""}
     </div>
-    <div class="addrhits" data-addrhits="${esc(s.id)}"></div>
+    <div class="addrhits" data-addrhits="${esc(it.id)}"></div>
   </div>`;
 }
+
+/** Both kinds go to their own endpoint; the payload is identical. */
+const addressPathFor = (id) =>
+  id.startsWith("note-") ? "/api/plan/note/address" : "/api/sights/address";
 
 function renderFilters() {
   const L = t();
@@ -630,9 +677,13 @@ function renderFilters() {
   ].map(([k, label, n]) =>
     `<button type="button" data-source="${k}" aria-pressed="${source === k}">${esc(label)} <b>${n}</b></button>`).join("");
 
+  const open = !$("#addplan").hidden;
   $("#filters").innerHTML =
     `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
-    `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>`;
+    `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
+    `<button class="addbtn" id="addtoggle" type="button" aria-expanded="${open}"
+             title="${esc(open ? L.addClose : L.addNew)}"
+             aria-label="${esc(open ? L.addClose : L.addNew)}">${open ? "×" : "+"}</button>`;
 }
 
 function renderAdder() {
@@ -644,14 +695,18 @@ function renderAdder() {
     .sort((a, b) => (VOTES[b.id] ?? []).length - (VOTES[a.id] ?? []).length ||
                     title(a).localeCompare(title(b)));
 
-  $("#ap-title").textContent = L.apTitle;
   $("#ap-what-l").firstChild.textContent = L.apWhat + " ";
   $("#ap-day-l").firstChild.textContent = L.apDay + " ";
   $("#ap-from-l").firstChild.textContent = L.apFrom + " ";
   $("#ap-to-l").firstChild.textContent = L.apTo + " ";
   $("#ap-add").textContent = L.apAdd;
   $("#ap-hint").textContent = options.length ? L.apHint : L.apNone;
-  $("#own-title").textContent = L.ownTitle;
+  $("#mode-sight").textContent = L.modeSight;
+  $("#mode-own").textContent = L.modeOwn;
+  $("#mode-sight").setAttribute("aria-pressed", String(addMode === "sight"));
+  $("#mode-own").setAttribute("aria-pressed", String(addMode === "own"));
+  $("#form-sight").hidden = addMode !== "sight";
+  $("#form-own").hidden = addMode !== "own";
   $("#own-what-l").firstChild.textContent = L.ownWhat + " ";
   $("#own-day-l").firstChild.textContent = L.apDay + " ";
   $("#own-from-l").firstChild.textContent = L.apFrom + " ";
@@ -716,9 +771,8 @@ function render() {
     ${dayRouteHTML(d.stops)}
   </section>`).join("");
 
-  // Nothing planned yet? Then adding is the only thing to do here, so don't
-  // make people find it behind a collapsed panel.
-  if (!list.length) $("#addplan").open = true;
+  // Nothing planned yet? Then adding is the only thing to do here.
+  if (!list.length && !openedOnce) { $("#addplan").hidden = false; openedOnce = true; }
 
   const hidden = list.length - shown.length;
   $("#hiddenby").hidden = !hidden;
@@ -807,6 +861,18 @@ document.addEventListener("input", (ev) => {
 });
 
 document.addEventListener("click", (ev) => {
+  const toggle = ev.target.closest("#addtoggle");
+  if (toggle) {
+    const box = $("#addplan");
+    box.hidden = !box.hidden;
+    render();
+    if (!box.hidden) $(addMode === "sight" ? "#ap-what" : "#own-what").focus();
+    return;
+  }
+
+  const mode = ev.target.closest("[data-mode]");
+  if (mode) { addMode = mode.dataset.mode; return void render(); }
+
   const v = ev.target.closest("[data-votes]");
   if (v) { minVotes = Number(v.dataset.votes); return void render(); }
 
@@ -836,7 +902,7 @@ document.addEventListener("click", (ev) => {
   const clear = ev.target.closest("[data-addrclear]");
   if (clear) {
     editingAddress = null;
-    return void mutate("/api/sights/address",
+    return void mutate(addressPathFor(clear.dataset.addrclear),
       { id: clear.dataset.addrclear, address: null, lat: null, lon: null });
   }
 
@@ -848,7 +914,7 @@ document.addEventListener("click", (ev) => {
   if (hit) {
     const id = hit.dataset.hitId;
     editingAddress = null;
-    return void mutate("/api/sights/address", {
+    return void mutate(addressPathFor(id), {
       id,
       address: hit.dataset.hitLabel,
       lat: Number(hit.dataset.hitLat),

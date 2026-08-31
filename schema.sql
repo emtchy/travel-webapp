@@ -87,7 +87,12 @@ CREATE TABLE IF NOT EXISTS plan_notes (
   end_time   TEXT,                  -- HH:MM
   label      TEXT    NOT NULL,
   added_by   TEXT    NOT NULL,      -- as typed
-  created_at INTEGER NOT NULL
+  created_at INTEGER NOT NULL,
+  -- Same as an added sight: without a location it is simply left out of the
+  -- day's route. Dinner at a named place is worth routing to.
+  address    TEXT,
+  lat        REAL,
+  lon        REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_notes_day ON plan_notes (day, start_time);

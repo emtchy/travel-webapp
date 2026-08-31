@@ -389,47 +389,64 @@ async function handleGeocode(request, env) {
                    lon: Math.round(Number(r.lon) * 10000) / 10000 })) });
 }
 
-/** Give an added sight a location, or take it away again. */
-async function handleSightAddress(request, env) {
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return bad("Body must be JSON.");
-  }
+/**
+ * Give a location to an added sight or to one of your own plan entries, or
+ * take it away again. The rules are the same for both, so is the handler —
+ * only the table and the id prefix differ.
+ */
+function makeAddressHandler({ table, prefix, missing, wrongKind }) {
+  return async function handleAddress(request, env) {
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return bad("Body must be JSON.");
+    }
 
-  const name = cleanName(body?.voter);
-  if (!name) return bad("Enter your name first.");
+    const name = cleanName(body?.voter);
+    if (!name) return bad("Enter your name first.");
 
-  const { id, lat, lon } = body ?? {};
-  if (typeof id !== "string" || !id.startsWith("custom-"))
-    return bad("Only added sights need an address filling in.");
+    const { id, lat, lon } = body ?? {};
+    if (typeof id !== "string" || !id.startsWith(prefix)) return bad(wrongKind);
 
-  const row = await env.DB.prepare("SELECT 1 FROM custom_sights WHERE id = ?1")
-    .bind(id).first();
-  if (!row) return bad("That sight is already gone.", 404);
+    const row = await env.DB.prepare(`SELECT 1 FROM ${table} WHERE id = ?1`)
+      .bind(id).first();
+    if (!row) return bad(missing, 404);
 
-  const address = cleanText(body?.address, 200);
-  if (address === undefined) return bad("That address is too long.");
+    const address = cleanText(body?.address, 200);
+    if (address === undefined) return bad("That address is too long.");
 
-  // Both or neither: half a coordinate is worse than none, because the route
-  // would silently place the stop on the equator.
-  const clearing = lat == null && lon == null;
-  if (!clearing) {
-    if (typeof lat !== "number" || typeof lon !== "number" ||
-        !Number.isFinite(lat) || !Number.isFinite(lon) ||
-        lat < -90 || lat > 90 || lon < -180 || lon > 180)
-      return bad("Those coordinates don't look right.");
-  }
+    // Both or neither: half a coordinate is worse than none, because the route
+    // would silently place the stop on the equator and still look valid.
+    const clearing = lat == null && lon == null;
+    if (!clearing) {
+      if (typeof lat !== "number" || typeof lon !== "number" ||
+          !Number.isFinite(lat) || !Number.isFinite(lon) ||
+          lat < -90 || lat > 90 || lon < -180 || lon > 180)
+        return bad("Those coordinates don't look right.");
+    }
 
-  await env.DB.prepare(
-    "UPDATE custom_sights SET address = ?1, lat = ?2, lon = ?3 WHERE id = ?4"
-  )
-    .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id)
-    .run();
+    await env.DB.prepare(
+      `UPDATE ${table} SET address = ?1, lat = ?2, lon = ?3 WHERE id = ?4`
+    )
+      .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id)
+      .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+    return json({ ok: true, ...(await snapshot(env)) });
+  };
 }
+
+const handleSightAddress = makeAddressHandler({
+  table: "custom_sights", prefix: "custom-",
+  missing: "That sight is already gone.",
+  wrongKind: "Only added sights need an address filling in.",
+});
+
+const handleNoteAddress = makeAddressHandler({
+  table: "plan_notes", prefix: "note-",
+  missing: "That entry is already gone.",
+  wrongKind: "That isn't one of your own entries.",
+});
 
 async function handleDeleteSight(request, env) {
   let body;
@@ -613,7 +630,7 @@ async function handleBookingStatus(request, env) {
 
 async function getPlanNotes(env) {
   const { results } = await env.DB.prepare(
-    `SELECT id, day, start_time, end_time, label, added_by
+    `SELECT id, day, start_time, end_time, label, added_by, address, lat, lon
        FROM plan_notes ORDER BY day ASC, start_time ASC`
   ).all();
   return (results ?? []).map((r) => ({
@@ -623,6 +640,9 @@ async function getPlanNotes(env) {
     end: r.end_time,
     label: r.label,
     addedBy: r.added_by,
+    address: r.address,
+    lat: r.lat,
+    lon: r.lon,
   }));
 }
 
@@ -787,6 +807,9 @@ export default {
 
     if (pathname === "/api/sights/address" && method === "POST")
       return handleSightAddress(request, env);
+
+    if (pathname === "/api/plan/note/address" && method === "POST")
+      return handleNoteAddress(request, env);
 
     if (pathname === "/api/sights/edit" && method === "POST")
       return handleEditSight(request, env);

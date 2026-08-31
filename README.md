@@ -26,6 +26,7 @@ scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
                               existing database
 scripts/migrate-plan-notes.sql  one-off: adds your own plan entries
 scripts/migrate-custom-address.sql  one-off: lets added sights hold a location
+scripts/migrate-note-address.sql    one-off: same for your own entries
 ```
 
 ## The Bookings page
@@ -81,7 +82,12 @@ Entries come from two places:
   since its slot belongs there.
 - **Your own entries** — anything that isn't one of the sights at all: a musical
   you already booked, dinner with friends, the train home. Type a name, pick a
-  day, add times if there are any. Anyone can remove one.
+  day, add times if there are any. Anyone can remove one, and they take an
+  address like anything else.
+
+Adding to the plan is the **+** at the right of the filter row. It opens one
+panel with two choices — one of the sights, or something of your own — because
+those are the same decision made two ways, not two different features.
 
 Each stop is labelled **booked**, **by hand** or **yours** so it is obvious
 which is which, and the last two can be taken off again.
@@ -111,7 +117,9 @@ pasted Google or Apple Maps link, or raw coordinates, which between them cover
 a walking tour whose only fixed point is a meeting place. Pick a result and it
 saves; the sight joins the route from then on.
 
-Your own entries still can't have an address.
+Your own entries take an address the same way — dinner at a named place is
+worth routing to, and a plan where half the stops can be routed and half can't
+is not much of a plan.
 
 The same filters sit above the days: a vote threshold (preset buttons plus a box
 for any number) and a source filter for **Bookings** or **By hand**. These only
@@ -161,6 +169,7 @@ exists:
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-bookings.sql
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-plan-notes.sql
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-custom-address.sql
+npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-note-address.sql
 ```
 
 Wrangler prints the URL — something like
@@ -258,7 +267,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-194 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+207 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -353,6 +362,7 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/plan/remove`   | `{ voter, sightId }` → off it again                |
 | POST   | `/api/plan/note/add` | `{ voter, label, day, start?, end? }` → your own entry |
 | POST   | `/api/plan/note/remove` | `{ voter, id }` → remove one                    |
+| POST   | `/api/plan/note/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.
