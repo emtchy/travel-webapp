@@ -13,11 +13,12 @@ no npm dependencies at runtime.
 public/index.html      the vote page — HTML, CSS and JS in one file
 public/bookings.html   the bookings overview
 public/plan.html       the day-by-day plan
+public/details.html    the trip itself
 public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
 src/maplink.js         reads coordinates out of a pasted maps link
-schema.sql             seven tables
+schema.sql             nine tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-geo.mjs      fills in coordinates from Wikipedia
@@ -279,7 +280,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-227 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+259 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -376,6 +377,9 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/plan/note/remove` | `{ voter, id }` → remove one                    |
 | POST   | `/api/plan/note/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
 | POST   | `/api/trip/base`     | `{ voter, name?, lat?, lon? }` → where the days start |
+| POST   | `/api/trip/settings` | `{ voter, name?, destination?, startDate?, endDate?, … }` |
+| POST   | `/api/trip/member/add` · `/remove` | who's coming            |
+| POST   | `/api/trip/travel`   | `{ voter, direction, … }` → getting there and back |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.

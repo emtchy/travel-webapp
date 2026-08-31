@@ -315,11 +315,13 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
       <a href="/" id="nav-sights">Sights</a>
       <a href="/bookings" id="nav-bookings">Bookings</a>
       <a href="/plan" aria-current="page" id="nav-plan">Plan</a>
+      <a href="/details" id="nav-details">Details</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
       <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="given-name" spellcheck="false">
+             autocomplete="off" spellcheck="false" list="members">
+      <datalist id="members"></datalist>
       <span class="langs" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="de" aria-pressed="false">DE</button>
@@ -395,7 +397,7 @@ const T = {
     headline: "The plan",
     lede: "Anything booked with a date lands here on its own. Everything else you place by hand — pick a day and a rough time and it slots in.",
     nameLabel: "Your name",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
+    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
     loading: "Loading…", saving: "Saving…", saved: "Saved",
     needName: "Enter your name first.",
     fVotes: "Votes", fAll: "All", fPlus: "+", fSource: "From",
@@ -449,7 +451,7 @@ const T = {
     headline: "Was wir geplant haben",
     lede: "Alles mit Datum gebuchte landet automatisch hier. Alles andere trägst du selbst ein – Tag und ungefähre Zeit wählen, fertig.",
     nameLabel: "Dein Name",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
     loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
     needName: "Bitte zuerst den Namen eintragen.",
     fVotes: "Stimmen", fAll: "Alle", fPlus: "+", fSource: "Quelle",
@@ -566,6 +568,28 @@ function originNow() {
   if (startFrom === "me") return myPos;
   if (startFrom === "base") return TRIP.base ?? null;
   return null;
+}
+
+
+/** Names of everyone on the trip, offered as suggestions on the name box.
+ *  Still a free-text field: whoever is not on the list yet can just type. */
+/** The line above the headline: whatever the trip says it is. */
+function tripKicker(trip) {
+  if (!trip) return "";
+  const fmt = (iso) => iso
+    ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+        { day: "numeric", month: "long", timeZone: "UTC" })
+    : "";
+  const when = trip.startDate && trip.endDate
+    ? `${fmt(trip.startDate)} – ${fmt(trip.endDate)}` : "";
+  return [trip.destination || trip.name, when].filter(Boolean).join(" · ");
+}
+
+function fillMembers(list) {
+  const box = document.getElementById("members");
+  if (!box) return;
+  box.innerHTML = (list ?? []).map((m) =>
+    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
 }
 
 const dayLabel = (iso) =>
@@ -812,9 +836,10 @@ function render() {
   document.documentElement.lang = lang;
   for (const [id, key] of [["kicker","kicker"],["headline","headline"],["lede","lede"],
     ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],
-    ["nav-bookings","navBookings"],["nav-plan","navPlan"]])
+    ["nav-bookings","navBookings"],["nav-plan","navPlan"],["nav-details","navDetails"]])
     $("#" + id).textContent = L[key];
   $("#name").placeholder = L.nameLabel;
+  $("#kicker").textContent = tripKicker(TRIP) || L.kicker;
 
   const list = planned();
   const shown = list.filter(passes);
@@ -893,6 +918,7 @@ async function mutate(path, body) {
     ENTRIES = d.plan ?? [];
     NOTES = d.notes ?? [];
     TRIP = d.trip ?? TRIP;
+    fillMembers(d.members);
     render();
     setStatus(t().saved);
   } catch (err) { setStatus(err.message); }
@@ -1061,6 +1087,7 @@ for (const b of document.querySelectorAll(".langs button"))
     SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes;
     STATUS = d.bookings ?? []; ENTRIES = d.plan ?? []; NOTES = d.notes ?? [];
     TRIP = d.trip ?? { days: [] };
+    fillMembers(d.members);
     render();
     setStatus("");
   } catch (err) { setStatus(err.message); }

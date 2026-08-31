@@ -15,16 +15,67 @@ const bad = (message, status = 400) => json({ error: message }, status);
 
 const BUILT_IN_IDS = new Set(SIGHTS.map((s) => s.id));
 
-/** The trip these pages plan. One place, so no page hardcodes its own dates. */
-const TRIP = {
-  name: "London",
-  days: ["2026-09-11", "2026-09-12", "2026-09-13",
-         "2026-09-14", "2026-09-15", "2026-09-16"],
-  // Roughly the middle of where we are going. Only used to bias address
-  // searches, so a "National Gallery" finds this one and not another country's.
+/**
+ * What the trip is, read from the database rather than written here.
+ *
+ * This used to be a constant, which is exactly why there could only ever be
+ * one trip. Everything downstream — which dates are valid, where address
+ * lookups look — now follows whatever the Trip page says.
+ */
+const FALLBACK_TRIP = {
+  name: "Trip", destination: "", startDate: null, endDate: null,
   near: { lat: 51.5074, lon: -0.1278 },
 };
-const TRIP_DAYS = new Set(TRIP.days);
+
+/** Every date from start to end, inclusive. Empty if the dates aren't set. */
+function daysBetween(start, end) {
+  if (!isDate(start) || !isDate(end)) return [];
+  const out = [];
+  const at = new Date(`${start}T00:00:00Z`);
+  const last = new Date(`${end}T00:00:00Z`);
+  if (last < at) return [];
+  // A trip longer than this is not a trip, and an unbounded loop is a bug.
+  for (let i = 0; i < 400 && at <= last; i++) {
+    out.push(at.toISOString().slice(0, 10));
+    at.setUTCDate(at.getUTCDate() + 1);
+  }
+  return out;
+}
+
+const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) &&
+  !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
+
+async function getTrip(env) {
+  const row = await env.DB.prepare(
+    `SELECT name, destination, start_date, end_date,
+            base_name, base_lat, base_lon, base_checkin, base_checkout,
+            base_ref, base_phone, near_lat, near_lon, notes, set_by
+       FROM trip_settings WHERE id = 1`
+  ).first();
+
+  const days = daysBetween(row?.start_date, row?.end_date);
+
+  return {
+    name: row?.name ?? FALLBACK_TRIP.name,
+    destination: row?.destination ?? FALLBACK_TRIP.destination,
+    startDate: row?.start_date ?? null,
+    endDate: row?.end_date ?? null,
+    days,
+    notes: row?.notes ?? null,
+    // One set_by column covers the whole record, so it belongs here rather
+    // than pretending to describe only the hotel.
+    setBy: row?.set_by ?? null,
+    near: {
+      lat: row?.near_lat ?? row?.base_lat ?? FALLBACK_TRIP.near.lat,
+      lon: row?.near_lon ?? row?.base_lon ?? FALLBACK_TRIP.near.lon,
+    },
+    base: row?.base_lat != null && row?.base_lon != null
+      ? { name: row.base_name, lat: row.base_lat, lon: row.base_lon,
+          checkIn: row.base_checkin, checkOut: row.base_checkout,
+          reference: row.base_ref, phone: row.base_phone }
+      : null,
+  };
+}
 
 const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
 
@@ -174,7 +225,9 @@ const snapshot = async (env) => ({
   bookings: await getBookingStatus(env),
   plan: await getPlanEntries(env),
   notes: await getPlanNotes(env),
-  trip: { ...TRIP, base: await getTripBase(env) },
+  trip: await getTrip(env),
+  members: await getMembers(env),
+  travel: await getTravel(env),
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -367,7 +420,7 @@ async function handleGeocode(request, env) {
 
   // A maps link with a name but no coordinates: search for the name, not the URL.
   const term = mapSearchTerm(q) ?? q;
-  const { lat, lon } = TRIP.near;
+  const { lat, lon } = (await getTrip(env)).near;
   const d = 0.6; // roughly 60 km, wide enough for a day trip out of town
 
   let results;
@@ -586,7 +639,8 @@ async function handleBookingStatus(request, env) {
   // The slot we actually hold. Only meaningful for a booking, so anything else
   // clears it rather than leaving a date attached to a decision not to go.
   const date = body?.bookedDate == null || body.bookedDate === "" ? null : body.bookedDate;
-  if (date !== null && (typeof date !== "string" || !TRIP_DAYS.has(date)))
+  const tripDays = new Set((await getTrip(env)).days);
+  if (date !== null && (typeof date !== "string" || !tripDays.has(date)))
     return bad("That date isn't a day of this trip.");
 
   const time = cleanClock(body?.bookedTime);
@@ -628,13 +682,215 @@ async function handleBookingStatus(request, env) {
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
-/** Where the days start. Null until someone sets it. */
-async function getTripBase(env) {
-  const row = await env.DB.prepare(
-    "SELECT base_name, base_lat, base_lon, set_by FROM trip_settings WHERE id = 1"
+/** Who is coming. The key is the lowercased name, same identity as a vote. */
+async function getMembers(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT id, name, name_key, note, added_by FROM trip_members ORDER BY name COLLATE NOCASE"
+  ).all();
+  return (results ?? []).map((r) => ({
+    id: r.id, name: r.name, key: r.name_key, note: r.note, addedBy: r.added_by,
+  }));
+}
+
+/** Getting there and back. At most one row each way. */
+async function getTravel(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT direction, mode, carrier, from_place, to_place,
+            depart_date, depart_time, arrive_time, reference, note, set_by
+       FROM trip_travel`
+  ).all();
+  return (results ?? []).map((r) => ({
+    direction: r.direction, mode: r.mode, carrier: r.carrier,
+    from: r.from_place, to: r.to_place,
+    date: r.depart_date, departTime: r.depart_time, arriveTime: r.arrive_time,
+    reference: r.reference, note: r.note, setBy: r.set_by,
+  }));
+}
+
+/** What the trip is: name, destination, dates, and the hotel's details. */
+async function handleTripSettings(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const who = cleanName(body?.voter);
+  if (!who) return bad("Enter your name first.");
+
+  const name = cleanText(body?.name, 80);
+  if (name === undefined) return bad("Keep the trip name under 80 characters.");
+  const destination = cleanText(body?.destination, 80);
+  if (destination === undefined) return bad("Keep the destination under 80 characters.");
+
+  const { startDate, endDate } = body ?? {};
+  for (const [label, v] of [["start", startDate], ["end", endDate]])
+    if (v != null && v !== "" && !isDate(v))
+      return bad(`The ${label} date should look like 2026-09-11.`);
+
+  if (startDate && endDate && endDate < startDate)
+    return bad("The trip can't end before it starts.");
+  if (startDate && endDate && daysBetween(startDate, endDate).length > 60)
+    return bad("That's more than sixty days. Split it into separate trips.");
+
+  const checkIn = cleanClock(body?.checkIn);
+  if (checkIn === undefined) return bad("Check-in should look like 15:00.");
+  const checkOut = cleanClock(body?.checkOut);
+  if (checkOut === undefined) return bad("Check-out should look like 11:00.");
+
+  const reference = cleanText(body?.reference, 80);
+  if (reference === undefined) return bad("Keep the reference under 80 characters.");
+  const phone = cleanText(body?.phone, 40);
+  if (phone === undefined) return bad("Keep the phone number under 40 characters.");
+  const notes = cleanText(body?.notes, 2000);
+  if (notes === undefined) return bad("Keep the notes under 2000 characters.");
+
+  // Only what was sent changes; COALESCE keeps the rest.
+  await env.DB.prepare(
+    `INSERT INTO trip_settings (id, name, destination, start_date, end_date,
+                                base_checkin, base_checkout, base_ref, base_phone,
+                                notes, set_by, updated_at)
+     VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+     ON CONFLICT (id) DO UPDATE SET
+       name          = COALESCE(excluded.name, trip_settings.name),
+       destination   = COALESCE(excluded.destination, trip_settings.destination),
+       start_date    = COALESCE(excluded.start_date, trip_settings.start_date),
+       end_date      = COALESCE(excluded.end_date, trip_settings.end_date),
+       base_checkin  = COALESCE(excluded.base_checkin, trip_settings.base_checkin),
+       base_checkout = COALESCE(excluded.base_checkout, trip_settings.base_checkout),
+       base_ref      = COALESCE(excluded.base_ref, trip_settings.base_ref),
+       base_phone    = COALESCE(excluded.base_phone, trip_settings.base_phone),
+       notes         = COALESCE(excluded.notes, trip_settings.notes),
+       set_by = excluded.set_by, updated_at = excluded.updated_at`
+  )
+    .bind(name, destination, startDate || null, endDate || null,
+          checkIn, checkOut, reference, phone, notes, who, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+/** Who is coming. */
+async function handleMemberAdd(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const who = cleanName(body?.voter);
+  if (!who) return bad("Enter your name first.");
+
+  const name = cleanName(body?.name);
+  if (!name) return bad("A name between 1 and 32 characters.");
+
+  const note = cleanText(body?.note, 120);
+  if (note === undefined) return bad("Keep the note under 120 characters.");
+
+  const { count } = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM trip_members"
   ).first();
-  if (!row || row.base_lat == null || row.base_lon == null) return null;
-  return { name: row.base_name, lat: row.base_lat, lon: row.base_lon, setBy: row.set_by };
+  if (count >= 50) return bad("Fifty people is not a trip, it's a coach tour.");
+
+  // name_key is unique, so adding someone twice quietly updates the spelling
+  // rather than making a second person who owns half their votes.
+  await env.DB.prepare(
+    `INSERT INTO trip_members (id, name, name_key, note, added_by, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+     ON CONFLICT (name_key) DO UPDATE SET name = excluded.name, note = excluded.note`
+  )
+    .bind(`m-${crypto.randomUUID()}`, name, voterKey(name), note, who, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+async function handleMemberRemove(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+
+  const { id } = body ?? {};
+  if (typeof id !== "string" || !id.startsWith("m-")) return bad("Unknown member.");
+
+  // Votes and comments are keyed on the name, not on this row, so they stay.
+  // Taking someone off the list is not the same as erasing what they wanted.
+  await env.DB.prepare("DELETE FROM trip_members WHERE id = ?1").bind(id).run();
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+/** How we get there and back. */
+async function handleTravel(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const who = cleanName(body?.voter);
+  if (!who) return bad("Enter your name first.");
+
+  const { direction } = body ?? {};
+  if (direction !== "out" && direction !== "back")
+    return bad("Direction must be out or back.");
+
+  if (body?.clear === true) {
+    await env.DB.prepare("DELETE FROM trip_travel WHERE direction = ?1")
+      .bind(direction).run();
+    return json({ ok: true, ...(await snapshot(env)) });
+  }
+
+  const text = (v, max, label) => {
+    const t = cleanText(v, max);
+    if (t === undefined) throw new Error(`Keep the ${label} under ${max} characters.`);
+    return t;
+  };
+
+  let mode, carrier, from, to, reference, note;
+  try {
+    mode = text(body?.mode, 30, "kind of travel");
+    carrier = text(body?.carrier, 80, "flight or service");
+    from = text(body?.from, 80, "departure point");
+    to = text(body?.to, 80, "destination");
+    reference = text(body?.reference, 80, "reference");
+    note = text(body?.note, 300, "note");
+  } catch (err) {
+    return bad(err.message);
+  }
+
+  const { date } = body ?? {};
+  if (date != null && date !== "" && !isDate(date))
+    return bad("The date should look like 2026-09-11.");
+
+  const departTime = cleanClock(body?.departTime);
+  if (departTime === undefined) return bad("The departure should look like 07:15.");
+  const arriveTime = cleanClock(body?.arriveTime);
+  if (arriveTime === undefined) return bad("The arrival should look like 09:40.");
+
+  await env.DB.prepare(
+    `INSERT INTO trip_travel (direction, mode, carrier, from_place, to_place,
+                              depart_date, depart_time, arrive_time,
+                              reference, note, set_by, updated_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+     ON CONFLICT (direction) DO UPDATE SET
+       mode = excluded.mode, carrier = excluded.carrier,
+       from_place = excluded.from_place, to_place = excluded.to_place,
+       depart_date = excluded.depart_date, depart_time = excluded.depart_time,
+       arrive_time = excluded.arrive_time, reference = excluded.reference,
+       note = excluded.note, set_by = excluded.set_by, updated_at = excluded.updated_at`
+  )
+    .bind(direction, mode, carrier, from, to, date || null,
+          departTime, arriveTime, reference, note, who, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
 }
 
 /** Change where the days start, or clear it. */
@@ -713,7 +969,7 @@ async function handleNoteAdd(request, env) {
   if (!label) return bad("Give it a name — \"Musical\", \"Dinner with Anna\".");
 
   const { day } = body ?? {};
-  if (typeof day !== "string" || !TRIP_DAYS.has(day))
+  if (typeof day !== "string" || !(await getTrip(env)).days.includes(day))
     return bad("That date isn't a day of this trip.");
 
   const start = cleanClock(body?.start);
@@ -776,7 +1032,7 @@ async function handlePlanSet(request, env) {
   const { sightId, day } = body ?? {};
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
     return bad("Unknown sight.");
-  if (typeof day !== "string" || !TRIP_DAYS.has(day))
+  if (typeof day !== "string" || !(await getTrip(env)).days.includes(day))
     return bad("That date isn't a day of this trip.");
 
   const start = cleanClock(body?.start);
@@ -861,6 +1117,18 @@ export default {
 
     if (pathname === "/api/trip/base" && method === "POST")
       return handleTripBase(request, env);
+
+    if (pathname === "/api/trip/settings" && method === "POST")
+      return handleTripSettings(request, env);
+
+    if (pathname === "/api/trip/member/add" && method === "POST")
+      return handleMemberAdd(request, env);
+
+    if (pathname === "/api/trip/member/remove" && method === "POST")
+      return handleMemberRemove(request, env);
+
+    if (pathname === "/api/trip/travel" && method === "POST")
+      return handleTravel(request, env);
 
     if (pathname === "/api/sights/edit" && method === "POST")
       return handleEditSight(request, env);

@@ -101,17 +101,55 @@ CREATE INDEX IF NOT EXISTS idx_notes_day ON plan_notes (day, start_time);
 -- Routes can begin here instead of from wherever a phone happens to be, which
 -- is what you want at nine in the morning.
 CREATE TABLE IF NOT EXISTS trip_settings (
-  id         INTEGER PRIMARY KEY CHECK (id = 1),
-  base_name  TEXT,
-  base_lat   REAL,
-  base_lon   REAL,
-  set_by     TEXT,
-  updated_at INTEGER
+  id            INTEGER PRIMARY KEY CHECK (id = 1),
+  name          TEXT,
+  destination   TEXT,
+  start_date    TEXT,               -- YYYY-MM-DD
+  end_date      TEXT,
+  base_name     TEXT,               -- where we are staying
+  base_lat      REAL,
+  base_lon      REAL,
+  base_checkin  TEXT,               -- HH:MM
+  base_checkout TEXT,
+  base_ref      TEXT,
+  base_phone    TEXT,
+  near_lat      REAL,               -- bias for address lookups
+  near_lon      REAL,
+  notes         TEXT,
+  set_by        TEXT,
+  updated_at    INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS trip_members (
+  id         TEXT    PRIMARY KEY,   -- "m-<uuid>"
+  name       TEXT    NOT NULL,      -- as typed
+  name_key   TEXT    NOT NULL UNIQUE,  -- lowercased; the same identity as votes
+  note       TEXT,
+  added_by   TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS trip_travel (
+  direction   TEXT    PRIMARY KEY CHECK (direction IN ('out', 'back')),
+  mode        TEXT,
+  carrier     TEXT,
+  from_place  TEXT,
+  to_place    TEXT,
+  depart_date TEXT,
+  depart_time TEXT,
+  arrive_time TEXT,
+  reference   TEXT,
+  note        TEXT,
+  set_by      TEXT    NOT NULL,
+  updated_at  INTEGER NOT NULL
 );
 
 -- Seeded here as well as in the migration, so a database built fresh from this
 -- file and one brought forward by migrations end up identical. Drift between
 -- those two is the kind of difference that only shows up in production.
-INSERT OR IGNORE INTO trip_settings (id, base_name, base_lat, base_lon, set_by, updated_at)
-VALUES (1, 'Leonardo Royal Hotel London City, 8–14 Cooper''s Row, EC3N 2BQ',
-        51.5116, -0.0773, 'setup', 0);
+INSERT OR IGNORE INTO trip_settings
+  (id, name, destination, start_date, end_date,
+   base_name, base_lat, base_lon, near_lat, near_lon, set_by, updated_at)
+VALUES (1, 'London 2026', 'London', '2026-09-11', '2026-09-16',
+        'Leonardo Royal Hotel London City, 8–14 Cooper''s Row, EC3N 2BQ',
+        51.5116, -0.0773, 51.5074, -0.1278, 'setup', 0);

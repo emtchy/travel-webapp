@@ -622,7 +622,7 @@ t4("and it is the hotel", seeded?.lat === 51.5116 && seeded?.lon === -0.0773);
 let tb = await (await setBase({ voter: "Emily", name: "Somewhere else",
   lat: 51.52, lon: -0.1 })).json();
 t4("it can be changed", tb.trip.base.lat === 51.52 && tb.trip.base.name === "Somewhere else");
-t4("who changed it is recorded", tb.trip.base.setBy === "Emily");
+t4("who changed it is recorded", tb.trip.setBy === "Emily");
 
 tb = await (await setBase({ voter: "Emily", name: null, lat: null, lon: null })).json();
 t4("it can be cleared", tb.trip.base === null);
@@ -649,6 +649,108 @@ t4("an over-long address is refused",
      fromHotel.from === true &&
      fromHotel.google.includes(`origin=${encodeURIComponent("51.5116,-0.0773")}`));
   t4("and without it there is no origin", routeLinks(two).from === false);
+}
+
+// --- the trip drives the app, rather than being described by it
+const tripSet = (b) => call("/api/trip/settings", { method: "POST", body: JSON.stringify(b) });
+const memberAdd = (b) => call("/api/trip/member/add", { method: "POST", body: JSON.stringify(b) });
+const memberRm = (b) => call("/api/trip/member/remove", { method: "POST", body: JSON.stringify(b) });
+const travelSet = (b) => call("/api/trip/travel", { method: "POST", body: JSON.stringify(b) });
+
+let tr = await (await call("/api/sights")).json();
+t4("a fresh database has a trip", !!tr.trip.name && tr.trip.days.length > 0);
+t4("its days come from its dates, not from a constant",
+   tr.trip.days.length === 6 && tr.trip.days[0] === tr.trip.startDate &&
+   tr.trip.days.at(-1) === tr.trip.endDate);
+
+tr = await (await tripSet({ voter: "Emily", name: "Lisbon spring", destination: "Lisbon",
+  startDate: "2027-04-02", endDate: "2027-04-06" })).json();
+t4("changing the dates changes the days", tr.trip.days.length === 5);
+t4("and the destination follows", tr.trip.destination === "Lisbon");
+t4("a date from the old trip is now refused",
+   (await call("/api/plan/set", { method: "POST",
+     body: JSON.stringify({ voter: "E", sightId: "tower-of-london", day: "2026-09-13" }) })).status === 400);
+t4("a date in the new trip is accepted",
+   (await call("/api/plan/set", { method: "POST",
+     body: JSON.stringify({ voter: "E", sightId: "tower-of-london", day: "2027-04-03" }) })).status === 200);
+t4("a booking date follows the trip too",
+   (await setStatus({ voter: "E", sightId: "london-eye", status: "booked",
+                      bookedDate: "2026-09-13" })).status === 400);
+
+t4("end before start is refused",
+   (await tripSet({ voter: "E", startDate: "2027-04-06", endDate: "2027-04-02" })).status === 400);
+t4("an absurdly long trip is refused",
+   (await tripSet({ voter: "E", startDate: "2027-01-01", endDate: "2028-01-01" })).status === 400);
+t4("a malformed date is refused",
+   (await tripSet({ voter: "E", startDate: "02/04/2027" })).status === 400);
+t4("changing the trip needs a name", (await tripSet({ voter: "", name: "x" })).status === 400);
+
+// only what is sent changes
+tr = await (await tripSet({ voter: "Emily", checkIn: "15:00", checkOut: "11:00" })).json();
+t4("saving the hotel times leaves the dates alone",
+   tr.trip.startDate === "2027-04-02" && tr.trip.base.checkIn === "15:00");
+
+await tripSet({ voter: "Emily", name: "London 2026", destination: "London",
+                startDate: "2026-09-11", endDate: "2026-09-16" });
+
+// --- members
+let mb = await (await memberAdd({ voter: "Emily", name: "Lena", note: "joins later" })).json();
+t4("someone can be added", mb.members.some(m => m.name === "Lena"));
+t4("their note is kept", mb.members.find(m => m.name === "Lena").note === "joins later");
+t4("their key is the same identity votes use",
+   mb.members.find(m => m.name === "Lena").key === "lena");
+
+mb = await (await memberAdd({ voter: "Emily", name: "  lena  " })).json();
+t4("adding the same person again does not split them",
+   mb.members.filter(m => m.key === "lena").length === 1);
+
+await post({ voter: "Lena", sightId: "tower-of-london", wanted: true });
+const lena = mb.members.find(m => m.key === "lena");
+mb = await (await memberRm({ voter: "Emily", id: lena.id })).json();
+t4("someone can be taken off the list", !mb.members.some(m => m.key === "lena"));
+t4("but their votes stay, because a list is not a ledger",
+   (mb.votes["tower-of-london"] ?? []).some(v => v.toLowerCase() === "lena"));
+
+t4("a nameless member is refused", (await memberAdd({ voter: "E", name: "" })).status === 400);
+t4("adding needs a name of your own", (await memberAdd({ voter: "", name: "X" })).status === 400);
+t4("removing something that is not a member is refused",
+   (await memberRm({ voter: "E", id: "custom-x" })).status === 400);
+
+// --- getting there and back
+let tv = await (await travelSet({ voter: "Emily", direction: "out", mode: "Flight",
+  carrier: "OS 455", from: "Graz", to: "London Heathrow", date: "2026-09-11",
+  departTime: "11:20", arriveTime: "13:05", reference: "ABC123" })).json();
+const outLeg = tv.travel.find(l => l.direction === "out");
+t4("the way out can be recorded", outLeg.carrier === "OS 455");
+t4("its times are kept", outLeg.departTime === "11:20" && outLeg.arriveTime === "13:05");
+t4("its reference is kept", outLeg.reference === "ABC123");
+
+tv = await (await travelSet({ voter: "Emily", direction: "out", carrier: "OS 457" })).json();
+t4("saving it again replaces rather than adds",
+   tv.travel.filter(l => l.direction === "out").length === 1 &&
+   tv.travel.find(l => l.direction === "out").carrier === "OS 457");
+
+tv = await (await travelSet({ voter: "Emily", direction: "back", carrier: "OS 456",
+  date: "2026-09-16", departTime: "07:00" })).json();
+t4("both directions can exist at once", tv.travel.length === 2);
+
+tv = await (await travelSet({ voter: "Emily", direction: "back", clear: true })).json();
+t4("one can be cleared without touching the other",
+   tv.travel.length === 1 && tv.travel[0].direction === "out");
+
+t4("a third direction is refused",
+   (await travelSet({ voter: "E", direction: "sideways" })).status === 400);
+t4("a malformed time is refused",
+   (await travelSet({ voter: "E", direction: "out", departTime: "25:99" })).status === 400);
+t4("a malformed date is refused",
+   (await travelSet({ voter: "E", direction: "out", date: "11/09/2026" })).status === 400);
+t4("recording travel needs a name",
+   (await travelSet({ voter: "", direction: "out" })).status === 400);
+
+{
+  const st = await (await call("/api/state")).json();
+  t4("/api/state carries the members and the travel",
+     Array.isArray(st.members) && Array.isArray(st.travel) && !!st.trip);
 }
 
 t4("/api/state carries your own entries",

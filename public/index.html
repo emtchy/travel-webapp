@@ -432,11 +432,13 @@ footer a{color:var(--maroon)}
       <a href="/" aria-current="page" id="nav-sights">Sights</a>
       <a href="/bookings" id="nav-bookings">Bookings</a>
       <a href="/plan" id="nav-plan">Plan</a>
+      <a href="/details" id="nav-details">Details</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
       <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="given-name" spellcheck="false">
+             autocomplete="off" spellcheck="false" list="members">
+      <datalist id="members"></datalist>
       <span class="langs" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="de" aria-pressed="false">DE</button>
@@ -530,6 +532,7 @@ let COMMENTS = {};
 let PLAN = [];        // sights placed on a day by hand
 let BOOKED = [];      // booking status, since a booked date places a sight too
 let TRIPDAYS = [];
+let TRIPINFO = null;
 let VOTES  = {};
 let filter = "all";
 let me     = "";
@@ -544,7 +547,7 @@ const esc  = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 const T = {
   en: {
     kicker: "London · 11–16 September 2026",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
+    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
     editCost: "Cost & booking", save: "Save",
     planIt: "Add to a day", onPlan: "On the plan", changeDay: "Change",
     takeOff: "Take off the plan", planDay: "Day", planFrom: "From", planTo: "To",
@@ -606,7 +609,7 @@ const T = {
   },
   de: {
     kicker: "London · 11.–16. September 2026",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
     editCost: "Preis & Buchung", save: "Speichern",
     planIt: "Auf einen Tag legen", onPlan: "Im Plan", changeDay: "Ändern",
     takeOff: "Aus dem Plan nehmen", planDay: "Tag", planFrom: "Von", planTo: "Bis",
@@ -714,6 +717,8 @@ async function load() {
   PLAN = data.plan || [];
   BOOKED = data.bookings || [];
   TRIPDAYS = data.trip?.days || TRIPDAYS;
+  TRIPINFO = data.trip || TRIPINFO;
+  fillMembers(data.members);
   render();
   loadImages();
 }
@@ -728,6 +733,8 @@ async function refresh() {
     PLAN = data.plan || [];
     BOOKED = data.bookings || [];
     TRIPDAYS = data.trip?.days || TRIPDAYS;
+  TRIPINFO = data.trip || TRIPINFO;
+  fillMembers(data.members);
     if (CUSTOM.length !== before) render();
     else { paintTallies(); paintThreads(); applyFilter(); }
     setStatus();
@@ -894,6 +901,27 @@ function planControlHTML(s) {
     <label>${esc(L.planTo)}<input type="time" data-pto value="${esc(p?.end ?? "")}"></label>
     <button class="submit" type="button" data-psave="${esc(s.id)}">${esc(L.planSave)}</button>
   </div>`;
+}
+
+/** Names of everyone on the trip, as suggestions on the name box. Still free
+ *  text, so nobody is locked out for not being on the list yet. */
+/** The line above the headline: whatever the trip says it is. */
+function tripKicker(trip) {
+  if (!trip) return "";
+  const fmt = (iso) => iso
+    ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+        { day: "numeric", month: "long", timeZone: "UTC" })
+    : "";
+  const when = trip.startDate && trip.endDate
+    ? `${fmt(trip.startDate)} – ${fmt(trip.endDate)}` : "";
+  return [trip.destination || trip.name, when].filter(Boolean).join(" · ");
+}
+
+function fillMembers(list) {
+  const box = document.getElementById("members");
+  if (!box) return;
+  box.innerHTML = (list ?? []).map((m) =>
+    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
 }
 
 function cardHTML(s) {
@@ -1143,10 +1171,11 @@ function notify(message) {
 function paintChrome() {
   document.documentElement.lang = lang;
   const L = t();
-  $("#kicker").textContent   = L.kicker;
+  $("#kicker").textContent   = tripKicker(TRIPINFO) || L.kicker;
   $("#nav-sights").textContent      = L.navSights;
   $("#nav-bookings").textContent    = L.navBookings;
   $("#nav-plan").textContent        = L.navPlan;
+  $("#nav-details").textContent        = L.navDetails;
   $("#add-costs-label").textContent = L.addCosts;
   $("#add-price").placeholder       = L.addPrice;
   $("#add-booking-label").textContent = L.addBooking;

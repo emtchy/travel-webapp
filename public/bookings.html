@@ -199,11 +199,13 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
       <a href="/" id="nav-sights">Sights</a>
       <a href="/bookings" aria-current="page" id="nav-bookings">Bookings</a>
       <a href="/plan" id="nav-plan">Plan</a>
+      <a href="/details" id="nav-details">Details</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
       <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="given-name" spellcheck="false">
+             autocomplete="off" spellcheck="false" list="members">
+      <datalist id="members"></datalist>
       <span class="langs" role="group" aria-label="Language">
         <button type="button" data-lang="en" aria-pressed="true">EN</button>
         <button type="button" data-lang="de" aria-pressed="false">DE</button>
@@ -244,7 +246,7 @@ const T = {
     headline: "What we need to book",
     lede: "Everything on the list that costs money or has to be booked ahead — the built-in sights and the ones we added ourselves. Take anything off that we've decided against; it stays on the voting page either way.",
     nameLabel: "Your name", namePh: "e.g. Manuel",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
+    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
     loading: "Loading…", saving: "Saving…", saved: "Saved",
     needName: "Enter your name first.",
     needDate: "Pick a date to go with that time.",
@@ -275,7 +277,7 @@ const T = {
     headline: "Was wir buchen müssen",
     lede: "Alles auf der Liste, was Geld kostet oder vorab gebucht werden muss – die vorgegebenen Orte und unsere eigenen. Nimm raus, wogegen wir uns entschieden haben; auf der Abstimmungsseite bleibt es trotzdem.",
     nameLabel: "Dein Name", namePh: "z. B. Manuel",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
+    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
     loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
     needName: "Bitte zuerst den Namen eintragen.",
     needDate: "Zu der Uhrzeit fehlt noch das Datum.",
@@ -305,14 +307,37 @@ const T = {
 let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
 const t = () => T[lang];
 
-// The trip this deployment plans. Only used to bound the date picker.
-const TRIP_START = "2026-09-11";
-const TRIP_END   = "2026-09-16";
+// Bounds for the date picker. Filled from the trip once it loads — hardcoding
+// them here was the last place a second trip would have gone wrong.
+let TRIPINFO = null;
+let TRIP_START = "";
+let TRIP_END = "";
 
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [];
 let booking = null;              // id of the card currently being booked
 let minVotes = 0;
 let kind = "all";        // all | builtin | added | booking
+
+/** Names of everyone on the trip, offered as suggestions on the name box.
+ *  Still a free-text field: whoever is not on the list yet can just type. */
+/** The line above the headline: whatever the trip says it is. */
+function tripKicker(trip) {
+  if (!trip) return "";
+  const fmt = (iso) => iso
+    ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+        { day: "numeric", month: "long", timeZone: "UTC" })
+    : "";
+  const when = trip.startDate && trip.endDate
+    ? `${fmt(trip.startDate)} – ${fmt(trip.endDate)}` : "";
+  return [trip.destination || trip.name, when].filter(Boolean).join(" · ");
+}
+
+function fillMembers(list) {
+  const box = document.getElementById("members");
+  if (!box) return;
+  box.innerHTML = (list ?? []).map((m) =>
+    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
+}
 
 const nameOf = () => $("#name").value.trim();
 const setStatus = (m) => { $("#status").textContent = m; };
@@ -491,9 +516,10 @@ function render() {
   const L = t();
   document.documentElement.lang = lang;
   for (const [id, key] of [["kicker","kicker"],["headline","headline"],["lede","lede"],
-    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],["nav-bookings","navBookings"],["nav-plan","navPlan"]])
+    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],["nav-bookings","navBookings"],["nav-plan","navPlan"],["nav-details","navDetails"]])
     $("#" + id).textContent = L[key];
   $("#name").placeholder = L.nameLabel;
+  $("#kicker").textContent = tripKicker(TRIPINFO) || L.kicker;
   document.title = `${L.kicker.split("·")[0].trim()} — ${L.headline}`;
 
   const pool = onList();
@@ -548,6 +574,7 @@ async function mutate(path, body) {
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
     CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    fillMembers(d.members);
     render();
     setStatus(t().saved);
   } catch (err) { setStatus(err.message); }
@@ -624,6 +651,8 @@ for (const b of document.querySelectorAll(".langs button"))
   try {
     const d = await api("/api/sights");
     SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    TRIP_START = d.trip?.startDate ?? ""; TRIP_END = d.trip?.endDate ?? ""; TRIPINFO = d.trip ?? TRIPINFO;
+    fillMembers(d.members);
     render();
     setStatus("");
   } catch (err) { setStatus(err.message); }
