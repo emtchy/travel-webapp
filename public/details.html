@@ -225,10 +225,10 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
   <div class="navinner">
     <a class="brand" href="/">London&nbsp;2026</a>
     <div class="navlinks">
+      <a href="/details" aria-current="page" id="nav-details">Details</a>
       <a href="/" id="nav-sights">Sights</a>
       <a href="/bookings" id="nav-bookings">Bookings</a>
       <a href="/plan" id="nav-plan">Plan</a>
-      <a href="/details" aria-current="page" id="nav-details">Details</a>
     </div>
     <div class="navtools">
       <label class="visually-hidden" for="name" id="name-label">Your name</label>
@@ -290,7 +290,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 </section>
 
 <section class="panel">
-  <h2 id="h-people">Who's coming <span id="people-count"></span></h2>
+  <h2><span id="h-people">Who's coming</span> <span id="people-count"></span></h2>
   <div class="pbody">
     <div class="people" id="people"></div>
     <div class="frow">
@@ -413,6 +413,27 @@ const dayLabel = (iso) => iso
 
 /* ------------------------------------------------------------------ render */
 
+/**
+ * Write text without taking the page down if the element moved or went away.
+ *
+ * One missing id used to throw halfway through render(), so everything after
+ * it — including the member list — silently never drew, and the only sign was
+ * an error string in the status bar. A label going untranslated is a far
+ * smaller problem than half the page not appearing.
+ */
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+/** For a label wrapping an input: replace only its own text, not the input. */
+function setLabel(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (el.firstChild?.nodeType === Node.TEXT_NODE) el.firstChild.textContent = value;
+  else el.prepend(document.createTextNode(value));
+}
+
 function renderTravel() {
   const L = t();
   $("#travel-body").innerHTML = ["out", "back"].map((dir) => {
@@ -483,7 +504,7 @@ function render() {
   for (const [id, key] of [["headline","headline"],["lede","lede"],["name-label","nameLabel"],
     ["nav-sights","navSights"],["nav-bookings","navBookings"],["nav-plan","navPlan"],["nav-details","navDetails"],
     ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"]])
-    $("#" + id).textContent = L[key];
+    setText(id, L[key]);
   $("#name").placeholder = L.nameLabel;
   $("#kicker").textContent = [TRIP.name, TRIP.startDate && `${dayLabel(TRIP.startDate)} – ${dayLabel(TRIP.endDate)}`]
     .filter(Boolean).join(" · ");
@@ -491,7 +512,7 @@ function render() {
   for (const [id, key] of [["l-name","fName"],["l-dest","fDest"],["l-start","fStart"],["l-end","fLast"],
     ["l-in","fIn"],["l-out","fOut"],["l-ref","fRef"],["l-phone","fPhone"],
     ["l-newname","fPerson"],["l-newnote","fPersonNote"]])
-    $("#" + id).firstChild.textContent = L[key];
+    setLabel(id, L[key]);
   for (const id of ["t-save","stay-save","notes-save"]) $("#" + id).textContent = L.save;
   $("#m-add").textContent = L.add;
   $("#t-hint").textContent = L.tripHint;
