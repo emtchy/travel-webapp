@@ -135,6 +135,10 @@ li.stop:last-child{border-bottom:0}
 .apbody select,.apbody input{font:inherit;font-size:13.5px;padding:7px 10px;
   border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
 .apbody select{min-width:230px;max-width:100%}
+.apbody.own{border-top:1px solid var(--line);padding-top:16px}
+.apbody #own-what{min-width:250px}
+.apown{flex-basis:100%;margin:0 0 2px;font-weight:600;font-size:14px}
+.src.own{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
 .aphint{flex-basis:100%;font-size:12.5px;color:var(--ink-3);margin:2px 0 0}
 
 header{padding:40px 0 22px}
@@ -298,6 +302,20 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
     <button class="btn" id="ap-add" type="button">Add</button>
     <p class="aphint" id="ap-hint"></p>
   </div>
+
+  <div class="apbody own">
+    <p class="apown" id="own-title">Or add your own entry</p>
+    <label id="own-what-l">What
+      <input id="own-what" type="text" maxlength="80" placeholder=""></label>
+    <label id="own-day-l">Day
+      <select id="own-day"></select></label>
+    <label id="own-from-l">From
+      <input id="own-from" type="time"></label>
+    <label id="own-to-l">To
+      <input id="own-to" type="time"></label>
+    <button class="btn" id="own-add" type="button">Add it</button>
+    <p class="aphint" id="own-hint"></p>
+  </div>
 </details>
 
 <footer><span id="foot"></span></footer>
@@ -336,6 +354,11 @@ const T = {
     apHint: "Only the day is required. Anything already booked with a date is placed by its booking — change the slot on the Bookings page instead.",
     apNone: "Everything is already on the plan.",
     apPick: "Pick a sight…",
+    ownTitle: "Or add your own entry",
+    ownWhat: "What", ownPh: "Musical · Dinner with Anna · Train home",
+    ownAdd: "Add it",
+    ownHint: "Anything that isn't one of the sights. Only a name and a day are required.",
+    srcOwn: "yours", fOwn: "Your own",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "booked by", addedBy: "added by",
     foot: "No routes and no travel times here — just what happens when. Times are what you enter, not what anything works out.",
@@ -364,6 +387,11 @@ const T = {
     apHint: "Nur der Tag ist nötig. Was mit Datum gebucht ist, wird durch die Buchung eingeplant – ändere den Termin dann auf der Buchungsseite.",
     apNone: "Alles ist schon im Plan.",
     apPick: "Ort wählen…",
+    ownTitle: "Oder einen eigenen Eintrag",
+    ownWhat: "Was", ownPh: "Musical · Abendessen mit Anna · Zug zurück",
+    ownAdd: "Eintragen",
+    ownHint: "Alles, was keine Sehenswürdigkeit ist. Nur Name und Tag sind nötig.",
+    srcOwn: "eigener", fOwn: "Eigene",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "gebucht von", addedBy: "eingetragen von",
     foot: "Keine Routen und keine Fahrtzeiten – nur was wann passiert. Die Zeiten sind die, die du einträgst.",
@@ -372,7 +400,7 @@ const T = {
 let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
 const t = () => T[lang];
 
-let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], TRIP = { days: [] };
+let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
 let minVotes = 0;
 let source = "all";       // all | booked | hand
 
@@ -411,7 +439,11 @@ function planned() {
   const byHand = ENTRIES.map((e) => ({ id: e.id, day: e.day, start: e.start,
                                        end: e.end, who: e.addedBy, source: "hand" }));
 
-  return [...fromBookings, ...byHand].filter((p) => byId(p.id));
+  // Your own entries are not sights at all, so they carry their own label.
+  const own = NOTES.map((n) => ({ id: n.id, day: n.day, start: n.start, end: n.end,
+                                  who: n.addedBy, source: "own", label: n.label }));
+
+  return [...fromBookings, ...byHand].filter((p) => byId(p.id)).concat(own);
 }
 
 // Untimed entries sort to the end of their day — you know the day, not the hour.
@@ -426,8 +458,11 @@ const weekday = (iso) =>
 
 function stopHTML(p) {
   const L = t();
-  const s = byId(p.id);
-  const votes = (VOTES[p.id] ?? []).length;
+  const own = p.source === "own";
+  const s = own ? null : byId(p.id);
+  const votes = own ? 0 : (VOTES[p.id] ?? []).length;
+  const label = own ? p.label : title(s);
+  const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
 
   return `<li class="stop">
     <div class="when${p.start ? "" : " open"}">
@@ -435,14 +470,17 @@ function stopHTML(p) {
       ${p.end ? `<em>${esc(p.end)}</em>` : ""}
     </div>
     <div>
-      <div class="sname">${esc(title(s))}</div>
+      <div class="sname">${esc(label)}</div>
       <div class="smeta">
-        <span class="src ${p.source}">${esc(p.source === "booked" ? L.srcBooked : L.srcHand)}</span>
+        <span class="src ${p.source}">${esc(srcLabel)}</span>
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
         <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
       </div>
       ${p.source === "hand" ? `<div class="stopact">
         <button type="button" data-remove="${esc(p.id)}">${esc(L.remove)}</button>
+      </div>` : ""}
+      ${own ? `<div class="stopact">
+        <button type="button" data-note-rm="${esc(p.id)}">${esc(L.remove)}</button>
       </div>` : ""}
     </div>
   </li>`;
@@ -452,14 +490,17 @@ const votesOf = (id) => (VOTES[id] ?? []).length;
 
 /** Filters narrow what the plan *shows*; nothing is removed by using them. */
 const passes = (p) =>
-  votesOf(p.id) >= minVotes && (source === "all" || source === p.source);
+  // Your own entries have no votes to threshold, so a vote filter must not
+  // quietly hide the musical you already paid for.
+  (p.source === "own" || votesOf(p.id) >= minVotes) &&
+  (source === "all" || source === p.source);
 
 function renderFilters() {
   const L = t();
   const list = planned();
   const top = list.reduce((a, p) => Math.max(a, votesOf(p.id)), 0);
   const steps = Array.from({ length: Math.min(top, 6) + 1 }, (_, n) => n);
-  const countAt = (n) => list.filter((p) => votesOf(p.id) >= n &&
+  const countAt = (n) => list.filter((p) => (p.source === "own" || votesOf(p.id) >= n) &&
     (source === "all" || source === p.source)).length;
 
   const votesBtns = steps.map((n) =>
@@ -480,6 +521,7 @@ function renderFilters() {
     ["all", L.fAll, list.length],
     ["booked", L.fBooked, list.filter((p) => p.source === "booked").length],
     ["hand", L.fHand, list.filter((p) => p.source === "hand").length],
+    ["own", L.fOwn, list.filter((p) => p.source === "own").length],
   ].map(([k, label, n]) =>
     `<button type="button" data-source="${k}" aria-pressed="${source === k}">${esc(label)} <b>${n}</b></button>`).join("");
 
@@ -504,6 +546,14 @@ function renderAdder() {
   $("#ap-to-l").firstChild.textContent = L.apTo + " ";
   $("#ap-add").textContent = L.apAdd;
   $("#ap-hint").textContent = options.length ? L.apHint : L.apNone;
+  $("#own-title").textContent = L.ownTitle;
+  $("#own-what-l").firstChild.textContent = L.ownWhat + " ";
+  $("#own-day-l").firstChild.textContent = L.apDay + " ";
+  $("#own-from-l").firstChild.textContent = L.apFrom + " ";
+  $("#own-to-l").firstChild.textContent = L.apTo + " ";
+  $("#own-what").placeholder = L.ownPh;
+  $("#own-add").textContent = L.ownAdd;
+  $("#own-hint").textContent = L.ownHint;
   $("#ap-add").disabled = !options.length;
 
   const keepWhat = $("#ap-what").value;
@@ -514,10 +564,15 @@ function renderAdder() {
     }).join("");
   if (options.some((s) => s.id === keepWhat)) $("#ap-what").value = keepWhat;
 
-  const keepDay = $("#ap-day").value;
-  $("#ap-day").innerHTML = TRIP.days
+  const dayOptions = TRIP.days
     .map((d) => `<option value="${esc(d)}">${esc(weekday(d))} ${esc(dayLabel(d))}</option>`).join("");
-  if (TRIP.days.includes(keepDay)) $("#ap-day").value = keepDay;
+
+  for (const id of ["#ap-day", "#own-day"]) {
+    const sel = $(id);
+    const keep = sel.value;
+    sel.innerHTML = dayOptions;
+    if (TRIP.days.includes(keep)) sel.value = keep;
+  }
 }
 
 function render() {
@@ -539,7 +594,7 @@ function render() {
   $("#stats").innerHTML = [
     [list.length, L.statPlanned],
     [list.filter((p) => p.source === "booked").length, L.statBooked],
-    [list.filter((p) => p.source === "hand").length, L.statHand],
+    [list.filter((p) => p.source !== "booked").length, L.statHand],
     [days.filter((d) => d.stops.length).length, L.statDays],
   ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 
@@ -584,6 +639,22 @@ $("#ap-add").addEventListener("click", () => {
   $("#ap-what").value = ""; $("#ap-from").value = ""; $("#ap-to").value = "";
 });
 
+$("#own-add").addEventListener("click", () => {
+  const label = $("#own-what").value.trim();
+  if (!label) { $("#own-what").focus(); return; }
+  mutate("/api/plan/note/add", {
+    label,
+    day: $("#own-day").value,
+    start: $("#own-from").value || null,
+    end: $("#own-to").value || null,
+  });
+  $("#own-what").value = ""; $("#own-from").value = ""; $("#own-to").value = "";
+});
+
+$("#own-what").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter") { ev.preventDefault(); $("#own-add").click(); }
+});
+
 document.addEventListener("input", (ev) => {
   if (ev.target.id !== "vmin") return;
   const raw = ev.target.value.trim();
@@ -606,6 +677,9 @@ document.addEventListener("click", (ev) => {
   const rm = ev.target.closest("[data-remove]");
   if (rm) return void mutate("/api/plan/remove", { sightId: rm.dataset.remove });
 
+  const nrm = ev.target.closest("[data-note-rm]");
+  if (nrm) return void mutate("/api/plan/note/remove", { id: nrm.dataset.noteRm });
+
   const lb = ev.target.closest(".langs button");
   if (lb) {
     lang = lb.dataset.lang;
@@ -626,7 +700,8 @@ for (const b of document.querySelectorAll(".langs button"))
   try {
     const d = await api("/api/sights");
     SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes;
-    STATUS = d.bookings ?? []; ENTRIES = d.plan ?? []; TRIP = d.trip ?? { days: [] };
+    STATUS = d.bookings ?? []; ENTRIES = d.plan ?? []; NOTES = d.notes ?? [];
+    TRIP = d.trip ?? { days: [] };
     render();
     setStatus("");
   } catch (err) { setStatus(err.message); }

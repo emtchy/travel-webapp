@@ -166,6 +166,7 @@ const snapshot = async (env) => ({
   comments: await getComments(env),
   bookings: await getBookingStatus(env),
   plan: await getPlanEntries(env),
+  notes: await getPlanNotes(env),
   trip: TRIP,
 });
 
@@ -219,8 +220,8 @@ async function handleAddSight(request, env) {
   if (!addedBy) return bad("Enter your name first.");
 
   const name = cleanText(body?.name, 80);
-  if (!name) return bad("A name is required (up to 80 characters).");
   if (name === undefined) return bad("That name is too long or has odd characters.");
+  if (!name) return bad("A name is required (up to 80 characters).");
 
   const summary = cleanText(body?.summary, 300);
   if (summary === undefined) return bad("Keep the description under 300 characters.");
@@ -491,6 +492,82 @@ async function handleBookingStatus(request, env) {
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
+async function getPlanNotes(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, day, start_time, end_time, label, added_by
+       FROM plan_notes ORDER BY day ASC, start_time ASC`
+  ).all();
+  return (results ?? []).map((r) => ({
+    id: r.id,
+    day: r.day,
+    start: r.start_time,
+    end: r.end_time,
+    label: r.label,
+    addedBy: r.added_by,
+  }));
+}
+
+/** Something on the plan that isn't a sight — a musical, dinner, a train. */
+async function handleNoteAdd(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const name = cleanName(body?.voter);
+  if (!name) return bad("Enter your name first.");
+
+  const label = cleanText(body?.label, 80);
+  // undefined means malformed or too long, null means empty. Check the
+  // specific case first: `!undefined` is true, so the order matters.
+  if (label === undefined) return bad("Keep it under 80 characters.");
+  if (!label) return bad("Give it a name — \"Musical\", \"Dinner with Anna\".");
+
+  const { day } = body ?? {};
+  if (typeof day !== "string" || !TRIP_DAYS.has(day))
+    return bad("That date isn't a day of this trip.");
+
+  const start = cleanClock(body?.start);
+  if (start === undefined) return bad("The start should look like 17:00.");
+  const end = cleanClock(body?.end);
+  if (end === undefined) return bad("The end should look like 21:00.");
+  if (end && !start) return bad("An end time needs a start time.");
+  if (end && start && end <= start) return bad("It has to end after it starts.");
+
+  const { count } = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM plan_notes"
+  ).first();
+  if (count >= 200) return bad("That's 200 entries — plenty. Remove some first.");
+
+  await env.DB.prepare(
+    `INSERT INTO plan_notes (id, day, start_time, end_time, label, added_by, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+  )
+    .bind(`note-${crypto.randomUUID()}`, day, start, end, label, name, Date.now())
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
+async function handleNoteRemove(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+
+  const { id } = body ?? {};
+  if (typeof id !== "string" || !id.startsWith("note-"))
+    return bad("That isn't one of your own entries.");
+
+  await env.DB.prepare("DELETE FROM plan_notes WHERE id = ?1").bind(id).run();
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
 /**
  * Put a sight on the plan by hand, or move one already there.
  *
@@ -606,6 +683,12 @@ export default {
 
     if (pathname === "/api/plan/remove" && method === "POST")
       return handlePlanRemove(request, env);
+
+    if (pathname === "/api/plan/note/add" && method === "POST")
+      return handleNoteAdd(request, env);
+
+    if (pathname === "/api/plan/note/remove" && method === "POST")
+      return handleNoteRemove(request, env);
 
     return bad("Not found.", 404);
   },

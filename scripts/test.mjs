@@ -446,5 +446,67 @@ t4("deleting a custom sight takes it off the plan", !onPlan(gone, ghost.id));
 
 t4("/api/state carries the plan", Array.isArray((await (await call("/api/state")).json()).plan));
 
+// --- your own entries: things that aren't sights at all
+const noteAdd = (b) => call("/api/plan/note/add", { method: "POST", body: JSON.stringify(b) });
+const noteRm = (b) => call("/api/plan/note/remove", { method: "POST", body: JSON.stringify(b) });
+
+let nt = await (await noteAdd({ voter: "Emily", label: "Musical",
+  day: "2026-09-11", start: "17:00", end: "21:00" })).json();
+const note = nt.notes.find(n => n.label === "Musical");
+t4("an entry of your own can be added", !!note);
+t4("its day is kept", note.day === "2026-09-11");
+t4("its times are kept", note.start === "17:00" && note.end === "21:00");
+t4("who added it is kept", note.addedBy === "Emily");
+t4("it gets its own id, not a sight's", note.id.startsWith("note-"));
+
+nt = await (await noteAdd({ voter: "Maya", label: "Train home", day: "2026-09-16" })).json();
+t4("a day on its own is enough",
+   nt.notes.find(n => n.label === "Train home")?.start === null);
+t4("two entries can share a day and a label is not unique",
+   (await (await noteAdd({ voter: "Maya", label: "Musical", day: "2026-09-14" })).json())
+     .notes.filter(n => n.label === "Musical").length === 2);
+
+t4("a label is required", (await noteAdd({ voter: "E", day: "2026-09-11" })).status === 400);
+{
+  const long = await noteAdd({ voter: "E", label: "x".repeat(81), day: "2026-09-11" });
+  t4("an over-long label is rejected", long.status === 400);
+  // cleanText returns undefined for too-long and null for empty, and
+  // `!undefined` is true — so the length check has to come first or this
+  // message is unreachable.
+  t4("and says it is too long, not that it is missing",
+     /80 characters/.test((await long.json()).error));
+}
+t4("a day outside the trip is rejected",
+   (await noteAdd({ voter: "E", label: "x", day: "2026-12-01" })).status === 400);
+t4("an end before the start is rejected",
+   (await noteAdd({ voter: "E", label: "x", day: "2026-09-11", start: "20:00", end: "10:00" })).status === 400);
+t4("an end with no start is rejected",
+   (await noteAdd({ voter: "E", label: "x", day: "2026-09-11", end: "10:00" })).status === 400);
+t4("adding one needs a name",
+   (await noteAdd({ voter: "", label: "x", day: "2026-09-11" })).status === 400);
+
+nt = await (await noteRm({ voter: "Emily", id: note.id })).json();
+t4("an entry can be removed", !nt.notes.some(n => n.id === note.id));
+t4("anyone can remove one, not just whoever added it",
+   !(await (await noteRm({ voter: "Maya", id: nt.notes[0].id })).json())
+     .notes.some(n => n.id === nt.notes[0].id));
+t4("a sight id is not accepted as an entry id",
+   (await noteRm({ voter: "E", id: "tower-of-london" })).status === 400);
+t4("removing one needs a name",
+   (await noteRm({ voter: "", id: "note-whatever" })).status === 400);
+
+t4("/api/state carries your own entries",
+   Array.isArray((await (await call("/api/state")).json()).notes));
+{
+  // A sight placed by hand and an entry of your own must not collide.
+  await noteAdd({ voter: "E", label: "Dinner", day: "2026-09-13" });
+  await planSet({ voter: "E", sightId: "tate-modern", day: "2026-09-13" });
+  const both = await (await call("/api/state")).json();
+  t4("entries of your own are kept apart from sight placements",
+     both.notes.some(n => n.label === "Dinner") &&
+     both.plan.some(e => e.id === "tate-modern") &&
+     !both.plan.some(e => e.id.startsWith("note-")));
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4} passed, ${fail + fail2 + fail3 + fail4} failed`);
 process.exit(fail + fail2 + fail3 + fail4 ? 1 : 0);

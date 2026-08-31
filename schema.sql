@@ -71,3 +71,18 @@ CREATE TABLE IF NOT EXISTS plan_entries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_plan_day ON plan_entries (day, start_time);
+
+-- Anything on the plan that isn't one of the sights: a musical already booked,
+-- meeting friends, a train. Just a label and when it happens. Kept apart from
+-- plan_entries because that table is keyed on a sight and these have none.
+CREATE TABLE IF NOT EXISTS plan_notes (
+  id         TEXT    PRIMARY KEY,   -- "note-<uuid>"
+  day        TEXT    NOT NULL,      -- YYYY-MM-DD
+  start_time TEXT,                  -- HH:MM
+  end_time   TEXT,                  -- HH:MM
+  label      TEXT    NOT NULL,
+  added_by   TEXT    NOT NULL,      -- as typed
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notes_day ON plan_notes (day, start_time);

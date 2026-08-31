@@ -15,12 +15,13 @@ public/bookings.html   the bookings overview
 public/plan.html       the day-by-day plan
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
-schema.sql             five tables
+schema.sql             six tables
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-images.mjs   optional: self-host the photos
 scripts/migrate-bookings.sql  one-off: adds the Bookings columns to an
                               existing database
+scripts/migrate-plan-notes.sql  one-off: adds your own plan entries
 ```
 
 ## The Bookings page
@@ -68,6 +69,9 @@ Entries come from two places:
 - **Added by hand** — everything else. Pick the sight, the day, and optionally a
   from and to time. Only the day is required; plenty of things are "Tuesday,
   sometime". Untimed entries sort to the end of their day.
+- **Your own entries** — anything that isn't one of the sights at all: a musical
+  you already booked, dinner with friends, the train home. Type a name, pick a
+  day, add times if there are any. Anyone can remove one.
 
 Each stop is labelled **booked** or **by hand** so it is obvious which is which,
 and hand-added ones can be taken off again.
@@ -118,6 +122,7 @@ exists:
 
 ```bash
 npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-bookings.sql
+npx wrangler@4 d1 execute london-votes --remote --file=./scripts/migrate-plan-notes.sql
 ```
 
 Wrangler prints the URL — something like
@@ -215,7 +220,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-135 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+155 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -306,6 +311,8 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |
 | POST   | `/api/plan/set`      | `{ voter, sightId, day, start?, end? }` → onto the plan |
 | POST   | `/api/plan/remove`   | `{ voter, sightId }` → off it again                |
+| POST   | `/api/plan/note/add` | `{ voter, label, day, start?, end? }` → your own entry |
+| POST   | `/api/plan/note/remove` | `{ voter, id }` → remove one                    |
 
 `POST /api/vote` returns the full updated vote map, so the page never has to
 re-fetch after a click.
