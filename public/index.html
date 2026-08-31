@@ -104,27 +104,38 @@ h1{
 /* ---------------- identity bar ---------------- */
 
 /* ---------------- filters ---------------- */
-.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:22px 0 4px}
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0}
 .bar .lbl{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-right:2px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px;
 }
 .bar button{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;letter-spacing:.05em;
-  border:1px solid var(--line-2);background:transparent;color:var(--ink-2);
-  padding:5px 11px;border-radius:2px;cursor:pointer;
+  font-size:13px;font-weight:500;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
+  padding:6px 12px;border-radius:8px;cursor:pointer;
 }
-.bar button:hover{border-color:var(--maroon);color:var(--maroon)}
-.bar button[aria-pressed="true"]{background:var(--maroon);border-color:var(--maroon);color:var(--on-accent)}
+.bar button:hover{border-color:var(--ink-3);color:var(--ink)}
+.bar button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.bar button b{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
+  font-weight:500;opacity:.55;margin-left:4px;
+}
+
+/* ---------------- stats ---------------- */
+.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px;
+  border-bottom:1px solid var(--line)}
+.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
+.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
 
 /* ---------------- grid ---------------- */
 .grid{
-  display:grid;gap:18px;margin-top:22px;
+  display:grid;gap:18px;margin-top:26px;
   grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
 }
 .sight{
   display:flex;flex-direction:column;background:var(--card);
-  border:1px solid var(--line);border-radius:5px;overflow:hidden;
+  border:1px solid var(--line);border-radius:14px;overflow:hidden;
   box-shadow:var(--shadow);
 }
 .sight.hide{display:none}
@@ -144,12 +155,12 @@ h1{
   position:absolute;top:10px;left:10px;z-index:2;
   font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;font-weight:500;
   background:var(--paper);color:var(--maroon);border:1px solid var(--line-2);
-  padding:3px 8px;border-radius:2px;
+  padding:2px 8px;border-radius:6px;
 }
 .cost{
   position:absolute;top:10px;right:10px;z-index:2;
   font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.04em;
-  padding:3px 8px;border-radius:2px;border:1px solid;
+  padding:2px 7px;border-radius:5px;border:1px solid;
 }
 .cost.free{color:var(--green);border-color:var(--green);background:var(--green-soft)}
 .cost.paid{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
@@ -213,8 +224,8 @@ h1{
 .langs button[aria-pressed="true"]{background:var(--maroon);color:var(--on-accent)}
 
 .addbox{
-  border:1px dashed var(--line-2);border-radius:5px;background:var(--card);
-  margin-top:22px;padding:0;overflow:hidden;
+  margin:26px 0 0;background:var(--card);border:1px solid var(--line);
+  border-radius:14px;box-shadow:var(--shadow);overflow:hidden;
 }
 .addbox > summary{
   cursor:pointer;padding:14px 18px;list-style:none;
@@ -272,7 +283,7 @@ h1{
   backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
 }
 #topbar .bar{position:static;margin:0;backdrop-filter:none;background:none;
-  padding:9px 20px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
+  padding:13px 20px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
 #topbar .bar::-webkit-scrollbar{display:none}
 #topbar .bar button{flex:0 0 auto}
 
@@ -397,6 +408,8 @@ footer a{color:var(--maroon)}
   <p class="lede" id="lede"></p>
 </header>
 
+<div class="stats" id="stats"></div>
+
 <div id="topbar">
 <div class="bar" id="filters">
   <span class="lbl" id="filter-label">Show</span>
@@ -483,6 +496,8 @@ const T = {
   en: {
     kicker: "London · 11–16 September 2026",
     navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
+    statSights: "to choose from", statVoted: "have votes",
+    statMine: "your picks", statPeople: "voting",
     addCosts: "It costs something", addPrice: "£25 pp",
     addBooking: "Needs booking ahead",
     addMoneyHint: "Either one puts it on the Bookings page.",
@@ -535,6 +550,8 @@ const T = {
   de: {
     kicker: "London · 11.–16. September 2026",
     navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
+    statSights: "zur Auswahl", statVoted: "mit Stimmen",
+    statMine: "deine Wahl", statPeople: "stimmen ab",
     addCosts: "Kostet etwas", addPrice: "25 £ p. P.",
     addBooking: "Muss vorab gebucht werden",
     addMoneyHint: "Beides bringt den Eintrag auf die Buchungsseite.",
@@ -920,16 +937,7 @@ function applyFilter() {
     if (!card) continue;
     grid.appendChild(card);
 
-    const voters = VOTES[s.id] || [];
-    const mine   = key && voters.some((v) => norm(v) === key);
-
-    const show =
-      filter === "all"   ? true :
-      filter === "free"  ? !s.custom && s.cost !== "paid" && s.cost !== "mixed" :
-      filter === "paid"  ? !s.custom && (s.cost === "paid" || s.cost === "mixed") :
-      filter === "added" ? !!s.custom :
-      filter === "mine"  ? mine :
-      /* top */            voters.length > 0;
+    const show = matchesFilter(s, filter, key);
 
     card.classList.toggle("hide", !show);
     if (show) shown++;
@@ -937,6 +945,45 @@ function applyFilter() {
 
   $("#empty").textContent = t().empty;
   $("#empty").hidden = shown > 0;
+
+  renderCounts();
+}
+
+/** Does a sight pass one of the filter buttons? Shared so the counts can't
+ *  drift from what pressing the button actually shows. */
+function matchesFilter(s, which, key) {
+  const voters = VOTES[s.id] || [];
+  switch (which) {
+    case "all":   return true;
+    case "free":  return !s.custom && s.cost !== "paid" && s.cost !== "mixed";
+    case "paid":  return !s.custom && (s.cost === "paid" || s.cost === "mixed");
+    case "added": return !!s.custom;
+    case "mine":  return !!key && voters.some((v) => norm(v) === key);
+    case "top":   return voters.length > 0;
+    default:      return true;
+  }
+}
+
+/** Counts on the buttons and the strip above them, the way the other pages do. */
+function renderCounts() {
+  const L = t();
+  const key = norm(me);
+  const list = all();
+  const count = (which) => list.filter((s) => matchesFilter(s, which, key)).length;
+
+  for (const btn of $("#filters").querySelectorAll("button[data-f]")) {
+    const label = { all: L.all, free: L.free, paid: L.paid,
+                    added: L.added, mine: L.mine, top: L.top }[btn.dataset.f];
+    btn.innerHTML = `${esc(label)} <b>${count(btn.dataset.f)}</b>`;
+  }
+
+  const people = new Set(Object.values(VOTES).flat().map(norm));
+  $("#stats").innerHTML = [
+    [list.length, L.statSights],
+    [count("top"), L.statVoted],
+    [count("mine"), L.statMine],
+    [people.size, L.statPeople],
+  ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 }
 
 function setStatus() {
@@ -973,13 +1020,6 @@ function paintChrome() {
   $("#name").placeholder     = L.namePlaceholder;
   $("#filter-label").textContent = L.show;
 
-  const f = $("#filters");
-  f.querySelector('[data-f="all"]').textContent   = L.all;
-  f.querySelector('[data-f="free"]').textContent  = L.free;
-  f.querySelector('[data-f="paid"]').textContent  = L.paid;
-  f.querySelector('[data-f="added"]').textContent = L.added;
-  f.querySelector('[data-f="mine"]').textContent  = L.mine;
-  f.querySelector('[data-f="top"]').textContent   = L.top;
 
   $("#add-summary").textContent = L.addSummary;
   $("#addform").querySelector('label[for="add-name"]').textContent = L.addName;
@@ -1000,7 +1040,9 @@ function paintChrome() {
   for (const b of $(".langs").querySelectorAll("button")) {
     b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
   }
+  renderCounts();   // labels, before any sights have arrived
 }
+
 
 function setLang(next) {
   lang = next === "de" ? "de" : "en";
