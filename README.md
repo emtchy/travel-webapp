@@ -88,6 +88,12 @@ price) and whether it **needs booking ahead**. Either one puts it on the
 Bookings page alongside the built-ins. Neither is required — a free viewpoint
 just never appears there.
 
+Nobody always knows those two things when they add something, so both are
+editable afterwards: **Cost & booking** on an added card opens the same fields
+inline. **Anyone can change them**, not only whoever added the sight — the
+person who knows a tour has to be booked is often not the person who added it.
+Removing a sight is still limited to whoever added it.
+
 ## Deploy (about five minutes)
 
 You need a free Cloudflare account and Node 18+.
@@ -209,7 +215,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-119 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+135 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -295,6 +301,7 @@ To regenerate the file from the trip dataset, re-run the generator against
 | GET    | `/api/state`   | Votes + added options — polled every 20 seconds      |
 | POST   | `/api/vote`    | `{ sightId, voter, wanted }` → toggles one vote      |
 | POST   | `/api/sights/add`    | `{ voter, name, url?, summary? }` → adds an option |
+| POST   | `/api/sights/edit`   | `{ voter, id, costs, bookingRequired, priceLabel? }` → anyone |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
 | POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |
 | POST   | `/api/plan/set`      | `{ voter, sightId, day, start?, end? }` → onto the plan |

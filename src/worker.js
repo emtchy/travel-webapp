@@ -268,6 +268,49 @@ async function handleAddSight(request, env) {
   return json({ ok: true, id, ...(await snapshot(env)) });
 }
 
+/**
+ * Change whether an added sight costs anything or needs booking.
+ *
+ * Anyone can set these, unlike removal which stays with whoever added it. They
+ * are facts about the place rather than something owned — and the person who
+ * knows a tour has to be booked is often not the person who added it.
+ */
+async function handleEditSight(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const name = cleanName(body?.voter);
+  if (!name) return bad("Enter your name first.");
+
+  const { id, costs, bookingRequired } = body ?? {};
+  if (typeof id !== "string" || !id.startsWith("custom-"))
+    return bad("Only added sights can be edited here.");
+  if (typeof costs !== "boolean") return bad("`costs` must be true or false.");
+  if (typeof bookingRequired !== "boolean")
+    return bad("`bookingRequired` must be true or false.");
+
+  const row = await env.DB.prepare("SELECT 1 FROM custom_sights WHERE id = ?1")
+    .bind(id).first();
+  if (!row) return bad("That sight is already gone.", 404);
+
+  const priceLabel = cleanText(body?.priceLabel, 40);
+  if (priceLabel === undefined) return bad("Keep the price under 40 characters.");
+
+  await env.DB.prepare(
+    `UPDATE custom_sights
+        SET costs = ?1, price_label = ?2, booking_required = ?3
+      WHERE id = ?4`
+  )
+    .bind(costs ? 1 : 0, costs ? priceLabel : null, bookingRequired ? 1 : 0, id)
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
 async function handleDeleteSight(request, env) {
   let body;
   try {
@@ -542,6 +585,9 @@ export default {
 
     if (pathname === "/api/sights/add" && method === "POST")
       return handleAddSight(request, env);
+
+    if (pathname === "/api/sights/edit" && method === "POST")
+      return handleEditSight(request, env);
 
     if (pathname === "/api/sights/remove" && method === "POST")
       return handleDeleteSight(request, env);

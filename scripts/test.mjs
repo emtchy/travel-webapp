@@ -217,6 +217,54 @@ t3("a price over 40 characters is rejected",
    (await add({ voter: "Emily", name: "Long price", costs: true,
                 priceLabel: "x".repeat(41) })).status === 400);
 
+// --- cost and booking can be fixed after the fact
+const edit = (b) => call("/api/sights/edit", { method: "POST", body: JSON.stringify(b) });
+
+const plain = (await (await add({ voter: "Maya", name: "A tour" })).json())
+  .custom.find(c => c.name === "A tour");
+t3("an added sight starts free and unbooked",
+   plain.costs === false && plain.bookingRequired === false);
+t3("so it is off the bookings list", !onList(plain));
+
+let ed = await (await edit({ voter: "Emily", id: plain.id, costs: true,
+  priceLabel: "£18 pp", bookingRequired: true })).json();
+let fixed = ed.custom.find(c => c.id === plain.id);
+t3("anyone can mark it as costing money, not just whoever added it",
+   fixed.costs === true);
+t3("the price is stored", fixed.priceLabel === "£18 pp");
+t3("the booking flag is stored", fixed.bookingRequired === true);
+t3("and it lands on the bookings list", onList(fixed));
+
+ed = await (await edit({ voter: "Emily", id: plain.id, costs: false,
+  bookingRequired: true })).json();
+fixed = ed.custom.find(c => c.id === plain.id);
+t3("free but needing booking still counts", onList(fixed));
+t3("clearing the cost clears the price too", fixed.priceLabel === null);
+
+ed = await (await edit({ voter: "Emily", id: plain.id, costs: false,
+  bookingRequired: false })).json();
+t3("and it can be taken back off the list",
+   !onList(ed.custom.find(c => c.id === plain.id)));
+
+await post({ voter: "Maya", sightId: plain.id, wanted: true });
+ed = await (await edit({ voter: "Emily", id: plain.id, costs: true,
+  bookingRequired: false })).json();
+t3("editing leaves the votes alone", (ed.votes[plain.id] ?? []).includes("Maya"));
+
+t3("built-in sights cannot be edited this way",
+   (await edit({ voter: "E", id: "tower-of-london", costs: true, bookingRequired: false })).status === 400);
+t3("the flags are required",
+   (await edit({ voter: "E", id: plain.id })).status === 400);
+t3("a non-boolean flag is rejected",
+   (await edit({ voter: "E", id: plain.id, costs: "yes", bookingRequired: false })).status === 400);
+t3("editing needs a name",
+   (await edit({ voter: "", id: plain.id, costs: true, bookingRequired: false })).status === 400);
+t3("editing something gone gives a 404",
+   (await edit({ voter: "E", id: "custom-nope", costs: true, bookingRequired: false })).status === 404);
+t3("an over-long price is rejected",
+   (await edit({ voter: "E", id: plain.id, costs: true, bookingRequired: false,
+                 priceLabel: "x".repeat(41) })).status === 400);
+
 // --- hiding takes it off the list only
 await post({ voter: "Maya", sightId: paid.id, wanted: true });
 let h = await (await hide({ voter: "Emily", sightId: paid.id })).json();

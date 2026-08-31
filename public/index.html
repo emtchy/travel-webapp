@@ -207,6 +207,28 @@ h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
 }
 
 
+/* ---------------- cost & booking, on an added card ---------------- */
+.editcost{
+  font-size:12px;font-weight:500;border:1px solid var(--line-2);
+  background:var(--card-2);color:var(--ink-2);padding:5px 10px;
+  border-radius:8px;cursor:pointer;
+}
+.editcost:hover{border-color:var(--ink-3);color:var(--ink)}
+.editcost[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.costedit{
+  display:flex;gap:11px;align-items:center;flex-wrap:wrap;
+  padding:12px 16px;border-top:1px solid var(--line);background:var(--card-2);
+}
+.costedit .eprice{
+  font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;width:118px;
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+}
+.costedit .eprice:disabled{opacity:.45}
+.costedit .submit{
+  font-size:13px;font-weight:500;padding:6px 13px;border-radius:8px;
+  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
+}
+
 /* ---------------- add form ---------------- */
 /* The language toggle is styled once, up in the nav. A second rule used to sit
    here from before it moved, and being later it quietly won — which is why the
@@ -485,6 +507,8 @@ const T = {
   en: {
     kicker: "London · 11–16 September 2026",
     navSights: "Sights", navBookings: "Bookings", navPlan: "Plan",
+    editCost: "Cost & booking", save: "Save",
+    costsSomething: "Costs something", costsNothing: "Free",
     statSights: "to choose from", statVoted: "have votes",
     statMine: "your picks", statPeople: "voting",
     addCosts: "It costs something", addPrice: "£25 pp",
@@ -539,6 +563,8 @@ const T = {
   de: {
     kicker: "London · 11.–16. September 2026",
     navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan",
+    editCost: "Preis & Buchung", save: "Speichern",
+    costsSomething: "Kostet etwas", costsNothing: "Kostenlos",
     statSights: "zur Auswahl", statVoted: "mit Stimmen",
     statMine: "deine Wahl", statPeople: "stimmen ab",
     addCosts: "Kostet etwas", addPrice: "25 £ p. P.",
@@ -787,8 +813,16 @@ function cardHTML(s) {
     : `<h2>${esc(title(s))}</h2>
        <p class="where">${esc(s.area)} · ${esc(s.station)}</p>`;
 
+  // Added sights carry the same two facts as the built-ins, but nobody can know
+  // them at the time of adding, so they are editable afterwards.
+  const money = custom
+    ? `<p class="price">${
+        s.costs ? esc(s.priceLabel || t().costsSomething) : esc(t().costsNothing)
+      }${s.bookingRequired ? esc(t().booking) : ""}</p>`
+    : "";
+
   const desc = custom
-    ? (s.summary ? `<p class="desc">${esc(s.summary)}</p>` : "")
+    ? (s.summary ? `<p class="desc">${esc(s.summary)}</p>` : "") + money
     : `<p class="desc">${esc(blurb(s))}</p>
        <p class="price">${esc(priceOf(s))}${s.bookingRequired ? esc(t().booking) : ""}</p>`;
 
@@ -809,8 +843,22 @@ function cardHTML(s) {
         <span class="bubble" aria-hidden="true">💬</span><span class="n">0</span>
       </button>
       <span class="tally" id="tally-${esc(s.id)}"></span>
+      ${custom ? `<button class="editcost" type="button" data-edit="${esc(s.id)}">${esc(t().editCost)}</button>` : ""}
       ${custom ? `<button class="remove" type="button" data-remove="${esc(s.id)}" hidden>${esc(t().remove)}</button>` : ""}
     </div>
+    ${custom ? `<div class="costedit" id="edit-${esc(s.id)}" hidden>
+      <label class="check">
+        <input type="checkbox" data-ecosts${s.costs ? " checked" : ""}>
+        <span>${esc(t().addCosts)}</span>
+      </label>
+      <input class="eprice" type="text" maxlength="40" data-eprice
+             placeholder="${esc(t().addPrice)}" value="${esc(s.priceLabel || "")}"${s.costs ? "" : " disabled"}>
+      <label class="check">
+        <input type="checkbox" data-ebooking${s.bookingRequired ? " checked" : ""}>
+        <span>${esc(t().addBooking)}</span>
+      </label>
+      <button class="submit" type="button" data-esave="${esc(s.id)}">${esc(t().save)}</button>
+    </div>` : ""}
     <div class="thread" id="thread-${esc(s.id)}" hidden></div>
   </article>`;
 }
@@ -1061,6 +1109,27 @@ async function onClick(event) {
   const rm = event.target.closest(".remove");
   if (rm) return onRemove(rm.dataset.remove);
 
+  const ed = event.target.closest("[data-edit]");
+  if (ed) {
+    const box = document.getElementById(`edit-${ed.dataset.edit}`);
+    if (!box) return;
+    box.hidden = !box.hidden;
+    ed.setAttribute("aria-expanded", String(!box.hidden));
+    return;
+  }
+
+  // The price only means anything once you've said it costs something.
+  const ck = event.target.closest("[data-ecosts]");
+  if (ck) {
+    const price = ck.closest(".costedit").querySelector("[data-eprice]");
+    price.disabled = !ck.checked;
+    if (!ck.checked) price.value = "";
+    return;
+  }
+
+  const save = event.target.closest("[data-esave]");
+  if (save) return onSaveCost(save.dataset.esave);
+
   const btn = event.target.closest(".want");
   if (!btn || btn.disabled) return;
   if (!me) return $("#name").focus();
@@ -1085,6 +1154,37 @@ async function onClick(event) {
   } finally {
     btn.classList.remove("busy");
     btn.disabled = !me;
+  }
+}
+
+async function onSaveCost(id) {
+  if (!me) return $("#name").focus();
+  const box = document.getElementById(`edit-${id}`);
+  if (!box) return;
+
+  const costs = box.querySelector("[data-ecosts]").checked;
+  const btn = box.querySelector("[data-esave]");
+  btn.disabled = true;
+
+  try {
+    const data = await api("/api/sights/edit", {
+      method: "POST",
+      body: JSON.stringify({
+        voter: me,
+        id,
+        costs,
+        bookingRequired: box.querySelector("[data-ebooking]").checked,
+        priceLabel: costs ? box.querySelector("[data-eprice]").value || null : null,
+      }),
+    });
+    CUSTOM = data.custom;
+    VOTES = data.votes;
+    COMMENTS = data.comments;
+    render();
+  } catch (err) {
+    setStatus(err.message);
+  } finally {
+    btn.disabled = false;
   }
 }
 
