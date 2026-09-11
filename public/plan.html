@@ -120,6 +120,84 @@ a{color:var(--maroon)}
 .addermodes button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
 .adder .apbody{border-top:0;padding-top:14px}
 
+/* ---- the detail sheet ---- */
+.sheetback{
+  position:fixed;inset:0;z-index:100;background:rgba(16,18,22,.55);
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(3px);
+}
+.sheetback[hidden]{display:none}
+.sheet{
+  background:var(--card);border:1px solid var(--line);border-radius:16px;
+  box-shadow:0 24px 60px -18px rgba(0,0,0,.5);
+  width:min(560px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;
+}
+.sheet > header{
+  padding:20px 22px 16px;border-bottom:1px solid var(--line);
+  display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;
+  background:var(--card);border-radius:16px 16px 0 0;
+}
+.sheet h2{font-family:"Fraunces",Georgia,serif;font-size:21px;margin:0;
+  font-weight:600;line-height:1.2;flex:1}
+.sheetclose{
+  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink-2);
+  width:32px;height:32px;border-radius:9px;font-size:17px;line-height:1;
+  cursor:pointer;flex:none;
+}
+.sheetclose:hover{border-color:var(--ink);color:var(--ink)}
+.sheetbody{padding:18px 22px 22px;display:grid;gap:18px}
+.srow{display:grid;gap:7px}
+.slabel{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--ink-3);
+}
+.sval{font-size:15px;color:var(--ink)}
+.sval.muted{color:var(--ink-3)}
+.sfields{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
+.sfields label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-2)}
+.sfields input,.sfields select{
+  font:inherit;font-size:14px;padding:7px 10px;border-radius:9px;
+  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);
+}
+.sfields input[type=text]{min-width:190px}
+.svoters{display:flex;gap:6px;flex-wrap:wrap}
+.svoter{
+  font-size:12.5px;background:var(--card-2);border:1px solid var(--line-2);
+  border-radius:999px;padding:3px 11px;
+}
+.slinks{display:flex;gap:8px;flex-wrap:wrap}
+.slinks a{
+  font-size:13px;font-weight:500;text-decoration:none;padding:7px 12px;
+  border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);
+}
+.slinks a:hover{border-color:var(--ink-3)}
+.sfoot{
+  display:flex;gap:9px;align-items:center;flex-wrap:wrap;
+  padding-top:16px;border-top:1px solid var(--line);
+}
+.sfoot .save{
+  font-size:13.5px;font-weight:600;padding:9px 17px;border-radius:9px;
+  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
+}
+.sfoot .danger{
+  font-size:12.5px;border:0;background:none;color:var(--ink-3);
+  padding:9px 4px;margin-left:auto;cursor:pointer;
+}
+.sfoot .danger:hover{color:var(--maroon)}
+li.stop{cursor:pointer}
+li.stop:hover{background:var(--card-2)}
+li.stop.rest:hover{background:var(--sunk)}
+.openhint{
+  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);
+  opacity:0;transition:opacity .12s;
+}
+li.stop:hover .openhint{opacity:1}
+@media (max-width:560px){
+  .sheetback{padding:0;align-items:flex-end}
+  .sheet{max-height:92dvh;border-radius:16px 16px 0 0;width:100%}
+  .sheet > header{border-radius:16px 16px 0 0}
+}
+
 /* ---- day columns ---- */
 .days{display:grid;gap:18px;margin-top:26px}
 @media(min-width:900px){.days{grid-template-columns:repeat(2,1fr)}}
@@ -376,6 +454,16 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 <div class="days" id="days"></div>
 <p class="hiddenby" id="hiddenby" hidden></p>
 
+<div class="sheetback" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+  <div class="sheet">
+    <header>
+      <h2 id="sheet-title"></h2>
+      <button class="sheetclose" id="sheet-close" type="button" aria-label="Close">×</button>
+    </header>
+    <div class="sheetbody" id="sheet-body"></div>
+  </div>
+</div>
+
 
 
 <footer><span id="foot"></span></footer>
@@ -416,6 +504,20 @@ const T = {
     routeSkipped: (n) => `${n} without a location left out`,
     routeCapped: "Google's link takes the first 9 stops.",
     routeNone: "Nothing here has a location to route to.",
+    open: "open", shWhen: "When", shWhere: "Where", shVotes: "Who wants it",
+    shBooking: "Booking", shLinks: "Links", shKind: "On the plan as",
+    shDay: "Day", shFrom: "From", shTo: "To", shName: "Name",
+    shSave: "Save changes", shRemove: "Take off the plan", shClose: "Close",
+    shNoVotes: "Nobody has voted for this",
+    shNoPlace: "No address yet — it stays out of the day's route",
+    shSite: "Official site", shTickets: "Booking page", shMap: "Open in Maps",
+    shBookedBy: "booked by", shRef: "Reference", shCost: "Cost",
+    shNotBooked: "Not booked yet",
+    shBookedNote: "Its slot comes from the booking, so change the date and time here.",
+    shOwnNote: "One of your own entries — not one of the sights.",
+    shSightNote: "Placed by hand. Moving it here moves it on the plan.",
+    shStatus: "Status",
+    stTodo: "still to book", stBooked: "booked", stSkipped: "not booking",
     addAddress: "Add an address", changeAddress: "Change address",
     addrPh: "Address, place name, maps link or coordinates",
     addrFind: "Find", addrSave: "Save", addrClear: "Remove", addrCancel: "Cancel",
@@ -470,6 +572,20 @@ const T = {
     routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
     routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
     routeNone: "Nichts hier hat einen Ort für eine Route.",
+    open: "öffnen", shWhen: "Wann", shWhere: "Wo", shVotes: "Wer will hin",
+    shBooking: "Buchung", shLinks: "Links", shKind: "Im Plan als",
+    shDay: "Tag", shFrom: "Von", shTo: "Bis", shName: "Name",
+    shSave: "Änderungen speichern", shRemove: "Aus dem Plan nehmen", shClose: "Schließen",
+    shNoVotes: "Noch keine Stimmen",
+    shNoPlace: "Noch keine Adresse – bleibt aus der Tagesroute draußen",
+    shSite: "Offizielle Seite", shTickets: "Buchungsseite", shMap: "In Maps öffnen",
+    shBookedBy: "gebucht von", shRef: "Referenz", shCost: "Preis",
+    shNotBooked: "Noch nicht gebucht",
+    shBookedNote: "Der Termin kommt aus der Buchung – hier Datum und Uhrzeit ändern.",
+    shOwnNote: "Ein eigener Eintrag – keine Sehenswürdigkeit.",
+    shSightNote: "Von Hand eingetragen. Was du hier änderst, ändert den Plan.",
+    shStatus: "Status",
+    stTodo: "noch zu buchen", stBooked: "gebucht", stSkipped: "buchen wir nicht",
     addAddress: "Adresse hinzufügen", changeAddress: "Adresse ändern",
     addrPh: "Adresse, Ortsname, Maps-Link oder Koordinaten",
     addrFind: "Suchen", addrSave: "Speichern", addrClear: "Entfernen", addrCancel: "Abbrechen",
@@ -508,7 +624,8 @@ let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [],
 let minVotes = 0;
 let editingAddress = null;   // sight id whose address form is open
 let addMode = "sight";       // which half of the add panel is showing
-let openedOnce = false;      // so an empty plan opens it once, not on every render
+let openedOnce = false;
+let sheetFor = null;   // { id, source } of the stop whose detail sheet is open      // so an empty plan opens it once, not on every render
 // Where you are. Kept in memory only: it is nobody else's business, least of
 // all the shared plan's.
 let myPos = null;
@@ -626,13 +743,13 @@ function stopHTML(p, i, stops) {
   const label = own ? p.label : title(s);
   const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
 
-  return `<li class="stop">
+  return `<li class="stop" data-stop="${esc(p.id)}" data-src="${esc(p.source)}">
     <div class="when${p.start ? "" : " open"}">
       ${p.start ? esc(p.start) : esc(L.noTime)}
       ${p.end ? `<em>${esc(p.end)}</em>` : ""}
     </div>
     <div>
-      <div class="sname">${esc(label)}</div>
+      <div class="sname">${esc(label)} <span class="openhint">${esc(L.open)} ↗</span></div>
       <div class="smeta">
         <span class="src ${p.source}">${esc(srcLabel)}</span>
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
@@ -879,6 +996,139 @@ function render() {
   renderAdder();
 }
 
+/* ----------------------------------------------------------- detail sheet */
+
+/** Everything known about one stop, gathered from wherever it actually lives. */
+function detailsOf(p) {
+  const own = p.source === "own";
+  const note = own ? NOTES.find((n) => n.id === p.id) : null;
+  const sight = own ? null : byId(p.id);
+  const booking = STATUS.find((b) => b.id === p.id) ?? null;
+
+  return {
+    id: p.id, source: p.source, own, note, sight, booking,
+    place: placeOf(p),
+    name: own ? (note?.label ?? p.label) : title(sight),
+    day: p.day, start: p.start, end: p.end,
+    voters: own ? [] : (VOTES[p.id] ?? []),
+    url: sight?.url ?? null,
+    bookingUrl: booking?.bookingUrl ?? sight?.bookingUrl ?? null,
+    address: own ? note?.address : (sight?.custom ? sight.address : sight?.area),
+  };
+}
+
+function sheetHTML(x) {
+  const L = t();
+  const dayOpts = TRIP.days.map((d) =>
+    `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekday(d))} ${esc(dayLabel(d))}</option>`).join("");
+  const kindLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[x.source];
+  const route = hasPlace(x.place) ? routeLinks([x.place], "transit", originNow()) : null;
+
+  return `
+  <div class="srow">
+    <span class="slabel">${esc(L.shKind)}</span>
+    <span class="sval"><span class="src ${x.source}">${esc(kindLabel)}</span></span>
+    <span class="sval muted">${esc(
+      x.source === "booked" ? L.shBookedNote : x.own ? L.shOwnNote : L.shSightNote)}</span>
+  </div>
+
+  <div class="srow">
+    <span class="slabel">${esc(L.shWhen)}</span>
+    <div class="sfields">
+      ${x.own ? `<label>${esc(L.shName)}<input type="text" data-f="label" value="${esc(x.name)}"></label>` : ""}
+      <label>${esc(L.shDay)}<select data-f="day">${dayOpts}</select></label>
+      <label>${esc(L.shFrom)}<input type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
+      <label>${esc(L.shTo)}<input type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
+    </div>
+  </div>
+
+  <div class="srow">
+    <span class="slabel">${esc(L.shWhere)}</span>
+    <span class="sval${x.address ? "" : " muted"}">${esc(x.address || L.shNoPlace)}</span>
+    ${route ? `<div class="slinks">
+      <a href="${esc(route.google)}" target="_blank" rel="noopener">${esc(L.shMap)} \u2197</a>
+    </div>` : ""}
+  </div>
+
+  ${x.own ? "" : `<div class="srow">
+    <span class="slabel">${esc(L.shVotes)}</span>
+    ${x.voters.length
+      ? `<div class="svoters">${x.voters.map((v) => `<span class="svoter">${esc(v)}</span>`).join("")}</div>`
+      : `<span class="sval muted">${esc(L.shNoVotes)}</span>`}
+  </div>`}
+
+  ${x.own ? "" : `<div class="srow">
+    <span class="slabel">${esc(L.shBooking)}</span>
+    ${x.booking
+      ? `<span class="sval">${esc({ booked: L.stBooked, skipped: L.stSkipped }[x.booking.status] ?? L.stTodo)}${
+          x.booking.by ? ` \u00b7 ${esc(L.shBookedBy)} ${esc(x.booking.by)}` : ""}${
+          x.booking.reference ? ` \u00b7 ${esc(L.shRef)} ${esc(x.booking.reference)}` : ""}${
+          x.booking.cost ? ` \u00b7 ${esc(x.booking.cost)}` : ""}</span>`
+      : `<span class="sval muted">${esc(L.shNotBooked)}</span>`}
+  </div>`}
+
+  ${x.url || x.bookingUrl ? `<div class="srow">
+    <span class="slabel">${esc(L.shLinks)}</span>
+    <div class="slinks">
+      ${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(L.shSite)} \u2197</a>` : ""}
+      ${x.bookingUrl && x.bookingUrl !== x.url ? `<a href="${esc(x.bookingUrl)}" target="_blank" rel="noopener">${esc(L.shTickets)} \u2197</a>` : ""}
+    </div>
+  </div>` : ""}
+
+  <div class="sfoot">
+    <button class="save" type="button" data-sheet-save>${esc(L.shSave)}</button>
+    <button class="danger" type="button" data-sheet-remove>${esc(L.shRemove)}</button>
+  </div>`;
+}
+
+const stopFor = (ref) =>
+  ref ? planned().find((x) => x.id === ref.id && x.source === ref.source) : null;
+
+function renderSheet() {
+  const box = $("#sheet");
+  if (!box) return;
+  const p = stopFor(sheetFor);
+  // It may have moved or been removed by someone else since the sheet opened.
+  if (!p) { sheetFor = null; box.hidden = true; return; }
+
+  const x = detailsOf(p);
+  $("#sheet-title").textContent = x.name;
+  $("#sheet-body").innerHTML = sheetHTML(x);
+  box.hidden = false;
+}
+
+function closeSheet() { sheetFor = null; const b = $("#sheet"); if (b) b.hidden = true; }
+
+/** Save through whichever endpoint owns this kind of stop. */
+function saveSheet() {
+  const p = stopFor(sheetFor);
+  if (!p) return closeSheet();
+  const box = $("#sheet-body");
+  const f = (k) => box.querySelector(`[data-f="${k}"]`)?.value || null;
+  const day = f("day"), start = f("start"), end = f("end"), label = f("label");
+  closeSheet();
+
+  if (p.source === "own")
+    return void mutate("/api/plan/note/update", { id: p.id, label, day, start, end });
+  if (p.source === "booked")
+    // The booking owns the slot, so editing the time here edits the booking.
+    return void mutate("/api/bookings/status", { sightId: p.id, status: "booked",
+      bookedDate: day, bookedTime: start, bookedEnd: end });
+  return void mutate("/api/plan/set", { sightId: p.id, day, start, end });
+}
+
+function removeFromSheet() {
+  const p = stopFor(sheetFor);
+  if (!p) return closeSheet();
+  closeSheet();
+  if (p.source === "own") return void mutate("/api/plan/note/remove", { id: p.id });
+  if (p.source === "booked")
+    // Clearing the slot takes it off the plan; the booking itself stays.
+    return void mutate("/api/bookings/status", { sightId: p.id, status: "booked",
+      bookedDate: null, bookedTime: null, bookedEnd: null });
+  return void mutate("/api/plan/remove", { sightId: p.id });
+}
+
 /* ------------------------------------------------------------- actions */
 
 async function lookUp(id) {
@@ -920,6 +1170,7 @@ async function mutate(path, body) {
     TRIP = d.trip ?? TRIP;
     fillMembers(d.members);
     render();
+    renderSheet();
     setStatus(t().saved);
   } catch (err) { setStatus(err.message); }
 }
@@ -946,6 +1197,7 @@ $("#own-add").addEventListener("click", () => {
 });
 
 document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape" && sheetFor) { closeSheet(); return; }
   if (ev.key !== "Enter" || !ev.target.matches("[data-addrq]")) return;
   ev.preventDefault();
   lookUp(ev.target.closest("[data-addrbox]").dataset.addrbox);
@@ -968,6 +1220,22 @@ document.addEventListener("input", (ev) => {
 });
 
 document.addEventListener("click", (ev) => {
+  // --- the detail sheet
+  if (ev.target.closest("[data-sheet-save]")) return void saveSheet();
+  if (ev.target.closest("[data-sheet-remove]")) return void removeFromSheet();
+  // Clicking the backdrop itself, or the ×, closes it.
+  if (ev.target.id === "sheet-close" || ev.target.id === "sheet") return void closeSheet();
+
+  const row = ev.target.closest("li.stop");
+  // Buttons, links and fields inside a row do their own job; only the row
+  // itself opens the sheet, or the arrows and the address form stop working.
+  if (row && !ev.target.closest("button, a, select, input, label, .addrform")) {
+    sheetFor = { id: row.dataset.stop, source: row.dataset.src };
+    renderSheet();
+    $("#sheet-close")?.focus();
+    return;
+  }
+
   const st = ev.target.closest("[data-start]");
   if (st) {
     startFrom = st.dataset.start;

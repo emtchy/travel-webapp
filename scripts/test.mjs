@@ -612,6 +612,48 @@ t4("an over-long address is refused",
    (await noteAddr({ voter: "E", id: dinner.id, address: "x".repeat(201),
                      lat: 51.5, lon: -0.1 })).status === 400);
 
+// --- editing one of your own entries in place, which the detail sheet does
+const noteUpdate = (b) => call("/api/plan/note/update", { method: "POST", body: JSON.stringify(b) });
+
+{
+  const made = (await (await noteAdd({ voter: "Emily", label: "Coffee",
+    day: "2026-09-13", start: "10:00", end: "11:00" })).json())
+    .notes.find(n => n.label === "Coffee");
+  await noteAddr({ voter: "Emily", id: made.id, address: "Somewhere", lat: 51.5, lon: -0.1 });
+
+  let up = await (await noteUpdate({ voter: "Maya", id: made.id,
+    label: "Coffee with Anna", start: "10:30", end: "11:30" })).json();
+  let now = up.notes.find(n => n.id === made.id);
+  t4("an entry can be renamed and re-timed", now.label === "Coffee with Anna" && now.start === "10:30");
+  t4("its id does not change, so nothing pointing at it breaks", now.id === made.id);
+  t4("its address survives the edit", now.lat === 51.5 && now.address === "Somewhere");
+  t4("anyone can edit it, not only whoever added it", now.label === "Coffee with Anna");
+
+  up = await (await noteUpdate({ voter: "Maya", id: made.id, day: "2026-09-15" })).json();
+  now = up.notes.find(n => n.id === made.id);
+  t4("changing only the day leaves the times alone",
+     now.day === "2026-09-15" && now.start === "10:30" && now.end === "11:30");
+
+  // The bug this guards: sending only an end time compared it against a start
+  // that was never sent, so an impossible pair could be stored.
+  t4("an end time alone is still checked against the stored start",
+     (await noteUpdate({ voter: "M", id: made.id, end: "09:00" })).status === 400);
+  t4("a start alone is checked against the stored end",
+     (await noteUpdate({ voter: "M", id: made.id, start: "23:00" })).status === 400);
+
+  t4("a day outside the trip is refused",
+     (await noteUpdate({ voter: "M", id: made.id, day: "2026-12-01" })).status === 400);
+  t4("a sight id is refused", (await noteUpdate({ voter: "M", id: "tower-of-london" })).status === 400);
+  t4("an entry that is gone gives a 404",
+     (await noteUpdate({ voter: "M", id: "note-nope", start: "10:00" })).status === 404);
+  t4("editing needs a name", (await noteUpdate({ voter: "", id: made.id })).status === 400);
+  t4("an over-long name is refused",
+     (await noteUpdate({ voter: "M", id: made.id, label: "x".repeat(81) })).status === 400);
+
+  await noteRm({ voter: "Emily", id: made.id });
+}
+
+
 // --- where the days start
 const setBase = (b) => call("/api/trip/base", { method: "POST", body: JSON.stringify(b) });
 

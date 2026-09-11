@@ -90,6 +90,14 @@ those are the same decision made two ways, not two different features.
 Each stop is labelled **booked**, **by hand** or **yours** so it is obvious
 which is which, and the last two can be taken off again.
 
+**Click any stop** and a panel opens over the page with everything about it:
+when it is, where it is with a map link, who voted for it, its booking status
+and reference, and links to the official site and the ticket page. The day,
+start and end are editable right there — and saving writes back through
+whichever record actually owns that stop, so a booked sight updates its
+booking and one of your own entries updates itself. Press Escape or click
+outside to close.
+
 ### Routes
 
 Every day with somewhere to go carries **Route · Google** and **Route · Apple**
@@ -280,7 +288,7 @@ npm run images       # downloads into public/img/ + writes CREDITS.json
 npm test
 ```
 
-259 checks against a SQLite-backed mock of the Worker — voting, un-voting,
+271 checks against a SQLite-backed mock of the Worker — voting, un-voting,
 duplicate names, adding and removing options, URL sanitising, the access code,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
@@ -374,6 +382,7 @@ To regenerate the file from the trip dataset, re-run the generator against
 | POST   | `/api/plan/set`      | `{ voter, sightId, day, start?, end? }` → onto the plan |
 | POST   | `/api/plan/remove`   | `{ voter, sightId }` → off it again                |
 | POST   | `/api/plan/note/add` | `{ voter, label, day, start?, end? }` → your own entry |
+| POST   | `/api/plan/note/update` | `{ voter, id, label?, day?, start?, end? }` → edit in place |
 | POST   | `/api/plan/note/remove` | `{ voter, id }` → remove one                    |
 | POST   | `/api/plan/note/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
 | POST   | `/api/trip/base`     | `{ voter, name?, lat?, lon? }` → where the days start |

@@ -994,6 +994,72 @@ async function handleNoteAdd(request, env) {
   return json({ ok: true, ...(await snapshot(env)) });
 }
 
+/**
+ * Change one of your own entries in place.
+ *
+ * Remove-and-re-add would work but hands it a new id, which loses the address
+ * attached to it and breaks anything holding the old one. Only the fields
+ * actually sent are changed.
+ */
+async function handleNoteUpdate(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Body must be JSON.");
+  }
+
+  const who = cleanName(body?.voter);
+  if (!who) return bad("Enter your name first.");
+
+  const { id } = body ?? {};
+  if (typeof id !== "string" || !id.startsWith("note-"))
+    return bad("That isn't one of your own entries.");
+
+  const row = await env.DB.prepare("SELECT 1 FROM plan_notes WHERE id = ?1")
+    .bind(id).first();
+  if (!row) return bad("That entry is already gone.", 404);
+
+  const label = cleanText(body?.label, 80);
+  if (label === undefined) return bad("Keep the name under 80 characters.");
+
+  const { day } = body ?? {};
+  if (day != null && day !== "") {
+    const trip = await getTrip(env);
+    if (typeof day !== "string" || !trip.days.includes(day))
+      return bad("That date isn't a day of this trip.");
+  }
+
+  const start = cleanClock(body?.start);
+  if (start === undefined) return bad("The start should look like 17:00.");
+  const end = cleanClock(body?.end);
+  if (end === undefined) return bad("The end should look like 21:00.");
+
+  // Compare against what is already stored, not just what was sent, or an edit
+  // that only changes the end time can slip past the ordering check.
+  const current = await env.DB.prepare(
+    "SELECT day, start_time, end_time FROM plan_notes WHERE id = ?1"
+  ).bind(id).first();
+  const nextStart = body?.start !== undefined ? start : current.start_time;
+  const nextEnd = body?.end !== undefined ? end : current.end_time;
+  if (nextEnd && !nextStart) return bad("An end time needs a start time.");
+  if (nextEnd && nextStart && nextEnd <= nextStart)
+    return bad("It has to end after it starts.");
+
+  await env.DB.prepare(
+    `UPDATE plan_notes SET
+       label      = COALESCE(?1, label),
+       day        = COALESCE(?2, day),
+       start_time = ?3,
+       end_time   = ?4
+     WHERE id = ?5`
+  )
+    .bind(label, day || null, nextStart, nextEnd, id)
+    .run();
+
+  return json({ ok: true, ...(await snapshot(env)) });
+}
+
 async function handleNoteRemove(request, env) {
   let body;
   try {
@@ -1153,6 +1219,9 @@ export default {
 
     if (pathname === "/api/plan/note/add" && method === "POST")
       return handleNoteAdd(request, env);
+
+    if (pathname === "/api/plan/note/update" && method === "POST")
+      return handleNoteUpdate(request, env);
 
     if (pathname === "/api/plan/note/remove" && method === "POST")
       return handleNoteRemove(request, env);
