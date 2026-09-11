@@ -421,7 +421,7 @@ function stopHTML(p, i, stops) {
     <div>
       <div class="sname">${esc(label)}</div>
       <div class="smeta">
-        ${p.source !== "hand" ? `<span class="tag tag-sm ${SRC_TAG[p.source]}">${esc(srcLabel)}</span>` : ""}
+        ${p.source === "booked" ? `<span class="tag tag-sm ${SRC_TAG[p.source]}">${esc(srcLabel)}</span>` : ""}
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
         <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
         ${needsPlace(p) ? `<span class="tag tag-sm tag-coral">${esc(L.noLocation)}</span>` : ""}
