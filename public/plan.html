@@ -11,6 +11,21 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
 <style>
 :root{
+  /* iOS-leaning control tokens. Blue for anything actionable, the page's own
+     maroon for anything destructive; both deep enough to read at 12px, which
+     the old --ink-3 text buttons were not. The blue is pulled off Apple's
+     system blue towards the warm paper ground so it doesn't shout. */
+  --tint:#1A5FCC;
+  --tint-bg:rgba(26,95,204,.09);
+  --tint-br:rgba(26,95,204,.26);
+  --on-tint:#FFFFFF;
+  --danger:#8E2431;
+  --danger-bg:rgba(142,36,49,.08);
+  --on-danger:#FFFFFF;
+  --ctl:#FFFFFF;
+  --ctl-br:rgba(23,29,25,.20);
+  --sep:rgba(23,29,25,.09);
+  --ui:"Instrument Sans",-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
   --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
   --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
   --line:#D9DDD4; --line-2:#C4CABD;
@@ -21,6 +36,16 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
+    --tint:#79B0FF;
+    --tint-bg:rgba(121,176,255,.15);
+    --tint-br:rgba(121,176,255,.32);
+    --on-tint:#101410;
+    --danger:#E0868F;
+    --danger-bg:rgba(224,134,143,.14);
+    --on-danger:#101410;
+    --ctl:#212722;
+    --ctl-br:rgba(233,236,229,.20);
+    --sep:rgba(233,236,229,.10);
     --paper:#101410; --card:#171C18; --card-2:#1E241F;
     --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
     --line:#2A322B; --line-2:#3A443B;
@@ -52,7 +77,8 @@ a{color:var(--maroon)}
 .navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
 .navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
 .navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);width:132px}
+  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
+  width:132px;min-width:0}
 .navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
 .navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
@@ -66,7 +92,18 @@ a{color:var(--maroon)}
   .navinner{padding:9px 16px;gap:10px}
   .navtools{margin-left:auto;flex-wrap:wrap}
   .navtools input[type=text]{width:112px}
+  .navtools input[type=text]:focus{width:112px}
   .navstatus{flex-basis:100%;max-width:none;text-align:right}
+}
+@media (max-width:520px){
+  .navinner{gap:8px;row-gap:6px}
+  .brand{font-size:15px}
+  /* the four links get their own line rather than squeezing the name field */
+  .navlinks{order:3;flex-basis:100%;overflow-x:auto;scrollbar-width:none}
+  .navlinks::-webkit-scrollbar{display:none}
+  .navlinks a{padding:6px 10px;font-size:13.5px;white-space:nowrap}
+  .navtools input[type=text],.navtools input[type=text]:focus{width:100%;flex:1}
+  .navtools{flex:1;min-width:0}
 }
 
 
@@ -121,99 +158,157 @@ a{color:var(--maroon)}
 .adder .apbody{border-top:0;padding-top:14px}
 
 /* ---- the detail sheet ---- */
+/* Shaped after an iOS sheet: a blurred scrim, a large-radius card that rises
+   from the bottom on a phone, grouped rows, and controls of one height so the
+   labels above them line up without being nudged. */
 .sheetback{
-  position:fixed;inset:0;z-index:100;background:rgba(16,18,22,.55);
+  position:fixed;inset:0;z-index:100;background:rgba(16,18,22,.45);
   display:flex;align-items:center;justify-content:center;padding:20px;
-  backdrop-filter:blur(3px);
+  backdrop-filter:blur(14px) saturate(140%);
+  -webkit-backdrop-filter:blur(14px) saturate(140%);
 }
 .sheetback[hidden]{display:none}
 .sheet{
-  background:var(--card);border:1px solid var(--line);border-radius:16px;
-  box-shadow:0 24px 60px -18px rgba(0,0,0,.5);
-  width:min(560px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;
+  background:var(--card);border-radius:20px;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.45), 0 0 0 .5px var(--sep);
+  width:min(640px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;
+  font-family:var(--ui);
 }
 .sheet > header{
-  padding:20px 22px 16px;border-bottom:1px solid var(--line);
-  display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;
-  background:var(--card);border-radius:16px 16px 0 0;
+  padding:20px 22px 14px;border-bottom:.5px solid var(--sep);
+  display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;z-index:2;
+  background:var(--card);border-radius:20px 20px 0 0;
 }
-.sheet h2{font-family:"Fraunces",Georgia,serif;font-size:21px;margin:0;
-  font-weight:600;line-height:1.2;flex:1}
+.sheet h2{
+  font-family:"Fraunces",Georgia,serif;font-size:22px;margin:0;
+  font-weight:600;line-height:1.2;flex:1;letter-spacing:-.01em;
+}
 .sheetclose{
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink-2);
-  width:32px;height:32px;border-radius:9px;font-size:17px;line-height:1;
-  cursor:pointer;flex:none;
+  border:0;background:var(--card-2);color:var(--ink-2);
+  width:30px;height:30px;border-radius:50%;font-size:16px;line-height:1;
+  cursor:pointer;flex:none;display:grid;place-items:center;
 }
-.sheetclose:hover{border-color:var(--ink);color:var(--ink)}
-.sheetbody{padding:18px 22px 22px;display:grid;gap:18px}
-.srow{display:grid;gap:7px}
+.sheetclose:hover{background:var(--line);color:var(--ink)}
+.sheetbody{padding:16px 22px 22px;display:grid;gap:20px}
+
+.srow{display:grid;gap:8px}
 .slabel{
-  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+  font-family:var(--ui);font-size:12px;font-weight:600;letter-spacing:.02em;
   text-transform:uppercase;color:var(--ink-3);
 }
-.sval{font-size:15px;color:var(--ink)}
-.sval.muted{color:var(--ink-3)}
-.sfields{display:flex;gap:9px;flex-wrap:wrap;align-items:flex-end}
-.sfields label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--ink-2)}
-.sfields input,.sfields select{
-  font:inherit;font-size:14px;padding:7px 10px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);
+.sval{font-size:15.5px;color:var(--ink);line-height:1.45}
+.sval.muted{color:var(--ink-3);font-size:14px}
+
+/* One row, one line — and it stays one line. Wrapping is off, so when the
+   sheet narrows the name and the day give up width instead of the To field
+   dropping underneath. Below 560px it becomes a grid instead; see there. */
+.sfields{display:flex;gap:10px;align-items:flex-end;flex-wrap:nowrap}
+.sfields label{
+  display:flex;flex-direction:column;gap:6px;
+  font-size:12.5px;color:var(--ink-2);flex:0 1 auto;min-width:0;
 }
-.sfields input[type=text]{min-width:190px}
+.sfields label.wide{flex:1 1 110px}
+.sfields input,.sfields select{
+  font:inherit;font-family:var(--ui);font-size:15px;height:38px;
+  padding:0 11px;border-radius:10px;
+  border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink);
+  -webkit-appearance:none;appearance:none;
+}
+.sfields select{padding-right:30px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
+                   linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
+  background-position:calc(100% - 16px) 17px,calc(100% - 11px) 17px;
+  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+}
+.sfields input[type=time]{width:104px;flex:none;text-align:center}
+.sfields select{max-width:170px;min-width:0;width:100%}
+.sfields label.wide input{width:100%}
+.sfields input:focus,.sfields select:focus{
+  outline:none;border-color:var(--tint);box-shadow:0 0 0 3px var(--tint-bg);
+}
+
 .svoters{display:flex;gap:6px;flex-wrap:wrap}
 .svoter{
-  font-size:12.5px;background:var(--card-2);border:1px solid var(--line-2);
-  border-radius:999px;padding:3px 11px;
+  font-size:13px;background:var(--card-2);border-radius:999px;padding:4px 12px;
+  color:var(--ink);
 }
 .slinks{display:flex;gap:8px;flex-wrap:wrap}
 .slinks a{
-  font-size:13px;font-weight:500;text-decoration:none;padding:7px 12px;
-  border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);
+  font-size:14px;font-weight:600;text-decoration:none;padding:9px 14px;
+  border-radius:10px;background:var(--tint-bg);color:var(--tint);
+  border:.5px solid var(--tint-br);
 }
-.slinks a:hover{border-color:var(--ink-3)}
+.slinks a:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
+
 .sfoot{
-  display:flex;gap:9px;align-items:center;flex-wrap:wrap;
-  padding-top:16px;border-top:1px solid var(--line);
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  padding-top:18px;border-top:.5px solid var(--sep);
 }
 .sfoot .save{
-  font-size:13.5px;font-weight:600;padding:9px 17px;border-radius:9px;
-  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
+  font-family:var(--ui);font-size:15px;font-weight:600;padding:11px 20px;
+  border-radius:12px;border:0;background:var(--tint);color:var(--on-tint);cursor:pointer;
 }
+.sfoot .save:hover{filter:brightness(1.08)}
 .sfoot .danger{
-  font-size:12.5px;border:0;background:none;color:var(--ink-3);
-  padding:9px 4px;margin-left:auto;cursor:pointer;
+  font-family:var(--ui);font-size:14px;font-weight:600;padding:10px 15px;
+  border-radius:12px;border:.5px solid var(--danger);
+  background:var(--danger-bg);color:var(--danger);cursor:pointer;margin-left:auto;
 }
-.sfoot .danger:hover{color:var(--maroon)}
+.sfoot .danger:hover{background:var(--danger);color:var(--on-danger)}
+
 li.stop{cursor:pointer}
 li.stop:hover{background:var(--card-2)}
-li.stop.rest:hover{background:var(--sunk)}
 .openhint{
-  font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-3);
+  font-family:var(--ui);font-size:11px;font-weight:600;color:var(--tint);
   opacity:0;transition:opacity .12s;
 }
 li.stop:hover .openhint{opacity:1}
+
 @media (max-width:560px){
+  /* name over day over from|to — four fields never fit one line here */
+  .sfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .sfields label,.sfields label.wide{grid-column:1 / -1}
+  .sfields label[data-half]{grid-column:auto}
+  .sfields input,.sfields select{width:100%}
+  .sfields input[type=time]{width:100%;flex:auto}
+  .sfields select{max-width:none}
+  .sheetbody{padding:14px 18px 20px;gap:17px}
+  .sheet > header{padding:20px 18px 13px}
+  .sheet h2{font-size:20px}
+  .sfoot .danger{margin-left:0;flex:1}
+  .sfoot .save{flex:1}
+}
+
+@media (max-width:600px){
   .sheetback{padding:0;align-items:flex-end}
-  .sheet{max-height:92dvh;border-radius:16px 16px 0 0;width:100%}
-  .sheet > header{border-radius:16px 16px 0 0}
+  .sheet{max-height:92dvh;border-radius:20px 20px 0 0;width:100%}
+  .sheet > header{border-radius:20px 20px 0 0}
+  /* the iOS grabber */
+  .sheet > header::before{
+    content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
+    width:36px;height:5px;border-radius:3px;background:var(--line-2);
+  }
+  .sheet > header{padding-top:20px}
 }
 
 /* ---- day columns ---- */
-.days{display:grid;gap:18px;margin-top:26px}
-@media(min-width:900px){.days{grid-template-columns:repeat(2,1fr)}}
-@media(min-width:1300px){.days{grid-template-columns:repeat(3,1fr)}}
-.day{background:var(--card);border:1px solid var(--line);border-radius:14px;
+/* auto-fit rather than fixed breakpoints: the columns are sized by what a day
+   actually needs, so a 1280px laptop gets three of them and not two wide ones. */
+.days{display:grid;gap:18px;margin-top:26px;
+  grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
+@media (max-width:380px){.days{grid-template-columns:1fr}}
+.day{background:var(--card);border:.5px solid var(--line);border-radius:16px;
   box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
-.day > header{padding:14px 17px;border-bottom:1px solid var(--line);
-  background:var(--card-2);display:flex;align-items:baseline;gap:9px}
+.day > header{padding:14px 17px;border-bottom:.5px solid var(--sep);
+  background:var(--card-2);display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
 .day h2{font-family:"Fraunces",Georgia,serif;font-size:18px;margin:0;font-weight:600}
 .day .wd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
   text-transform:uppercase;color:var(--maroon)}
 .day .n{margin-left:auto;font-family:"IBM Plex Mono",monospace;
   font-size:11px;color:var(--ink-3)}
 ol.stops{list-style:none;margin:0;padding:6px 0;flex:1;min-height:54px}
-li.stop{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:10px 17px;
-  border-bottom:1px dashed var(--line)}
+li.stop{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:11px 17px;
+  border-bottom:.5px solid var(--sep)}
 li.stop:last-child{border-bottom:0}
 .when{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);
   white-space:nowrap;padding-top:1px;min-width:44px}
@@ -226,35 +321,70 @@ li.stop:last-child{border-bottom:0}
   border-radius:4px;padding:1px 5px;border:1px solid}
 .src.booked{color:var(--green);border-color:var(--green);background:var(--green-soft)}
 .src.hand{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.stopact{display:flex;gap:5px;margin-top:6px}
-.stopact button{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:3px 3px}
-.stopact button:hover{color:var(--maroon)}
+.stopact{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.stopact button,.fromhere{
+  font-family:var(--ui);font-size:12px;font-weight:600;line-height:1;
+  padding:6px 11px;border-radius:999px;cursor:pointer;text-decoration:none;
+  border:.5px solid var(--tint-br);background:var(--tint-bg);color:var(--tint);
+  display:inline-flex;align-items:center;gap:4px;
+}
+.stopact button:hover,.fromhere:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
 .dayempty{padding:20px 17px;color:var(--ink-3);font-size:13px}
 .dayroute{display:flex;gap:7px;align-items:center;flex-wrap:wrap;
-  padding:11px 17px;border-top:1px solid var(--line);background:var(--card-2)}
-.dayroute a{font-size:12.5px;font-weight:500;text-decoration:none;padding:6px 11px;
-  border-radius:8px;border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
-.dayroute a:hover{border-color:var(--ink-3)}
-.routenote{font-size:11.5px;color:var(--ink-3);flex-basis:100%}
-.fromhere{font-size:11.5px;color:var(--ink-3);text-decoration:none;
-  border-bottom:1px solid var(--line-2)}
-.fromhere:hover{color:var(--maroon);border-color:var(--maroon)}
+  padding:11px 17px;border-top:.5px solid var(--sep);background:var(--card-2)}
+.dayroute a{font-family:var(--ui);font-size:13px;font-weight:600;text-decoration:none;
+  padding:8px 13px;border-radius:999px;border:.5px solid var(--tint-br);
+  background:var(--tint-bg);color:var(--tint)}
+.dayroute a:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
+.routenote{font-size:12px;color:var(--ink-2);flex-basis:100%}
+
 .noloc{font-size:11px;color:var(--maroon);border:1px solid var(--maroon);
   background:var(--maroon-soft);border-radius:5px;padding:1px 6px}
-.addrform{margin-top:8px;padding:10px;border:1px solid var(--line-2);
-  border-radius:10px;background:var(--card-2)}
+.addrform{margin-top:8px;padding:11px;border:.5px solid var(--ctl-br);
+  border-radius:14px;background:var(--card-2)}
 .addrrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.addrrow input{font:inherit;font-size:12.5px;padding:6px 9px;border-radius:8px;flex:1;
-  min-width:170px;border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
-.linky{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:5px 3px;cursor:pointer}
-.linky:hover{color:var(--maroon)}
+.addrrow input{font:inherit;font-size:13.5px;padding:8px 11px;border-radius:10px;flex:1;
+  min-width:170px;border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink)}
+.addrrow input:focus{outline:none;border-color:var(--tint);box-shadow:0 0 0 3px var(--tint-bg)}
+.linky{font-family:var(--ui);font-size:12px;font-weight:600;border:.5px solid var(--ctl-br);
+  background:var(--ctl);color:var(--ink-2);padding:6px 11px;border-radius:999px;cursor:pointer}
+.linky:hover{color:var(--ink);border-color:var(--ink-3)}
 .addrhits{display:grid;gap:3px;margin-top:7px}
-.addrhits button{text-align:left;font-size:12px;padding:6px 9px;border-radius:7px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);cursor:pointer}
-.addrhits button:hover{border-color:var(--maroon);color:var(--ink)}
+.addrhits button{text-align:left;font-size:13px;padding:8px 11px;border-radius:10px;
+  border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink-2);cursor:pointer}
+.addrhits button:hover{border-color:var(--tint);color:var(--ink);background:var(--tint-bg)}
 .addrhits button b{color:var(--green);font-size:10px;text-transform:uppercase;
   letter-spacing:.06em;margin-right:5px}
 .addrnote{font-size:11.5px;color:var(--ink-3)}
+
+/* ---- small screens ----
+   The desktop layout is a row of controls; below this width it becomes a
+   stack, and anything with a hard min-width has to give it up or the page
+   scrolls sideways. */
+@media (max-width:560px){
+  .wrap{padding:0 14px 60px}
+  .stats{gap:18px 24px;padding:18px 0 16px}
+  .stat b{font-size:24px}
+  .filters{gap:12px}
+  .startgroup{margin-left:0;flex-basis:100%}
+  .fgroup{width:100%}
+  input[type=text]{min-width:0}
+
+  .apbody{padding:14px 16px 16px;gap:12px}
+  .apbody label{flex:1 1 100%}
+  .apbody select,.apbody input,.apbody #own-what{min-width:0;width:100%}
+  /* the two times still belong side by side */
+  .apbody label[id$="-from-l"],.apbody label[id$="-to-l"]{flex:1 1 calc(50% - 6px)}
+  .apbody .btn{width:100%}
+  .apwhere label{min-width:0;flex:1 1 100%}
+  .apwhere .addrrow{flex-wrap:wrap}
+  .apwhere .btn{width:auto;flex:1}
+
+  .day > header{padding:12px 14px}
+  li.stop{padding:10px 14px;gap:9px}
+  .dayroute{padding:10px 14px}
+  .addrrow input{min-width:0}
+}
 
 /* ---- add to the plan ---- */
 .addplan{margin-top:26px;background:var(--card);border:1px solid var(--line);
@@ -268,6 +398,13 @@ li.stop:last-child{border-bottom:0}
 .apbody select{min-width:230px;max-width:100%}
 .apbody.own{border-top:1px solid var(--line);padding-top:16px}
 .apbody #own-what{min-width:250px}
+.apwhere{flex-basis:100%;margin-top:12px;padding-top:12px;border-top:.5px solid var(--sep)}
+.apwhere .addrrow{align-items:flex-end}
+.apwhere label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2);
+  flex:1;min-width:220px}
+.apwhere #own-where{width:100%}
+#own-where-note{margin:7px 0 0}
+#own-where-note.set{color:var(--green);font-weight:600}
 .apown{flex-basis:100%;margin:0 0 2px;font-weight:600;font-size:14px}
 .src.own{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
 .aphint{flex-basis:100%;font-size:12.5px;color:var(--ink-3);margin:2px 0 0}
@@ -310,76 +447,11 @@ button{font:inherit;cursor:pointer}
 .fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
   font-weight:500;opacity:.55;margin-left:4px}
 
-/* ---- list ---- */
-.list{display:grid;gap:12px;margin-top:24px}
-@media(min-width:860px){.list{grid-template-columns:repeat(2,1fr)}}
-.item{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
-.itop{display:flex;gap:10px;align-items:flex-start}
-.iname{font-weight:600;font-size:16px;line-height:1.3;flex:1}
-.price{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);
-  white-space:nowrap;font-weight:500}
-.tags{display:flex;gap:5px;flex-wrap:wrap}
-.tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  border-radius:5px;padding:2px 7px;border:1px solid}
-.tag.paid{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
-.tag.book{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.tag.added{color:var(--green);border-color:var(--green);background:var(--green-soft)}
-.blurb{font-size:13.5px;color:var(--ink-2);margin:0}
-.voters{font-size:12.5px;color:var(--ink-3)}
-.voters b{color:var(--ink-2);font-weight:600}
-.iact{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
-  padding-top:10px;margin-top:auto;border-top:1px dashed var(--line)}
-.iact a{font-size:13px;font-weight:500;text-decoration:none;padding:6px 12px;
-  border-radius:8px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.iact a:hover{border-color:var(--ink-3)}
-.remove{font-size:12.5px;border:0;background:none;color:var(--ink-3);
-  padding:6px 4px;margin-left:auto}
-.remove:hover{color:var(--maroon)}
+.btn{font-family:var(--ui);font-size:13.5px;font-weight:600;padding:8px 14px;
+  border-radius:10px;border:.5px solid var(--tint-br);
+  background:var(--tint-bg);color:var(--tint);cursor:pointer}
+.btn:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
 
-.empty{color:var(--ink-3);font-size:14.5px;padding:40px 0;text-align:center}
-
-/* ---- slot form ---- */
-.slot{padding-top:11px;margin-top:auto;border-top:1px dashed var(--line);
-  display:grid;gap:9px}
-.slotrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.slot label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
-.slot input{font:inherit;font-size:13px;padding:5px 9px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.slotshown{font-family:"IBM Plex Mono",monospace;font-size:12.5px;
-  color:var(--green);border:1px solid var(--green);border-radius:6px;
-  padding:1px 8px;white-space:nowrap}
-.slotshown.none{color:var(--ink-3);border-color:var(--line-2)}
-.done.editing{display:block}
-.done.editing .n{display:block;margin-bottom:2px}
-
-/* ---- booked ---- */
-.section{margin-top:34px}
-.section h2{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:600;
-  margin:0 0 4px;display:flex;align-items:baseline;gap:9px}
-.section h2 span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;color:var(--ink-3);font-weight:500}
-.section .note{font-size:13px;color:var(--ink-3);margin:0 0 14px}
-.donelist{display:grid;gap:8px}
-.done{display:flex;gap:11px;align-items:center;flex-wrap:wrap;
-  background:var(--green-soft);border:1px solid var(--line);
-  border-radius:11px;padding:11px 15px}
-.done .tick{color:var(--green);font-weight:700;flex:none}
-.done .n{font-weight:600;font-size:15px;flex:1;min-width:150px}
-.done .voters{font-size:12.5px;color:var(--ink-3)}
-.btn.book{border-color:var(--green);color:var(--green)}
-.btn.book:hover{background:var(--green);color:var(--paper);border-color:var(--green)}
-details.gone{margin-top:26px;background:var(--card);border:1px solid var(--line);
-  border-radius:13px;overflow:hidden}
-details.gone>summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14.5px}
-.gonebody{padding:6px 18px 14px;border-top:1px solid var(--line)}
-.grow{display:flex;gap:10px;align-items:center;padding:9px 0;flex-wrap:wrap;
-  border-bottom:1px dashed var(--line)}
-.grow:last-child{border-bottom:0}
-.grow .n{flex:1;min-width:160px;font-size:14.5px}
-.btn{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.btn:hover{border-color:var(--ink-3)}
 footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
   font-size:13px;color:var(--ink-3)}
 </style>
@@ -448,6 +520,16 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
     <label id="own-to-l">To
       <input id="own-to" type="time"></label>
     <button class="btn" id="own-add" type="button">Add it</button>
+    <div class="apwhere" data-addrbox="__new__">
+      <div class="addrrow">
+        <label id="own-where-l">Where
+          <input id="own-where" type="text" maxlength="200" data-addrq placeholder=""></label>
+        <button class="btn" id="own-find" type="button" data-addrfind="__new__">Find</button>
+        <button type="button" class="linky" id="own-where-clear" hidden>Remove</button>
+      </div>
+      <p class="addrnote" id="own-where-note"></p>
+      <div class="addrhits" data-addrhits="__new__"></div>
+    </div>
     <p class="aphint" id="own-hint"></p>
   </div>
 </div>
@@ -498,12 +580,14 @@ const T = {
     dayEmpty: "Nothing planned yet.",
     stops: (n) => `${n} ${n === 1 ? "stop" : "stops"}`,
     noTime: "any time",
-    move: "Move", remove: "Take off",
     routeGoogle: "Route · Google", routeApple: "Route · Apple",
     routeFromHere: "Route from here",
     routeSkipped: (n) => `${n} without a location left out`,
     routeCapped: "Google's link takes the first 9 stops.",
     routeNone: "Nothing here has a location to route to.",
+    ownWhere: "Where", ownWherePh: "Address, or the name of the place",
+    ownWhereHint: "Optional. Find it and pick a result so the day's route can include it.",
+    ownWhereSet: (label) => `Will be saved at: ${label}`,
     open: "open", shWhen: "When", shWhere: "Where", shVotes: "Who wants it",
     shBooking: "Booking", shLinks: "Links", shKind: "On the plan as",
     shDay: "Day", shFrom: "From", shTo: "To", shName: "Name",
@@ -566,12 +650,14 @@ const T = {
     dayEmpty: "Noch nichts geplant.",
     stops: (n) => `${n} ${n === 1 ? "Stopp" : "Stopps"}`,
     noTime: "egal wann",
-    move: "Verschieben", remove: "Entfernen",
     routeGoogle: "Route · Google", routeApple: "Route · Apple",
     routeFromHere: "Route ab hier",
     routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
     routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
     routeNone: "Nichts hier hat einen Ort für eine Route.",
+    ownWhere: "Wo", ownWherePh: "Adresse oder Name des Orts",
+    ownWhereHint: "Optional. Suchen und ein Ergebnis wählen, damit die Tagesroute ihn mitnimmt.",
+    ownWhereSet: (label) => `Wird gespeichert als: ${label}`,
     open: "öffnen", shWhen: "Wann", shWhere: "Wo", shVotes: "Wer will hin",
     shBooking: "Buchung", shLinks: "Links", shKind: "Im Plan als",
     shDay: "Tag", shFrom: "Von", shTo: "Bis", shName: "Name",
@@ -623,6 +709,8 @@ const t = () => T[lang];
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
 let minVotes = 0;
 let editingAddress = null;   // sight id whose address form is open
+// A place picked on the add form, held until the entry it belongs to exists.
+let pendingPlace = null;     // { label, lat, lon } | null
 let addMode = "sight";       // which half of the add panel is showing
 let openedOnce = false;
 let sheetFor = null;   // { id, source } of the stop whose detail sheet is open      // so an empty plan opens it once, not on every render
@@ -716,6 +804,11 @@ const weekday = (iso) =>
   new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
     { weekday: "long", timeZone: "UTC" });
 
+/** "Fri", "Fr." — for the sheet, where a full weekday would break the line. */
+const weekdayShort = (iso) =>
+  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
+    { weekday: "short", timeZone: "UTC" });
+
 /** The place a stop routes to, whatever kind of stop it is. */
 const placeOf = (p) =>
   p.source === "own" ? NOTES.find((n) => n.id === p.id) ?? null : byId(p.id);
@@ -724,6 +817,12 @@ const placeOf = (p) =>
  * The thing whose address can be edited, and where to send it. Built-in sights
  * already have coordinates, so they answer null.
  */
+/** True when this stop could have a location and hasn't got one yet. */
+const needsPlace = (p) => {
+  const target = locatable(p);
+  return !!target && !hasPlace(target.it);
+};
+
 function locatable(p) {
   if (p.source === "own") {
     const n = NOTES.find((x) => x.id === p.id);
@@ -741,7 +840,6 @@ function stopHTML(p, i, stops) {
   const onward = routeFrom(stops.map(placeOf), i, "transit", originNow());
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
-  const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
 
   return `<li class="stop" data-stop="${esc(p.id)}" data-src="${esc(p.source)}">
     <div class="when${p.start ? "" : " open"}">
@@ -751,17 +849,11 @@ function stopHTML(p, i, stops) {
     <div>
       <div class="sname">${esc(label)} <span class="openhint">${esc(L.open)} ↗</span></div>
       <div class="smeta">
-        <span class="src ${p.source}">${esc(srcLabel)}</span>
+        ${p.source === "booked" ? `<span class="src booked">${esc(L.srcBooked)}</span>` : ""}
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
         <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
+        ${needsPlace(p) ? `<span class="noloc">${esc(L.noLocation)}</span>` : ""}
       </div>
-      ${p.source === "hand" ? `<div class="stopact">
-        <button type="button" data-remove="${esc(p.id)}">${esc(L.remove)}</button>
-      </div>` : ""}
-      ${own ? `<div class="stopact">
-        <button type="button" data-note-rm="${esc(p.id)}">${esc(L.remove)}</button>
-      </div>` : ""}
-      ${addressControlHTML(p)}
       ${onward && i > 0 ? `<div class="stopact">
         <a class="fromhere" href="${esc(onward.google)}" target="_blank" rel="noopener"
            >${esc(L.routeFromHere)} ↗</a>
@@ -810,9 +902,10 @@ function addressControlHTML(p) {
 
   if (editingAddress !== it.id)
     return `<div class="stopact">
-      ${placed ? "" : `<span class="noloc">${esc(L.noLocation)}</span>`}
       <button type="button" data-addr="${esc(it.id)}">${
         esc(placed ? L.changeAddress : L.addAddress)}</button>
+      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(it.id)}">${
+        esc(L.addrClear)}</button>` : ""}
     </div>`;
 
   return `<div class="addrform" data-addrbox="${esc(it.id)}">
@@ -925,6 +1018,14 @@ function renderAdder() {
   $("#own-from-l").firstChild.textContent = L.apFrom + " ";
   $("#own-to-l").firstChild.textContent = L.apTo + " ";
   $("#own-what").placeholder = L.ownPh;
+  $("#own-where-l").firstChild.textContent = L.ownWhere + " ";
+  $("#own-where").placeholder = L.ownWherePh;
+  $("#own-find").textContent = L.addrFind;
+  $("#own-where-clear").textContent = L.addrClear;
+  $("#own-where-clear").hidden = !pendingPlace;
+  const wnote = $("#own-where-note");
+  wnote.textContent = pendingPlace ? L.ownWhereSet(pendingPlace.label) : L.ownWhereHint;
+  wnote.classList.toggle("set", !!pendingPlace);
   $("#own-add").textContent = L.ownAdd;
   $("#own-hint").textContent = L.ownHint;
   $("#ap-add").disabled = !options.length;
@@ -1020,7 +1121,7 @@ function detailsOf(p) {
 function sheetHTML(x) {
   const L = t();
   const dayOpts = TRIP.days.map((d) =>
-    `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekday(d))} ${esc(dayLabel(d))}</option>`).join("");
+    `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekdayShort(d))} ${esc(dayLabel(d))}</option>`).join("");
   const kindLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[x.source];
   const route = hasPlace(x.place) ? routeLinks([x.place], "transit", originNow()) : null;
 
@@ -1035,16 +1136,17 @@ function sheetHTML(x) {
   <div class="srow">
     <span class="slabel">${esc(L.shWhen)}</span>
     <div class="sfields">
-      ${x.own ? `<label>${esc(L.shName)}<input type="text" data-f="label" value="${esc(x.name)}"></label>` : ""}
+      ${x.own ? `<label class="wide">${esc(L.shName)}<input type="text" data-f="label" value="${esc(x.name)}"></label>` : ""}
       <label>${esc(L.shDay)}<select data-f="day">${dayOpts}</select></label>
-      <label>${esc(L.shFrom)}<input type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
-      <label>${esc(L.shTo)}<input type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
+      <label data-half>${esc(L.shFrom)}<input type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
+      <label data-half>${esc(L.shTo)}<input type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
     </div>
   </div>
 
   <div class="srow">
     <span class="slabel">${esc(L.shWhere)}</span>
     <span class="sval${x.address ? "" : " muted"}">${esc(x.address || L.shNoPlace)}</span>
+    ${addressControlHTML({ id: x.id, source: x.source })}
     ${route ? `<div class="slinks">
       <a href="${esc(route.google)}" target="_blank" rel="noopener">${esc(L.shMap)} \u2197</a>
     </div>` : ""}
@@ -1192,8 +1294,15 @@ $("#own-add").addEventListener("click", () => {
     day: $("#own-day").value,
     start: $("#own-from").value || null,
     end: $("#own-to").value || null,
+    // Only a picked result carries coordinates; typed-but-not-found text is
+    // kept as the address so it isn't lost, and the sheet can resolve it later.
+    address: pendingPlace ? pendingPlace.label : ($("#own-where").value.trim() || null),
+    lat: pendingPlace ? pendingPlace.lat : null,
+    lon: pendingPlace ? pendingPlace.lon : null,
   });
   $("#own-what").value = ""; $("#own-from").value = ""; $("#own-to").value = "";
+  $("#own-where").value = ""; pendingPlace = null;
+  $("[data-addrhits='__new__']").innerHTML = "";
 });
 
 document.addEventListener("keydown", (ev) => {
@@ -1205,6 +1314,12 @@ document.addEventListener("keydown", (ev) => {
 
 $("#own-what").addEventListener("keydown", (ev) => {
   if (ev.key === "Enter") { ev.preventDefault(); $("#own-add").click(); }
+});
+
+$("#own-where").addEventListener("input", () => {
+  if (!pendingPlace || $("#own-where").value === pendingPlace.label) return;
+  pendingPlace = null;                     // the text no longer describes it
+  renderAdder();
 });
 
 document.addEventListener("input", (ev) => {
@@ -1282,24 +1397,20 @@ document.addEventListener("click", (ev) => {
   const sc = ev.target.closest("[data-source]");
   if (sc) { source = sc.dataset.source; return void render(); }
 
-  const rm = ev.target.closest("[data-remove]");
-  if (rm) return void mutate("/api/plan/remove", { sightId: rm.dataset.remove });
-
-  const nrm = ev.target.closest("[data-note-rm]");
-  if (nrm) return void mutate("/api/plan/note/remove", { id: nrm.dataset.noteRm });
-
   const openAddr = ev.target.closest("[data-addr]");
   if (openAddr) {
     if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
     editingAddress = openAddr.dataset.addr;
     render();
+    renderSheet();
     $(`[data-addrbox="${CSS.escape(editingAddress)}"] [data-addrq]`)?.focus();
     return;
   }
 
   if (ev.target.closest("[data-addrcancel]")) {
     editingAddress = null;
-    return void render();
+    render();
+    return void renderSheet();
   }
 
   const clear = ev.target.closest("[data-addrclear]");
@@ -1307,6 +1418,13 @@ document.addEventListener("click", (ev) => {
     editingAddress = null;
     return void mutate(addressPathFor(clear.dataset.addrclear),
       { id: clear.dataset.addrclear, address: null, lat: null, lon: null });
+  }
+
+  if (ev.target.id === "own-where-clear") {
+    pendingPlace = null;
+    $("#own-where").value = "";
+    $("[data-addrhits='__new__']").innerHTML = "";
+    return void renderAdder();
   }
 
   const find = ev.target.closest("[data-addrfind]");
@@ -1322,6 +1440,16 @@ document.addEventListener("click", (ev) => {
       lon: Number(hit.dataset.hitLon),
     });
   }
+  // Nothing exists to save it to yet, so hold it until "Add it" is pressed.
+  if (hit && hit.dataset.hitId === "__new__") {
+    pendingPlace = { label: hit.dataset.hitLabel,
+                     lat: Number(hit.dataset.hitLat), lon: Number(hit.dataset.hitLon) };
+    $("#own-where").value = pendingPlace.label;
+    $("[data-addrhits='__new__']").innerHTML = "";
+    renderAdder();
+    return;
+  }
+
   if (hit) {
     const id = hit.dataset.hitId;
     editingAddress = null;

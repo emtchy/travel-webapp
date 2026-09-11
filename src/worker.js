@@ -979,16 +979,30 @@ async function handleNoteAdd(request, env) {
   if (end && !start) return bad("An end time needs a start time.");
   if (end && start && end <= start) return bad("It has to end after it starts.");
 
+  // A location can come in with the entry. Optional — an entry with no place
+  // is simply left out of the day's route, same as one added without.
+  const address = cleanText(body?.address, 200);
+  if (address === undefined) return bad("That address is too long.");
+  const { lat, lon } = body ?? {};
+  const placed = lat != null || lon != null;
+  if (placed && (typeof lat !== "number" || typeof lon !== "number" ||
+      !Number.isFinite(lat) || !Number.isFinite(lon) ||
+      lat < -90 || lat > 90 || lon < -180 || lon > 180))
+    return bad("Those coordinates don't look right.");
+
   const { count } = await env.DB.prepare(
     "SELECT COUNT(*) AS count FROM plan_notes"
   ).first();
   if (count >= 200) return bad("That's 200 entries — plenty. Remove some first.");
 
   await env.DB.prepare(
-    `INSERT INTO plan_notes (id, day, start_time, end_time, label, added_by, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+    `INSERT INTO plan_notes
+       (id, day, start_time, end_time, label, added_by, created_at, address, lat, lon)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
   )
-    .bind(`note-${crypto.randomUUID()}`, day, start, end, label, name, Date.now())
+    .bind(`note-${crypto.randomUUID()}`, day, start, end, label, name, Date.now(),
+          placed ? address : (address ?? null),
+          placed ? lat : null, placed ? lon : null)
     .run();
 
   return json({ ok: true, ...(await snapshot(env)) });

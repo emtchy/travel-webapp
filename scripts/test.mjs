@@ -550,6 +550,33 @@ t4("an end with no start is rejected",
 t4("adding one needs a name",
    (await noteAdd({ voter: "", label: "x", day: "2026-09-11" })).status === 400);
 
+// A place can come in with the entry, so the add form doesn't have to be
+// followed by a second trip through the address form.
+{
+  const placed = (await (await noteAdd({ voter: "Emily", label: "Friends at a cafe",
+    day: "2026-09-12", address: "Monmouth Coffee, Borough", lat: 51.5053, lon: -0.0913 })).json())
+    .notes.find(n => n.label === "Friends at a cafe");
+  t4("an entry can be added with a location already on it",
+     placed.address === "Monmouth Coffee, Borough" &&
+     placed.lat === 51.5053 && placed.lon === -0.0913);
+
+  const typed = (await (await noteAdd({ voter: "Emily", label: "Somewhere vague",
+    day: "2026-09-12", address: "a place I have not looked up" })).json())
+    .notes.find(n => n.label === "Somewhere vague");
+  t4("address text with no coordinates is kept, not dropped",
+     typed.address === "a place I have not looked up");
+  t4("and it stays unroutable rather than landing on the equator",
+     typed.lat === null && typed.lon === null);
+
+  t4("half a coordinate on a new entry is rejected",
+     (await noteAdd({ voter: "E", label: "x", day: "2026-09-12", lat: 51.5 })).status === 400);
+  t4("an impossible coordinate on a new entry is rejected",
+     (await noteAdd({ voter: "E", label: "x", day: "2026-09-12", lat: 999, lon: 0 })).status === 400);
+  t4("an over-long address on a new entry is rejected",
+     (await noteAdd({ voter: "E", label: "x", day: "2026-09-12",
+                      address: "y".repeat(201) })).status === 400);
+}
+
 nt = await (await noteRm({ voter: "Emily", id: note.id })).json();
 t4("an entry can be removed", !nt.notes.some(n => n.id === note.id));
 t4("anyone can remove one, not just whoever added it",
