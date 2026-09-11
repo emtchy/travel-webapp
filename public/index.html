@@ -2,528 +2,170 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>London — vote for the sights</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏛️</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Sights</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
 <style>
-:root{
-  --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
-  --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
-  --line:#D9DDD4; --line-2:#C4CABD;
-  --maroon:#7B2230; --maroon-soft:#F0E2E3;
-  --green:#1F4A3C; --green-soft:#E1EAE4;
-  --brass:#8A6118; --brass-soft:#F2E9D6;
-  --on-accent:#FBFCF9;
-  --shadow:0 1px 2px rgba(23,29,25,.06), 0 10px 28px -20px rgba(23,29,25,.35);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#101410; --card:#171C18; --card-2:#1E241F;
-    --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
-    --line:#2A322B; --line-2:#3A443B;
-    --maroon:#E0868F; --maroon-soft:#2E1A1E;
-    --green:#7CBBA0; --green-soft:#152420;
-    --brass:#D9AC59; --brass-soft:#241D0F;
-    --on-accent:#101410;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -22px rgba(0,0,0,.9);
-  }
-}
-*{box-sizing:border-box}
-body{
-  margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
-  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;
-}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
-
-/* ---------------- header ---------------- */
-header{padding:40px 0 22px}
-.kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0 0 14px}
-h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
-  font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.02em;
-  margin:0 0 12px;text-wrap:balance}
-.lede{color:var(--ink-2);max-width:62ch;margin:0;font-size:16px}
-
-/* ---------------- add form: cost ---------------- */
-.money{
-  display:flex;gap:14px;align-items:center;flex-wrap:wrap;
-  padding:12px 14px;border:1px solid var(--line);border-radius:11px;
-  background:var(--card-2);
-}
-.check{display:flex;gap:8px;align-items:center;font-size:14px;cursor:pointer}
-.check input{accent-color:var(--maroon);width:16px;height:16px;flex:none;cursor:pointer}
-.money input[type=text]{
-  font:inherit;font-size:14px;padding:6px 10px;border-radius:8px;width:120px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
-}
-.money input[type=text]:disabled{opacity:.45}
-.money .hint{flex-basis:100%}
-
-/* ---------------- top nav ---------------- */
-.topnav{position:sticky;top:0;z-index:40;
-  background:color-mix(in srgb,var(--paper) 88%,transparent);
-  backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
-.navinner{max-width:1180px;margin:0 auto;padding:9px 20px;min-height:56px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;
-  letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
-.navlinks{display:flex;gap:4px}
-.navlinks a{font-size:14px;font-weight:500;color:var(--ink-3);text-decoration:none;
-  padding:7px 14px;border-radius:9px;transition:color .15s,background .15s}
-.navlinks a:hover{color:var(--ink);background:var(--card-2)}
-.navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
-.navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
-.navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);width:132px}
-.navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
-.navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
-.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
-.langs button{padding:6px 10px;font-size:12px;font-weight:600;border:0;
-  background:var(--card);color:var(--ink-3)}
-.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-@media (max-width:700px){
-  .navinner{padding:9px 16px;gap:10px}
-  .navtools{margin-left:auto;flex-wrap:wrap}
-  .navtools input[type=text]{width:112px}
-  .navstatus{flex-basis:100%;max-width:none;text-align:right}
-}
-
-/* ---------------- filters ---------------- */
-.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0}
-.bar .lbl{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px;
-}
-.bar button{
-  font-size:13px;font-weight:500;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
-  padding:6px 12px;border-radius:8px;cursor:pointer;
-}
-.bar button:hover{border-color:var(--ink-3);color:var(--ink)}
-.bar button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
-.bar button b{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  font-weight:500;opacity:.55;margin-left:4px;
-}
-
-/* ---------------- stats ---------------- */
-.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px}
-.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
-.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-
-/* ---------------- grid ---------------- */
-.grid{
-  display:grid;gap:18px;margin-top:26px;
-  grid-template-columns:repeat(auto-fill,minmax(310px,1fr));
-}
-.sight{
-  display:flex;flex-direction:column;background:var(--card);
-  border:1px solid var(--line);border-radius:14px;overflow:hidden;
-  box-shadow:var(--shadow);
-}
+/* ---------------- the grid of cards ---------------- */
+.grid{display:grid;gap:16px;margin-top:22px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));align-items:start}
+.sight{display:flex;flex-direction:column}
 .sight.hide{display:none}
 
-.shot{
-  position:relative;aspect-ratio:16/10;background:var(--card-2);overflow:hidden;
-}
-.shot img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .35s ease}
+.shot{position:relative;aspect-ratio:16/10;background:var(--surface-2);overflow:hidden}
+.shot img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .4s ease}
 .shot img.in{opacity:1}
-.shot .ph[hidden]{display:none}
-.shot .ph{
-  position:absolute;inset:0;display:grid;place-items:center;
-  font-family:"Fraunces",Georgia,serif;font-size:38px;color:var(--line-2);
-  background:linear-gradient(135deg,var(--card-2),var(--card));
-}
-.rank{
-  position:absolute;top:10px;left:10px;z-index:2;
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;font-weight:500;
-  background:var(--paper);color:var(--maroon);border:1px solid var(--line-2);
-  padding:2px 8px;border-radius:6px;
-}
-.cost{
-  position:absolute;top:10px;right:10px;z-index:2;
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;letter-spacing:.04em;
-  padding:2px 7px;border-radius:5px;border:1px solid;
-}
-.cost.free{color:var(--green);border-color:var(--green);background:var(--green-soft)}
-.cost.paid{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.cost.limited{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
+.shot .ph{position:absolute;inset:0;display:grid;place-items:center;font-size:40px;font-weight:700;
+  color:var(--surface-3);background:linear-gradient(160deg,var(--surface-2),var(--surface-3))}
+.shot .rank{position:absolute;top:10px;left:10px;z-index:2}
+.shot .cost{position:absolute;top:10px;right:10px;z-index:2}
+.shot.blank{aspect-ratio:auto;height:6px;background:linear-gradient(90deg,var(--violet),#9E85F2)}
+.shot.blank .ph,.shot.blank .rank,.shot.blank .cost{display:none}
 
-.body{padding:15px 16px 0;flex:1}
-.sight h2{
-  font-family:"Fraunces",Georgia,serif;font-size:18px;font-weight:600;
-  margin:0 0 4px;line-height:1.24;letter-spacing:-.01em;
-}
-.where{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.04em;color:var(--ink-3);margin:0 0 9px;
-}
-.sight p.desc{margin:0 0 10px;font-size:14.2px;color:var(--ink-2)}
-.price{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  color:var(--ink-3);margin:0 0 12px;
-}
-.more{
-  display:inline-block;font-family:"IBM Plex Mono",ui-monospace,monospace;
-  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
-  color:var(--maroon);text-decoration:none;border-bottom:1px solid currentColor;
-  padding-bottom:1px;margin-bottom:14px;
-}
-.more:hover{opacity:.75}
+.body{padding:14px 16px 0;flex:1}
+.sight h2{font-size:17px;font-weight:600;line-height:1.3;letter-spacing:-.01em;margin:0 0 2px}
+.where{font-size:12.5px;color:var(--text-3);margin:0 0 8px}
+.sight .desc{font-size:14px;color:var(--text-2);margin:0 0 10px;line-height:1.5}
+.price{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--text-2);margin:0 0 12px;font-weight:500}
+.more{display:inline-flex;align-items:center;gap:4px;font-size:13px;font-weight:600;margin-bottom:14px}
+.more svg{width:12px;height:12px}
+.custom-head{display:flex;gap:8px;align-items:center;margin-bottom:2px}
+.custom-head h2{margin:0;flex:1;min-width:0}
+.byline{font-size:12.5px;color:var(--text-3);margin:0 0 8px}
 
-.foot{
-  display:flex;align-items:center;gap:12px;
-  padding:12px 16px;border-top:1px solid var(--line);background:var(--card-2);
-}
-.want{
-  display:inline-flex;align-items:center;gap:8px;cursor:pointer;
-  font:inherit;font-size:14px;font-weight:500;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
-  padding:7px 13px;border-radius:3px;transition:background .12s ease,color .12s ease,border-color .12s ease;
-}
-.want:hover:not(:disabled){border-color:var(--maroon);color:var(--maroon)}
-.want:disabled{opacity:.45;cursor:not-allowed}
-.want[aria-pressed="true"]{background:var(--maroon);border-color:var(--maroon);color:var(--on-accent)}
-.want .heart{font-size:13px;line-height:1}
-.want.busy{opacity:.5}
+.foot{display:flex;align-items:center;gap:8px;padding:10px 12px 10px 16px;border-top:1px solid var(--hair);flex-wrap:wrap}
+.want .h-on{display:none}
+.want[aria-pressed="true"] .h-off{display:none}
+.want[aria-pressed="true"] .h-on{display:block}
+.talk{gap:5px;color:var(--text-2)}
+.talk[aria-expanded="true"]{color:var(--tint);background:var(--tint-soft)}
+.talk .n{font-size:13px;font-variant-numeric:tabular-nums}
+.tally{font-size:12.5px;color:var(--text-3);min-width:0;flex:1;text-align:right;line-height:1.35}
+.tally b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+.voters{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.remove{margin-left:auto}
+/* an added card has two more buttons in its foot, so the tally takes its own line */
+.is-custom .tally{flex-basis:100%;order:3;text-align:left}
 
-.tally{font-size:13px;color:var(--ink-3);min-width:0}
-.tally b{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;color:var(--ink);
-  font-size:13px;font-variant-numeric:tabular-nums;
-}
-.voters{
-  display:block;font-size:12px;color:var(--ink-3);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-}
+/* cost & booking on an added card */
+.costedit{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--hair);background:var(--surface-2)}
+.costedit .eprice{width:120px;height:32px;font-size:13.5px}
 
+/* put a sight on a day */
+.planrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px 10px 16px;border-top:1px solid var(--hair)}
+.planrow .tag{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.planhint{font-size:12px;color:var(--text-3);flex-basis:100%;line-height:1.4}
+.planedit{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--hair);background:var(--surface-2)}
+.planedit .field{flex:1 1 120px}
+.planedit .field.time{flex:0 1 110px}
+.planedit .input,.planedit .select{height:34px;font-size:14px}
 
-/* ---------------- put a sight on a day ---------------- */
-.planrow{
-  display:flex;gap:8px;align-items:center;flex-wrap:wrap;
-  padding:10px 16px;border-top:1px solid var(--line);
-}
-.planchip{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  color:var(--green);border:1px solid var(--green);background:var(--green-soft);
-  border-radius:6px;padding:2px 8px;white-space:nowrap;
-}
-.planchip.booked{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.planhint{font-size:11.5px;color:var(--ink-3);flex-basis:100%}
-.planbtn{
-  font-size:12px;font-weight:500;border:1px solid var(--line-2);
-  background:var(--card-2);color:var(--ink-2);padding:5px 10px;
-  border-radius:8px;cursor:pointer;margin-left:auto;
-}
-.planbtn:hover{border-color:var(--ink-3);color:var(--ink)}
-.planbtn[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.planoff{font-size:11.5px;border:0;background:none;color:var(--ink-3);padding:5px 2px;cursor:pointer}
-.planoff:hover{color:var(--maroon)}
-.planedit{
-  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-  padding:11px 16px;border-top:1px solid var(--line);background:var(--card-2);
-}
-.planedit label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--ink-2)}
-.planedit select,.planedit input{
-  font:inherit;font-size:12.5px;padding:5px 8px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
-}
-.planedit .submit{
-  font-size:12.5px;font-weight:500;padding:5px 12px;border-radius:8px;
-  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
-}
-
-/* ---------------- cost & booking, on an added card ---------------- */
-.editcost{
-  font-size:12px;font-weight:500;border:1px solid var(--line-2);
-  background:var(--card-2);color:var(--ink-2);padding:5px 10px;
-  border-radius:8px;cursor:pointer;
-}
-.editcost:hover{border-color:var(--ink-3);color:var(--ink)}
-.editcost[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.costedit{
-  display:flex;gap:11px;align-items:center;flex-wrap:wrap;
-  padding:12px 16px;border-top:1px solid var(--line);background:var(--card-2);
-}
-.costedit .eprice{
-  font:inherit;font-size:13px;padding:6px 10px;border-radius:8px;width:118px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
-}
-.costedit .eprice:disabled{opacity:.45}
-.costedit .submit{
-  font-size:13px;font-weight:500;padding:6px 13px;border-radius:8px;
-  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;
-}
-
-/* ---------------- add form ---------------- */
-/* The language toggle is styled once, up in the nav. A second rule used to sit
-   here from before it moved, and being later it quietly won — which is why the
-   EN/DE buttons on this page looked nothing like the other two. */
-
-.addbox{
-  margin:26px 0 0;background:var(--card);border:1px solid var(--line);
-  border-radius:14px;box-shadow:var(--shadow);overflow:hidden;
-}
-.addbox > summary{
-  cursor:pointer;padding:14px 18px;list-style:none;
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11.5px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--maroon);
-}
-.addbox > summary::-webkit-details-marker{display:none}
-.addbox > summary::before{content:"+ ";font-weight:600}
-.addbox[open] > summary::before{content:"− "}
-.addform{padding:0 18px 18px;display:grid;gap:12px;max-width:620px}
-.addform label{
-  display:block;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-bottom:4px;
-}
-.addform input,.addform textarea{
-  width:100%;font:inherit;font-size:15px;padding:8px 11px;border-radius:3px;
-  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
-}
-.addform textarea{resize:vertical;min-height:64px}
-.addform .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.addform .hint{font-size:12.5px;color:var(--ink-3)}
-.addform .submit{
-  font:inherit;font-size:14px;font-weight:500;cursor:pointer;
-  background:var(--maroon);border:1px solid var(--maroon);color:var(--on-accent);
-  padding:8px 16px;border-radius:3px;
-}
-.addform .submit:disabled{opacity:.45;cursor:not-allowed}
-.addform .err{font-size:13.5px;color:var(--maroon)}
-
-.sight.is-custom{border-style:dashed}
-.byline{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.04em;color:var(--ink-3);margin:0 0 10px;
-}
-.remove{
-  margin-left:auto;font:inherit;font-size:12.5px;cursor:pointer;
-  background:none;border:0;color:var(--ink-3);text-decoration:underline;padding:4px;
-}
-.remove:hover{color:var(--maroon)}
-.shot.blank{aspect-ratio:auto;height:8px;background:var(--maroon-soft)}
-.shot.blank .ph,.shot.blank .rank{display:none}
-.shot.blank .cost{display:none}
-.custom-head{display:flex;gap:8px;align-items:baseline}
-.custom-head .badge{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--maroon);border:1px solid var(--maroon);
-  background:var(--maroon-soft);padding:2px 6px;border-radius:2px;white-space:nowrap;
-}
-
-
-/* ---------------- sticky top bar ---------------- */
-#topbar{
-  position:sticky;top:56px;z-index:35;margin:0 -20px;
-  background:color-mix(in srgb,var(--paper) 94%,transparent);
-  backdrop-filter:blur(12px);border-bottom:1px solid var(--line);
-}
-#topbar .bar{position:static;margin:0;backdrop-filter:none;background:none;
-  padding:13px 20px;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none}
-#topbar .bar::-webkit-scrollbar{display:none}
-#topbar .bar button{flex:0 0 auto}
-
-/* ---------------- comments ---------------- */
-.talk{
-  font:inherit;font-size:13px;cursor:pointer;background:none;border:0;
-  color:var(--ink-3);padding:6px 4px;display:inline-flex;align-items:center;gap:5px;
-}
-.talk:hover{color:var(--maroon)}
-.talk[aria-expanded="true"]{color:var(--maroon);font-weight:500}
-.talk .bubble{font-size:14px;line-height:1}
-.talk .n{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
-
-.thread{
-  border-top:1px solid var(--line);padding:12px 16px 14px;
-  background:var(--card);display:grid;gap:10px;
-}
-.thread[hidden]{display:none}
+/* comments */
+.thread{border-top:1px solid var(--hair);padding:12px 16px 14px;background:var(--surface-2);display:grid;gap:10px}
 .cmt{font-size:14px;line-height:1.5}
-.cmt .meta-line{
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:10.5px;
-  letter-spacing:.04em;color:var(--ink-3);margin-bottom:2px;
-  display:flex;gap:8px;align-items:baseline;
-}
-.cmt .meta-line b{color:var(--maroon);font-weight:500}
-.cmt .del{
-  font:inherit;font-size:10.5px;background:none;border:0;padding:0;
-  color:var(--ink-3);text-decoration:underline;cursor:pointer;margin-left:auto;
-}
-.cmt .del:hover{color:var(--maroon)}
-.cmt p{margin:0;color:var(--ink-2);overflow-wrap:anywhere}
-.thread .none{font-size:13.5px;color:var(--ink-3);margin:0}
+.cmt .meta-line{font-size:12px;color:var(--text-3);display:flex;gap:8px;align-items:baseline;margin-bottom:1px}
+.cmt .meta-line b{color:var(--text);font-weight:600}
+.cmt .del{font-size:12px;background:none;border:0;padding:0;color:var(--text-3);margin-left:auto}
+.cmt .del:hover{color:var(--red)}
+.cmt p{margin:0;color:var(--text-2);overflow-wrap:anywhere}
+.thread .none{font-size:13px;color:var(--text-3);margin:0}
 .thread form{display:grid;gap:8px}
-.thread textarea{
-  width:100%;font:inherit;font-size:15px;padding:9px 11px;border-radius:3px;
-  border:1px solid var(--line-2);background:var(--paper);color:var(--ink);
-  resize:vertical;min-height:60px;
-}
-.thread .send{
-  justify-self:start;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;
-  background:var(--maroon);border:1px solid var(--maroon);color:var(--on-accent);
-  padding:8px 15px;border-radius:3px;
-}
-.thread .send:disabled{opacity:.45;cursor:not-allowed}
+.thread .textarea{min-height:58px;font-size:14px}
+.thread .send{justify-self:start}
 
-/* ---------------- back to top ---------------- */
-#totop{
-  position:fixed;right:16px;bottom:16px;z-index:50;
-  width:46px;height:46px;border-radius:50%;cursor:pointer;
-  border:1px solid var(--line-2);background:var(--card);color:var(--maroon);
-  font-size:19px;line-height:1;box-shadow:var(--shadow);
-  display:grid;place-items:center;
-  opacity:0;pointer-events:none;transform:translateY(8px);
-  transition:opacity .2s ease,transform .2s ease;
-}
-#totop.show{opacity:1;pointer-events:auto;transform:none}
-#totop:hover{border-color:var(--maroon)}
-
-/* ---------------- misc ---------------- */
-.notice{
-  border:1px solid var(--maroon);border-left-width:4px;background:var(--maroon-soft);
-  border-radius:3px;padding:14px 16px;margin:22px 0 0;font-size:14.5px;color:var(--ink-2);
-}
-.empty{padding:60px 0;text-align:center;color:var(--ink-3)}
-footer{
-  margin-top:48px;padding-top:18px;border-top:1px solid var(--line);
-  font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  color:var(--ink-3);letter-spacing:.04em;line-height:1.8;
-}
-footer a{color:var(--maroon)}
+/* the add form */
+.addbox{margin-top:18px}
+.addform{padding-top:12px;display:grid;gap:12px;max-width:640px}
+.addform .money{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.addform .money .input{width:130px;height:34px;font-size:14px}
+.addform .money .hint{flex-basis:100%}
 
 @media (max-width:640px){
-  .wrap{padding:0 14px 90px}
-  #topbar{margin:0 -14px}
-  #topbar .who,#topbar .bar{padding-left:14px;padding-right:14px}
-  .who input{flex:1 1 140px;min-width:0}
-  header{padding:28px 0 18px}
-  .grid{grid-template-columns:1fr;gap:14px}
+  .grid{grid-template-columns:1fr;gap:14px;margin-top:16px}
   .shot{aspect-ratio:3/2}
-  .foot{flex-wrap:wrap;gap:8px}
-  .want{padding:10px 16px;font-size:15px}
-  .talk{padding:8px 4px;font-size:14px}
-  .tally{flex-basis:100%;order:3}
+  .tally{flex-basis:100%;text-align:left;order:3}
   .voters{white-space:normal}
-  .remove{margin-left:0}
-  #totop{right:12px;bottom:12px}
-}
-
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
-@media (max-width:520px){
 }
 </style>
 </head>
 <body>
 
-<nav class="topnav">
-  <div class="navinner">
-    <a class="brand" href="/">London&nbsp;2026</a>
-    <div class="navlinks">
-      <a href="/details" id="nav-details">Details</a>
-      <a href="/" aria-current="page" id="nav-sights">Sights</a>
-      <a href="/bookings" id="nav-bookings">Bookings</a>
-      <a href="/plan" id="nav-plan">Plan</a>
-    </div>
-    <div class="navtools">
-      <label class="visually-hidden" for="name" id="name-label">Your name</label>
-      <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="off" spellcheck="false" list="members">
-      <datalist id="members"></datalist>
-      <span class="langs" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="de" aria-pressed="false">DE</button>
-      </span>
-      <span class="navstatus" id="status">Loading…</span>
-    </div>
-  </div>
-</nav>
+<div id="shell" data-page="sights"></div>
 
-<div class="wrap">
+<main class="page">
 
-<header>
-  <p class="kicker" id="kicker">London · 11–16 September 2026</p>
-  <h1 id="headline">What do you actually want to see?</h1>
-  <p class="lede" id="lede"></p>
+<header class="page-head">
+  <p class="eyebrow" id="kicker"></p>
+  <h1 class="large-title" id="headline"></h1>
+  <p class="subtitle" id="lede"></p>
+  <p class="footnote" id="who-line"></p>
 </header>
 
-<div class="stats" id="stats"></div>
+<div class="stat-row" id="stats"></div>
 
-<div id="topbar">
-<div class="bar" id="filters">
-  <span class="lbl" id="filter-label">Show</span>
-  <button type="button" data-f="all" aria-pressed="true">All</button>
-  <button type="button" data-f="free" aria-pressed="false">Free</button>
-  <button type="button" data-f="paid" aria-pressed="false">Paid</button>
-  <button type="button" data-f="added" aria-pressed="false">Added by us</button>
-  <button type="button" data-f="mine" aria-pressed="false">My picks</button>
-  <button type="button" data-f="top" aria-pressed="false">Most wanted</button>
-</div>
+<div class="toolbar scroll">
+  <div class="chips" id="filters">
+    <span class="lbl" id="filter-label">Show</span>
+    <button class="chip" type="button" data-f="all" aria-pressed="true">All</button>
+    <button class="chip" type="button" data-f="free" aria-pressed="false">Free</button>
+    <button class="chip" type="button" data-f="paid" aria-pressed="false">Paid</button>
+    <button class="chip" type="button" data-f="added" aria-pressed="false">Added by us</button>
+    <button class="chip" type="button" data-f="mine" aria-pressed="false">My picks</button>
+    <button class="chip" type="button" data-f="top" aria-pressed="false">Most wanted</button>
+  </div>
 </div>
 
-<details class="addbox" id="addbox">
-  <summary id="add-summary">Add a sight</summary>
-  <form class="addform" id="addform">
-    <div>
-      <label for="add-name">Name</label>
-      <input id="add-name" type="text" maxlength="80" required placeholder="Sky Pod Bar">
-    </div>
-    <div>
-      <label for="add-url">Link <span class="hint" id="add-url-opt">(optional)</span></label>
-      <input id="add-url" type="text" maxlength="500" placeholder="https://…">
-    </div>
-    <div>
-      <label for="add-desc">Short description <span class="hint" id="add-desc-opt">(optional)</span></label>
-      <textarea id="add-desc" maxlength="300" placeholder="Why should we go?"></textarea>
-    </div>
-    <div class="money">
+<details class="disclosure addbox" id="addbox">
+  <summary><span class="plus" aria-hidden="true"></span><span id="add-summary">Add a sight</span></summary>
+  <form class="body addform" id="addform">
+    <label class="field">
+      <span id="l-add-name">Name</span>
+      <input class="input" id="add-name" type="text" maxlength="80" required placeholder="">
+    </label>
+    <label class="field">
+      <span id="l-add-url">Link</span>
+      <input class="input" id="add-url" type="text" maxlength="500" placeholder="https://…">
+    </label>
+    <label class="field">
+      <span id="l-add-desc">Short description</span>
+      <textarea class="textarea" id="add-desc" maxlength="300" placeholder=""></textarea>
+    </label>
+    <div class="money inset">
       <label class="check">
         <input type="checkbox" id="add-costs">
         <span id="add-costs-label">It costs something</span>
       </label>
-      <input id="add-price" type="text" maxlength="40" placeholder="£25 pp" disabled>
+      <input class="input" id="add-price" type="text" maxlength="40" placeholder="" disabled>
       <label class="check">
         <input type="checkbox" id="add-booking">
         <span id="add-booking-label">Needs booking ahead</span>
       </label>
-      <span class="hint" id="add-money-hint">Either one puts it on the Bookings page.</span>
+      <span class="hint note" id="add-money-hint"></span>
     </div>
-    <div class="row">
-      <button class="submit" type="submit" id="add-submit">Add it</button>
-      <span class="hint" id="add-hint">You'll be counted as the first vote.</span>
+    <div class="spread">
+      <button class="btn btn-primary" type="submit" id="add-submit">Add it</button>
+      <span class="note" id="add-hint"></span>
     </div>
     <p class="err" id="add-err" hidden></p>
   </form>
 </details>
 
-<div id="notice" class="notice" hidden></div>
+<div id="notice" class="banner banner-err" style="margin-top:18px" hidden></div>
 <div class="grid" id="grid"></div>
 <p class="empty" id="empty" hidden></p>
 
-<footer>
-  <span id="foot-note"></span><br>
-  <span id="foot-guide"></span> <a id="guide" href="https://claude.ai/code/artifact/a00d53b2-95bc-49fe-8a08-f070bc9729f4" target="_blank" rel="noopener">the ranked list, food and day plan</a>
-</footer>
+<footer class="page-foot"><span id="foot-note"></span></footer>
 
-</div>
-
-<button id="totop" type="button" aria-label="Back to top" title="Back to top">↑</button>
+</main>
 
 <script type="module">
-const $  = (s, r = document) => r.querySelector(s);
-const NAME_KEY = "london-vote-name";
-const CODE_KEY = "london-vote-code";
-const LANG_KEY = "london-vote-lang";
-const IMG_KEY  = "london-vote-images-v2";
+import { $, esc, api, ICONS, getLang, onLang, nameOf, onName, askName, fillMembers,
+         setStatus, setTrip, tripKicker, dayShort, backToTop, nameKey } from "/shell.js";
+
+const IMG_KEY  = "trip-images-v1";
 const openThreads = new Set();   // which cards have their comments expanded
 
 let SIGHTS = [];
@@ -535,19 +177,15 @@ let TRIPDAYS = [];
 let TRIPINFO = null;
 let VOTES  = {};
 let filter = "all";
-let me     = "";
-let lang   = "en";
+let me     = nameOf();
 
-const norm = (s) => s.trim().toLowerCase().replace(/\s+/g, " ");
-const esc  = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const norm = nameKey;
 
 /* ------------------------------------------------------------------- i18n */
 
 const T = {
   en: {
-    kicker: "London · 11–16 September 2026",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
+    pageTitle: "Sights",
     editCost: "Cost & booking", save: "Save",
     planIt: "Add to a day", onPlan: "On the plan", changeDay: "Change",
     takeOff: "Take off the plan", planDay: "Day", planFrom: "From", planTo: "To",
@@ -561,38 +199,34 @@ const T = {
     addCosts: "It costs something", addPrice: "£25 pp",
     addBooking: "Needs booking ahead",
     addMoneyHint: "Either one puts it on the Bookings page.",
-    headline: "What do you actually want to see?",
-    lede: n => `${n} options, ranked: the famous ones and the ones only locals mention. Put your name in, then tap Want this on everything you'd like to do. Add your own at the top if you want to suggest another option.`,
-    nameLabel: "Your name",
+    headline: "What do you want to see?",
+    lede: n => `${n} ideas so far, ranked. Put your name in the bar, then tap Like on everything you'd want to do. Missing something? Add it below.`,
     show: "Show",
     all: "All", free: "Free", paid: "Paid", added: "Added by us",
     mine: "My picks", top: "Most wanted",
     want: "Like", wanted: "Liked",
     noVotes: "No votes yet",
     vote: "vote", votes: "votes",
-    readMore: "Read more ↗",
-    booking: " · booking needed",
+    readMore: "Read more",
+    booking: "Book ahead",
     costFree: "Free", costLimited: "Free, limited", costPaid: "Paid", costMixed: "Part paid",
-    votingAs: (who, v, p) => `Voting as <b>${who}</b> · ${v} votes from ${p} ${p === 1 ? "person" : "people"}`,
-    enterName: (v, p) => `Enter your name to vote · ${v} votes from ${p} ${p === 1 ? "person" : "people"}`,
+    votingAs: (who, v, p) => `Voting as <b>${who}</b> · ${v} ${v === 1 ? "vote" : "votes"} from ${p} ${p === 1 ? "person" : "people"}`,
+    enterName: (v, p) => `Enter your name in the bar to vote · ${v} ${v === 1 ? "vote" : "votes"} from ${p} ${p === 1 ? "person" : "people"}`,
     empty: "Nothing matches that filter.",
     addSummary: "Add a sight",
     addName: "Name", addUrl: "Link", addDesc: "Short description",
     optional: "(optional)",
     addSubmit: "Add it",
     addHint: "You'll be counted as the first vote.",
-    addNeedName: "Enter your name at the top first.",
+    addNeedName: "Enter your name in the bar first.",
     added: "Added",
     addedBy: who => `Added by ${who}`,
     remove: "Remove",
     removeConfirm: name => `Remove "${name}"? Its votes go too.`,
-    ownVote: "yours",
-    footNote: "Votes are shared - everyone loading this page sees the same numbers, refreshed every 20 seconds.",
-    footGuide: "Full trip guide:",
-    guideLink: "the ranked list, food and day plan",
+    footNote: "Everything here is shared — everyone on the trip sees the same numbers, refreshed every 20 seconds.",
     loadFail: msg => `Couldn't load the list: ${msg}`,
     voteFail: msg => `Couldn't save that vote: ${msg}`,
-    namePlaceholder: "e.g. Manuel",
+    namePlaceholder: "Sky Pod Bar",
     descPlaceholder: "Why should we go?",
     comments: "Comments", comment: "comment", commentsN: "comments",
     noComments: "No comments yet.",
@@ -600,7 +234,7 @@ const T = {
     send: "Post",
     del: "delete",
     delConfirm: "Delete this comment?",
-    needNameComment: "Enter your name at the top first.",
+    needNameComment: "Enter your name in the bar first.",
     backToTop: "Back to top",
     justNow: "just now",
     minsAgo: n => `${n} min ago`,
@@ -608,8 +242,7 @@ const T = {
     daysAgo: n => `${n} d ago`,
   },
   de: {
-    kicker: "London · 11.–16. September 2026",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
+    pageTitle: "Orte",
     editCost: "Preis & Buchung", save: "Speichern",
     planIt: "Auf einen Tag legen", onPlan: "Im Plan", changeDay: "Ändern",
     takeOff: "Aus dem Plan nehmen", planDay: "Tag", planFrom: "Von", planTo: "Bis",
@@ -623,20 +256,19 @@ const T = {
     addCosts: "Kostet etwas", addPrice: "25 £ p. P.",
     addBooking: "Muss vorab gebucht werden",
     addMoneyHint: "Beides bringt den Eintrag auf die Buchungsseite.",
-    headline: "Sehenswürdigkeiten & Ausflüge",
-    lede: n => `${n} Vorschläge, sortiert: Touristenhotspots und "local's places". Zuerst Namen eintragen, dann bei allem auf „Like“ tippen, was euch gefällt. Fehlt etwas, könnt ihr es oben selbst hinzufügen.`,
-    nameLabel: "Dein Name",
+    headline: "Was wollt ihr sehen?",
+    lede: n => `${n} Vorschläge, sortiert. Trag oben deinen Namen ein und tippe bei allem auf „Like“, was dich reizt. Fehlt etwas? Unten ergänzen.`,
     show: "Filter",
     all: "Alle", free: "Kostenlos", paid: "Kostenpflichtig", added: "Selbst ergänzt",
     mine: "Meine Auswahl", top: "Beliebteste",
     want: "Like", wanted: "Liked",
     noVotes: "Noch keine Stimmen",
     vote: "Stimme", votes: "Stimmen",
-    readMore: "Mehr dazu ↗",
-    booking: " · Buchung nötig",
+    readMore: "Mehr dazu",
+    booking: "Vorab buchen",
     costFree: "Kostenlos", costLimited: "Teils kostenlos", costPaid: "Kostenpflichtig", costMixed: "Teils kostenpflichtig",
-    votingAs: (who, v, p) => `Angemeldet als <b>${who}</b> · ${v} Stimmen von ${p} ${p === 1 ? "Person" : "Personen"}`,
-    enterName: (v, p) => `Namen eintragen zum Abstimmen · ${v} Stimmen von ${p} ${p === 1 ? "Person" : "Personen"}`,
+    votingAs: (who, v, p) => `Angemeldet als <b>${who}</b> · ${v} ${v === 1 ? "Stimme" : "Stimmen"} von ${p} ${p === 1 ? "Person" : "Personen"}`,
+    enterName: (v, p) => `Oben den Namen eintragen zum Abstimmen · ${v} ${v === 1 ? "Stimme" : "Stimmen"} von ${p} ${p === 1 ? "Person" : "Personen"}`,
     empty: "Nichts passt zu diesem Filter.",
     addSummary: "Eigenen Vorschlag hinzufügen",
     addName: "Name", addUrl: "Link", addDesc: "Kurze Beschreibung",
@@ -648,13 +280,10 @@ const T = {
     addedBy: who => `Ergänzt von ${who}`,
     remove: "Entfernen",
     removeConfirm: name => `„${name}“ entfernen? Die Stimmen dazu verschwinden mit.`,
-    ownVote: "du",
-    footNote: "Die Stimmen werden summiert, alle sehen dieselben Zahlen. Aktualisierung alle 20 Sekunden.",
-    footGuide: "Vollständiger Reiseführer:",
-    guideLink: "die sortierte Liste, Essen und Tagesplan",
+    footNote: "Alles hier ist geteilt – alle auf der Reise sehen dieselben Zahlen, aktualisiert alle 20 Sekunden.",
     loadFail: msg => `Liste konnte nicht geladen werden: ${msg}`,
     voteFail: msg => `Stimme konnte nicht gespeichert werden: ${msg}`,
-    namePlaceholder: "z. B. Manuel",
+    namePlaceholder: "Sky Pod Bar",
     descPlaceholder: "Warum sollten wir hin?",
     comments: "Kommentare", comment: "Kommentar", commentsN: "Kommentare",
     noComments: "Noch keine Kommentare.",
@@ -671,40 +300,14 @@ const T = {
   },
 };
 
-const t = () => T[lang];
+const t = () => T[getLang()];
 
 /* Text for one entry in the active language, falling back to English. */
-const title   = (s) => (lang === "de" && s.name_de)    || s.name;
-const blurb   = (s) => (lang === "de" && s.summary_de) || s.summary || "";
-const priceOf = (s) => (lang === "de" && s.priceLabel_de) || s.priceLabel || "";
+const title   = (s) => (getLang() === "de" && s.name_de)    || s.name;
+const blurb   = (s) => (getLang() === "de" && s.summary_de) || s.summary || "";
+const priceOf = (s) => (getLang() === "de" && s.priceLabel_de) || s.priceLabel || "";
 
 /* -------------------------------------------------------------------- api */
-
-let accessCode = "";
-try { accessCode = localStorage.getItem(CODE_KEY) || ""; } catch {}
-
-async function api(path, options, retried = false) {
-  const res = await fetch(path, {
-    ...options,
-    headers: {
-      "content-type": "application/json",
-      ...(accessCode ? { "x-access-code": accessCode } : {}),
-      ...(options?.headers || {}),
-    },
-  });
-  const data = await res.json().catch(() => ({}));
-
-  if (res.status === 401 && !retried) {
-    const entered = window.prompt("Access code / Zugangscode:");
-    if (entered) {
-      accessCode = entered.trim();
-      try { localStorage.setItem(CODE_KEY, accessCode); } catch {}
-      return api(path, options, true);
-    }
-  }
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
-}
 
 const all = () => [...SIGHTS, ...CUSTOM];
 
@@ -733,11 +336,12 @@ async function refresh() {
     PLAN = data.plan || [];
     BOOKED = data.bookings || [];
     TRIPDAYS = data.trip?.days || TRIPDAYS;
-  TRIPINFO = data.trip || TRIPINFO;
-  fillMembers(data.members);
+    TRIPINFO = data.trip || TRIPINFO;
+    fillMembers(data.members);
     if (CUSTOM.length !== before) render();
     else { paintTallies(); paintThreads(); applyFilter(); }
-    setStatus();
+    paintWhoLine();
+    paintChrome();
   } catch { /* transient */ }
 }
 
@@ -858,7 +462,7 @@ window.imageDebug = () => {
 /* ---------------------------------------------------------------- render */
 
 const COST_KEY = { free: "costFree", "free-limited": "costLimited", paid: "costPaid", mixed: "costMixed" };
-const COST_CLASS = { free: "free", "free-limited": "limited", paid: "paid", mixed: "paid" };
+const COST_CLASS = { free: "tag-green", "free-limited": "tag-coral", paid: "tag-amber", mixed: "tag-amber" };
 
 /** Where a sight sits on the plan, if anywhere. A booking places it too. */
 function planStateOf(id) {
@@ -869,10 +473,6 @@ function planStateOf(id) {
   return null;
 }
 
-const dayShort = (iso) =>
-  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-    { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
-
 const whenLabel = (p) =>
   dayShort(p.day) + (p.start ? `, ${p.start}${p.end ? `–${p.end}` : ""}` : "");
 
@@ -882,7 +482,7 @@ function planControlHTML(s) {
 
   if (p?.from === "booked")
     return `<div class="planrow">
-      <span class="planchip booked">${esc(L.bookedFor(whenLabel(p)))}</span>
+      <span class="tag tag-green">${ICONS.check}${esc(L.bookedFor(whenLabel(p)))}</span>
       <span class="planhint">${esc(L.bookedNote)}</span>
     </div>`;
 
@@ -890,101 +490,80 @@ function planControlHTML(s) {
     `<option value="${esc(d)}"${p?.day === d ? " selected" : ""}>${esc(dayShort(d))}</option>`).join("");
 
   return `<div class="planrow">
-    ${p ? `<span class="planchip">${esc(L.plannedFor(whenLabel(p)))}</span>` : ""}
-    <button class="planbtn" type="button" data-plan="${esc(s.id)}"
-            aria-expanded="false">${esc(p ? L.changeDay : L.planIt)}</button>
-    ${p ? `<button class="planoff" type="button" data-planoff="${esc(s.id)}">${esc(L.takeOff)}</button>` : ""}
+    ${p ? `<span class="tag tag-tint">${ICONS.calendar}${esc(L.plannedFor(whenLabel(p)))}</span>` : ""}
+    <button class="btn btn-sm ${p ? "btn-ghost" : "btn-tint"} ${p ? "" : "right"}" type="button" data-plan="${esc(s.id)}"
+            aria-expanded="false">${p ? "" : ICONS.calendar}${esc(p ? L.changeDay : L.planIt)}</button>
+    ${p ? `<button class="btn btn-sm btn-ghost danger" type="button" data-planoff="${esc(s.id)}">${esc(L.takeOff)}</button>` : ""}
   </div>
   <div class="planedit" id="plan-${esc(s.id)}" hidden>
-    <label>${esc(L.planDay)}<select data-pday>${days}</select></label>
-    <label>${esc(L.planFrom)}<input type="time" data-pfrom value="${esc(p?.start ?? "")}"></label>
-    <label>${esc(L.planTo)}<input type="time" data-pto value="${esc(p?.end ?? "")}"></label>
-    <button class="submit" type="button" data-psave="${esc(s.id)}">${esc(L.planSave)}</button>
+    <label class="field"><span>${esc(L.planDay)}</span><select class="select" data-pday>${days}</select></label>
+    <label class="field time"><span>${esc(L.planFrom)}</span><input class="input" type="time" data-pfrom value="${esc(p?.start ?? "")}"></label>
+    <label class="field time"><span>${esc(L.planTo)}</span><input class="input" type="time" data-pto value="${esc(p?.end ?? "")}"></label>
+    <button class="btn btn-primary btn-sm" type="button" data-psave="${esc(s.id)}">${esc(L.planSave)}</button>
   </div>`;
 }
 
-/** Names of everyone on the trip, as suggestions on the name box. Still free
- *  text, so nobody is locked out for not being on the list yet. */
-/** The line above the headline: whatever the trip says it is. */
-function tripKicker(trip) {
-  if (!trip) return "";
-  const fmt = (iso) => iso
-    ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-        { day: "numeric", month: "long", timeZone: "UTC" })
-    : "";
-  const when = trip.startDate && trip.endDate
-    ? `${fmt(trip.startDate)} – ${fmt(trip.endDate)}` : "";
-  return [trip.destination || trip.name, when].filter(Boolean).join(" · ");
-}
-
-function fillMembers(list) {
-  const box = document.getElementById("members");
-  if (!box) return;
-  box.innerHTML = (list ?? []).map((m) =>
-    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
-}
-
 function cardHTML(s) {
+  const L = t();
   const custom = !!s.custom;
   const shot = custom
     ? `<div class="shot blank" id="shot-${esc(s.id)}"></div>`
     : `<div class="shot" id="shot-${esc(s.id)}">
          <div class="ph" aria-hidden="true">${esc(title(s).charAt(0))}</div>
-         <span class="rank">${s.rank}</span>
-         <span class="cost ${COST_CLASS[s.cost]}">${esc(t()[COST_KEY[s.cost]])}</span>
+         <span class="rank tag tag-solid tag-sm">#${s.rank}</span>
+         <span class="cost tag ${COST_CLASS[s.cost] || "tag-neutral"} tag-sm">${esc(L[COST_KEY[s.cost]] || "")}</span>
        </div>`;
 
   const head = custom
-    ? `<div class="custom-head"><h2>${esc(s.name)}</h2><span class="badge">${esc(t().added)}</span></div>
-       <p class="byline">${esc(t().addedBy(s.addedBy))}</p>`
+    ? `<div class="custom-head"><h2>${esc(s.name)}</h2><span class="tag tag-violet tag-sm">${esc(L.added)}</span></div>
+       <p class="byline">${esc(L.addedBy(s.addedBy))}</p>`
     : `<h2>${esc(title(s))}</h2>
        <p class="where">${esc(s.area)} · ${esc(s.station)}</p>`;
+
+  const bookTag = s.bookingRequired ? `<span class="tag tag-coral tag-sm">${esc(L.booking)}</span>` : "";
 
   // Added sights carry the same two facts as the built-ins, but nobody can know
   // them at the time of adding, so they are editable afterwards.
   const money = custom
-    ? `<p class="price">${
-        s.costs ? esc(s.priceLabel || t().costsSomething) : esc(t().costsNothing)
-      }${s.bookingRequired ? esc(t().booking) : ""}</p>`
-    : "";
+    ? `<p class="price"><span>${s.costs ? esc(s.priceLabel || L.costsSomething) : esc(L.costsNothing)}</span>${bookTag}</p>`
+    : `<p class="price">${priceOf(s) ? `<span>${esc(priceOf(s))}</span>` : ""}${bookTag}</p>`;
 
   const desc = custom
     ? (s.summary ? `<p class="desc">${esc(s.summary)}</p>` : "") + money
-    : `<p class="desc">${esc(blurb(s))}</p>
-       <p class="price">${esc(priceOf(s))}${s.bookingRequired ? esc(t().booking) : ""}</p>`;
+    : `<p class="desc">${esc(blurb(s))}</p>${money}`;
 
   const link = s.url
-    ? `<a class="more" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(t().readMore)}</a>`
+    ? `<a class="more" href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(L.readMore)}${ICONS.external}</a>`
     : "";
 
   return `
-  <article class="sight${custom ? " is-custom" : ""}" id="card-${esc(s.id)}" data-cost="${esc(s.cost || "free")}">
+  <article class="sight card${custom ? " is-custom" : ""}" id="card-${esc(s.id)}" data-cost="${esc(s.cost || "free")}">
     ${shot}
     <div class="body">${head}${desc}${link}</div>
     <div class="foot">
-      <button class="want" type="button" data-id="${esc(s.id)}" aria-pressed="false" disabled>
-        <span class="heart">♡</span><span class="txt">${esc(t().want)}</span>
+      <button class="want btn btn-sm btn-outline" type="button" data-id="${esc(s.id)}" aria-pressed="false" disabled>
+        <span class="h-off">${ICONS.heart}</span><span class="h-on">${ICONS.heartFill}</span><span class="txt">${esc(L.want)}</span>
       </button>
-      <button class="talk" type="button" data-talk="${esc(s.id)}" aria-expanded="false"
+      <button class="talk btn btn-sm btn-ghost" type="button" data-talk="${esc(s.id)}" aria-expanded="false"
               aria-controls="thread-${esc(s.id)}">
-        <span class="bubble" aria-hidden="true">💬</span><span class="n">0</span>
+        ${ICONS.bubble}<span class="n">0</span>
       </button>
+      ${custom ? `<button class="btn btn-sm btn-ghost" type="button" data-edit="${esc(s.id)}">${esc(L.editCost)}</button>` : ""}
       <span class="tally" id="tally-${esc(s.id)}"></span>
-      ${custom ? `<button class="editcost" type="button" data-edit="${esc(s.id)}">${esc(t().editCost)}</button>` : ""}
-      ${custom ? `<button class="remove" type="button" data-remove="${esc(s.id)}" hidden>${esc(t().remove)}</button>` : ""}
+      ${custom ? `<button class="remove btn btn-sm btn-ghost danger" type="button" data-remove="${esc(s.id)}" hidden>${esc(L.remove)}</button>` : ""}
     </div>
     ${custom ? `<div class="costedit" id="edit-${esc(s.id)}" hidden>
       <label class="check">
         <input type="checkbox" data-ecosts${s.costs ? " checked" : ""}>
-        <span>${esc(t().addCosts)}</span>
+        <span>${esc(L.addCosts)}</span>
       </label>
-      <input class="eprice" type="text" maxlength="40" data-eprice
-             placeholder="${esc(t().addPrice)}" value="${esc(s.priceLabel || "")}"${s.costs ? "" : " disabled"}>
+      <input class="input eprice" type="text" maxlength="40" data-eprice
+             placeholder="${esc(L.addPrice)}" value="${esc(s.priceLabel || "")}"${s.costs ? "" : " disabled"}>
       <label class="check">
         <input type="checkbox" data-ebooking${s.bookingRequired ? " checked" : ""}>
-        <span>${esc(t().addBooking)}</span>
+        <span>${esc(L.addBooking)}</span>
       </label>
-      <button class="submit" type="button" data-esave="${esc(s.id)}">${esc(t().save)}</button>
+      <button class="btn btn-primary btn-sm" type="button" data-esave="${esc(s.id)}">${esc(L.save)}</button>
     </div>` : ""}
     ${planControlHTML(s)}
     <div class="thread" id="thread-${esc(s.id)}" hidden></div>
@@ -1018,8 +597,7 @@ function paintTallies() {
     if (btn) {
       btn.setAttribute("aria-pressed", String(!!mine));
       btn.disabled = !me;
-      btn.querySelector(".heart").textContent = mine ? "♥" : "♡";
-      btn.querySelector(".txt").textContent   = mine ? t().wanted : t().want;
+      btn.querySelector(".txt").textContent = mine ? t().wanted : t().want;
     }
 
     const rm = document.querySelector(`.remove[data-remove="${CSS.escape(s.id)}"]`);
@@ -1057,9 +635,9 @@ function threadHTML(id) {
 
   return `${items}
     <form data-cform="${esc(id)}">
-      <textarea maxlength="500" rows="2" placeholder="${esc(L.commentPlaceholder)}"
+      <textarea class="textarea" maxlength="500" rows="2" placeholder="${esc(L.commentPlaceholder)}"
                 aria-label="${esc(L.comments)}"></textarea>
-      <button class="send" type="submit"${me ? "" : " disabled"}>${esc(L.send)}</button>
+      <button class="send btn btn-primary btn-sm" type="submit"${me ? "" : " disabled"}>${esc(L.send)}</button>
     </form>`;
 }
 
@@ -1151,11 +729,11 @@ function renderCounts() {
   ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${esc(k)}</span></div>`).join("");
 }
 
-function setStatus() {
+function paintWhoLine() {
   const total = Object.values(VOTES).reduce((n, v) => n + v.length, 0);
   const people = new Set();
   for (const list of Object.values(VOTES)) list.forEach((v) => people.add(norm(v)));
-  $("#status").innerHTML = me
+  $("#who-line").innerHTML = me
     ? t().votingAs(esc(me), total, people.size)
     : t().enterName(total, people.size);
 }
@@ -1169,52 +747,31 @@ function notify(message) {
 /* --------------------------------------------------------------- language */
 
 function paintChrome() {
-  document.documentElement.lang = lang;
   const L = t();
-  $("#kicker").textContent   = tripKicker(TRIPINFO) || L.kicker;
-  $("#nav-sights").textContent      = L.navSights;
-  $("#nav-bookings").textContent    = L.navBookings;
-  $("#nav-plan").textContent        = L.navPlan;
-  $("#nav-details").textContent        = L.navDetails;
+  setTrip(TRIPINFO, L.pageTitle);
+  $("#kicker").textContent = tripKicker(TRIPINFO);
+  $("#kicker").hidden = !$("#kicker").textContent;
   $("#add-costs-label").textContent = L.addCosts;
   $("#add-price").placeholder       = L.addPrice;
   $("#add-booking-label").textContent = L.addBooking;
   $("#add-money-hint").textContent  = L.addMoneyHint;
   $("#headline").textContent = L.headline;
   $("#lede").textContent     = L.lede(all().length);
-  $("#name-label").textContent = L.nameLabel;
-  $("#name").placeholder     = L.namePlaceholder;
   $("#filter-label").textContent = L.show;
 
-
   $("#add-summary").textContent = L.addSummary;
-  $("#addform").querySelector('label[for="add-name"]').textContent = L.addName;
-  $("#addform").querySelector('label[for="add-url"]').innerHTML =
-    `${esc(L.addUrl)} <span class="hint">${esc(L.optional)}</span>`;
-  $("#addform").querySelector('label[for="add-desc"]').innerHTML =
-    `${esc(L.addDesc)} <span class="hint">${esc(L.optional)}</span>`;
+  $("#l-add-name").textContent = L.addName;
+  $("#l-add-url").innerHTML  = `${esc(L.addUrl)} <span class="hint">${esc(L.optional)}</span>`;
+  $("#l-add-desc").innerHTML = `${esc(L.addDesc)} <span class="hint">${esc(L.optional)}</span>`;
+  $("#add-name").placeholder   = L.namePlaceholder;
   $("#add-submit").textContent = L.addSubmit;
   $("#add-hint").textContent   = L.addHint;
   $("#add-desc").placeholder   = L.descPlaceholder;
-
-  const tt = $("#totop");
-  if (tt) { tt.title = L.backToTop; tt.setAttribute("aria-label", L.backToTop); }
   $("#foot-note").textContent  = L.footNote;
-  $("#foot-guide").textContent = L.footGuide;
-  $("#guide").textContent      = L.guideLink;
+  $(".addbox .plus").innerHTML = ICONS.plus;
 
-  for (const b of $(".langs").querySelectorAll("button")) {
-    b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
-  }
+  backToTop(L.backToTop);
   renderCounts();   // labels, before any sights have arrived
-}
-
-
-function setLang(next) {
-  lang = next === "de" ? "de" : "en";
-  try { localStorage.setItem(LANG_KEY, lang); } catch {}
-  paintChrome();
-  if (SIGHTS.length) render();
 }
 
 /* --------------------------------------------------------------- actions */
@@ -1276,11 +833,10 @@ async function onClick(event) {
 
   const btn = event.target.closest(".want");
   if (!btn || btn.disabled) return;
-  if (!me) return $("#name").focus();
+  if (!me) return askName();
 
   const id     = btn.dataset.id;
   const wanted = btn.getAttribute("aria-pressed") !== "true";
-  btn.classList.add("busy");
   btn.disabled = true;
 
   try {
@@ -1292,18 +848,17 @@ async function onClick(event) {
     CUSTOM = data.custom || CUSTOM;
     COMMENTS = data.comments || COMMENTS;
     notify("");
-    paintTallies(); paintThreads(); applyFilter(); setStatus();
+    paintTallies(); paintThreads(); applyFilter(); paintWhoLine();
   } catch (err) {
-    notify(t().voteFail(err.message));
+    setStatus(t().voteFail(err.message), "err");
   } finally {
-    btn.classList.remove("busy");
     btn.disabled = !me;
   }
 }
 
 /** Shared by both plan actions: they return the same snapshot. */
 async function planCall(path, body) {
-  if (!me) return $("#name").focus();
+  if (!me) return askName();
   try {
     const data = await api(path, { method: "POST", body: JSON.stringify({ voter: me, ...body }) });
     CUSTOM = data.custom;
@@ -1313,7 +868,7 @@ async function planCall(path, body) {
     BOOKED = data.bookings || [];
     render();
   } catch (err) {
-    setStatus(err.message);
+    setStatus(err.message, "err");
   }
 }
 
@@ -1333,7 +888,7 @@ async function onPlanSave(id) {
 const onPlanRemove = (id) => planCall("/api/plan/remove", { sightId: id });
 
 async function onSaveCost(id) {
-  if (!me) return $("#name").focus();
+  if (!me) return askName();
   const box = document.getElementById(`edit-${id}`);
   if (!box) return;
 
@@ -1357,7 +912,7 @@ async function onSaveCost(id) {
     COMMENTS = data.comments;
     render();
   } catch (err) {
-    setStatus(err.message);
+    setStatus(err.message, "err");
   } finally {
     btn.disabled = false;
   }
@@ -1376,9 +931,9 @@ async function onRemove(id) {
     CUSTOM = data.custom || [];
     VOTES  = data.votes || {};
     COMMENTS = data.comments || {};
-    render(); setStatus(); notify("");
+    render(); paintWhoLine(); notify("");
   } catch (err) {
-    notify(err.message);
+    setStatus(err.message, "err");
   }
 }
 
@@ -1394,7 +949,7 @@ async function onDeleteComment(id) {
     paintThreads();
     notify("");
   } catch (err) {
-    notify(err.message);
+    setStatus(err.message, "err");
   }
 }
 
@@ -1408,7 +963,7 @@ $("#grid").addEventListener("submit", async (event) => {
   const area = form.querySelector("textarea");
   const text = area.value.trim();
 
-  if (!me) { notify(t().needNameComment); $("#name").focus(); return; }
+  if (!me) { setStatus(t().needNameComment, "err"); askName(); return; }
   if (!text) return;
 
   const send = form.querySelector(".send");
@@ -1426,7 +981,7 @@ $("#grid").addEventListener("submit", async (event) => {
     paintThreads();
     notify("");
   } catch (err) {
-    notify(err.message);
+    setStatus(err.message, "err");
   } finally {
     send.disabled = false;
   }
@@ -1447,7 +1002,7 @@ $("#addform").addEventListener("submit", async (event) => {
   if (!me) {
     err.textContent = t().addNeedName;
     err.hidden = false;
-    $("#name").focus();
+    askName();
     return;
   }
 
@@ -1476,7 +1031,7 @@ $("#addform").addEventListener("submit", async (event) => {
     $("#addform").reset();
     $("#add-price").disabled = true;
     $("#addbox").open = false;
-    render(); setStatus(); notify("");
+    render(); paintWhoLine(); notify("");
     document.getElementById(`card-${data.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   } catch (e) {
     err.textContent = e.message;
@@ -1486,10 +1041,9 @@ $("#addform").addEventListener("submit", async (event) => {
   }
 });
 
-$("#name").addEventListener("input", (e) => {
-  me = e.target.value.trim();
-  try { localStorage.setItem(NAME_KEY, me); } catch {}
-  paintTallies(); paintThreads(); applyFilter(); setStatus();
+onName((name) => {
+  me = name;
+  paintTallies(); paintThreads(); applyFilter(); paintWhoLine();
 });
 
 $("#filters").addEventListener("click", (e) => {
@@ -1502,39 +1056,18 @@ $("#filters").addEventListener("click", (e) => {
   applyFilter();
 });
 
-$(".langs").addEventListener("click", (e) => {
-  const btn = e.target.closest("button");
-  if (btn) setLang(btn.dataset.lang);
-});
-
 /* ------------------------------------------------------------------ boot */
 
-try { me = localStorage.getItem(NAME_KEY) || ""; } catch {}
-try {
-  lang = localStorage.getItem(LANG_KEY) ||
-    ((navigator.language || "").startsWith("de") ? "de" : "en");
-} catch {}
-if (!["en", "de"].includes(lang)) lang = "en";
-$("#name").value = me;
-paintChrome();
+onLang(() => {
+  paintChrome();
+  if (SIGHTS.length) { render(); paintWhoLine(); }
+});
 
 load()
-  .then(() => { paintChrome(); setStatus(); notify(""); })
+  .then(() => { paintChrome(); paintWhoLine(); notify(""); })
   .catch((err) => {
     notify(t().loadFail(err.message));
-    $("#status").textContent = "—";
   });
-
-const toTop = $("#totop");
-toTop.title = t().backToTop;
-toTop.setAttribute("aria-label", t().backToTop);
-toTop.addEventListener("click", () => {
-  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-});
-const onScroll = () => toTop.classList.toggle("show", window.scrollY > 500);
-window.addEventListener("scroll", onScroll, { passive: true });
-onScroll();
 
 setInterval(refresh, 20000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });

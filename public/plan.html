@@ -2,530 +2,160 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>London - What we plan to see</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗓️</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Plan</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
 <style>
-:root{
-  /* iOS-leaning control tokens. Blue for anything actionable, the page's own
-     maroon for anything destructive; both deep enough to read at 12px, which
-     the old --ink-3 text buttons were not. The blue is pulled off Apple's
-     system blue towards the warm paper ground so it doesn't shout. */
-  --tint:#1A5FCC;
-  --tint-bg:rgba(26,95,204,.09);
-  --tint-br:rgba(26,95,204,.26);
-  --on-tint:#FFFFFF;
-  --danger:#8E2431;
-  --danger-bg:rgba(142,36,49,.08);
-  --on-danger:#FFFFFF;
-  --ctl:#FFFFFF;
-  --ctl-br:rgba(23,29,25,.20);
-  --sep:rgba(23,29,25,.09);
-  --ui:"Instrument Sans",-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;
-  --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
-  --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
-  --line:#D9DDD4; --line-2:#C4CABD;
-  --maroon:#7B2230; --maroon-soft:#F0E2E3;
-  --green:#1F4A3C; --green-soft:#E1EAE4;
-  --brass:#8A6118; --brass-soft:#F2E9D6;
-  --shadow:0 1px 2px rgba(23,29,25,.06), 0 10px 28px -20px rgba(23,29,25,.35);
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --tint:#79B0FF;
-    --tint-bg:rgba(121,176,255,.15);
-    --tint-br:rgba(121,176,255,.32);
-    --on-tint:#101410;
-    --danger:#E0868F;
-    --danger-bg:rgba(224,134,143,.14);
-    --on-danger:#101410;
-    --ctl:#212722;
-    --ctl-br:rgba(233,236,229,.20);
-    --sep:rgba(233,236,229,.10);
-    --paper:#101410; --card:#171C18; --card-2:#1E241F;
-    --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
-    --line:#2A322B; --line-2:#3A443B;
-    --maroon:#E0868F; --maroon-soft:#2E1A1E;
-    --green:#7CBBA0; --green-soft:#152420;
-    --brass:#D9AC59; --brass-soft:#241D0F;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -22px rgba(0,0,0,.9);
-  }
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
-  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
-a{color:var(--maroon)}
+/* ---- toolbar extras ---- */
+.hiddenby{font-size:12.5px;color:var(--text-3);margin:14px 0 0}
+#addtoggle{margin-left:auto}
 
-/* ---- top nav ---- */
-.topnav{position:sticky;top:0;z-index:40;
-  background:color-mix(in srgb,var(--paper) 88%,transparent);
-  backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
-.navinner{max-width:1180px;margin:0 auto;padding:9px 20px;min-height:56px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;
-  letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
-.navlinks{display:flex;gap:4px}
-.navlinks a{font-size:14px;font-weight:500;color:var(--ink-3);text-decoration:none;
-  padding:7px 14px;border-radius:9px;transition:color .15s,background .15s}
-.navlinks a:hover{color:var(--ink);background:var(--card-2)}
-.navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
-.navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
-.navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);
-  width:132px;min-width:0}
-.navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
-.navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
-.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
-.langs button{padding:6px 10px;font-size:12px;font-weight:600;border:0;
-  background:var(--card);color:var(--ink-3)}
-.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-@media (max-width:700px){
-  .navinner{padding:9px 16px;gap:10px}
-  .navtools{margin-left:auto;flex-wrap:wrap}
-  .navtools input[type=text]{width:112px}
-  .navtools input[type=text]:focus{width:112px}
-  .navstatus{flex-basis:100%;max-width:none;text-align:right}
-}
-@media (max-width:520px){
-  .navinner{gap:8px;row-gap:6px}
-  .brand{font-size:15px}
-  /* the four links get their own line rather than squeezing the name field */
-  .navlinks{order:3;flex-basis:100%;overflow-x:auto;scrollbar-width:none}
-  .navlinks::-webkit-scrollbar{display:none}
-  .navlinks a{padding:6px 10px;font-size:13.5px;white-space:nowrap}
-  .navtools input[type=text],.navtools input[type=text]:focus{width:100%;flex:1}
-  .navtools{flex:1;min-width:0}
-}
-
-
-/* ---- filters ---- */
-.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
-  padding:14px 0 16px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.fgroup .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
-.fgroup button{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2)}
-.fgroup button:hover{border-color:var(--ink-3);color:var(--ink)}
-.fgroup button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
-  font-weight:500;opacity:.55;margin-left:4px}
-.fmanual{display:flex;gap:5px;align-items:center}
-.fmanual .or{font-size:12px;color:var(--ink-3);margin:0 1px}
-.fmanual input{font:inherit;font-size:13px;width:64px;padding:6px 8px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink)}
-.fmanual input.on{border-color:var(--ink);background:var(--ink);color:var(--paper);font-weight:600}
-.fmanual input::placeholder{color:var(--ink-3);font-size:11.5px}
-.fmanual .plus{font-size:13px;color:var(--ink-3)}
-.fmanual b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:500;color:var(--ink-3)}
-.hiddenby{font-size:12.5px;color:var(--ink-3);margin:14px 0 0}
-.startgroup{margin-left:auto}
-.baseedit{font-size:12px;padding:6px 9px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-3);cursor:pointer}
-.baseedit:hover{border-color:var(--ink-3);color:var(--ink)}
-.baseform{margin-top:14px;padding:12px 14px;background:var(--card);
-  border:1px solid var(--line);border-radius:12px}
-.baseform .addrrow{margin-top:0}
-.basewhere{font-size:12.5px;color:var(--ink-3);margin:0 0 8px}
-.fromyou{font-size:11px;color:var(--green);border:1px solid var(--green);
-  background:var(--green-soft);border-radius:5px;padding:1px 7px}
-
-.addbtn{
-  margin-left:0;width:36px;height:36px;flex:none;
-  font-size:20px;line-height:1;font-weight:400;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2);
-  border-radius:10px;cursor:pointer;
-}
-.addbtn:hover{border-color:var(--ink);color:var(--ink)}
-.addbtn[aria-expanded="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+/* ---- where the days start ---- */
+.baseform{margin-top:16px}
+.basewhere{font-size:13px;color:var(--text-2);margin:0 0 10px}
 
 /* ---- the add panel ---- */
-.adder{margin-top:18px;background:var(--card);border:1px solid var(--line);
-  border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-.addermodes{display:flex;gap:6px;padding:14px 18px 0}
-.addermodes button{font-size:13px;font-weight:500;padding:7px 13px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink-2);cursor:pointer}
-.addermodes button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.adder .apbody{border-top:0;padding-top:14px}
+.adder{margin-top:16px}
+.addermodes{padding:14px 18px 0}
+.addermodes .seg button{font-size:13px;padding:7px 14px}
+.apbody{padding:14px 18px 18px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.apbody .field{flex:1 1 140px}
+.apbody .field.what{flex:2 1 220px}
+.apbody .field.time{flex:0 1 110px}
+.apwhere{flex-basis:100%;margin-top:6px;padding-top:12px;border-top:1px solid var(--hair)}
+.apwhere .addrrow{align-items:flex-end}
+.apwhere .field{flex:1 1 220px}
+#own-where-note{margin:7px 0 0}
+#own-where-note.set{color:var(--green);font-weight:600}
+.aphint{flex-basis:100%;font-size:12.5px;color:var(--text-3);margin:0}
+
+/* ---- day columns ---- */
+.days{display:grid;gap:16px;margin-top:22px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+@media (max-width:380px){.days{grid-template-columns:1fr}}
+.day{display:flex;flex-direction:column}
+.day > header{padding:13px 17px;border-bottom:1px solid var(--hair);display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.day .wd{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tint)}
+.day h2{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.day .n{margin-left:auto;font-size:12px;color:var(--text-3);font-weight:600}
+ol.stops{list-style:none;margin:0;padding:0;flex:1;min-height:54px}
+li.stop{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:start;padding:12px 14px 12px 17px;
+  border-bottom:1px solid var(--hair);cursor:pointer;transition:background .12s}
+li.stop:last-child{border-bottom:0}
+li.stop:hover{background:var(--surface-2)}
+li.stop .chev{margin-top:3px;opacity:0;transition:opacity .12s}
+li.stop:hover .chev{opacity:1}
+.when{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;padding-top:1px;font-variant-numeric:tabular-nums}
+.when em{display:block;font-style:normal;color:var(--text-3);font-size:12px;font-weight:500}
+.when.open{color:var(--text-3);font-weight:500;font-size:12px}
+.sname{font-weight:600;font-size:14.5px;line-height:1.3}
+.smeta{font-size:12px;color:var(--text-3);margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.stopact{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.dayempty{padding:22px 17px;color:var(--text-3);font-size:13px}
+.dayroute{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:11px 17px;border-top:1px solid var(--hair);background:var(--surface-2)}
+.routenote{font-size:12px;color:var(--text-2);flex-basis:100%}
+
+/* ---- address lookup ---- */
+.addrform{margin-top:8px}
+.addrrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.addrrow .input{flex:1;min-width:170px;height:34px;font-size:14px}
+.addrhits{display:grid;gap:4px;margin-top:8px}
+.addrhits .hit{text-align:left;font-size:13.5px;padding:8px 11px;border-radius:var(--r-md);
+  border:1px solid var(--hair-2);background:var(--surface);color:var(--text-2);display:flex;gap:6px;align-items:baseline}
+.addrhits .hit:hover{border-color:var(--tint);color:var(--text);background:var(--tint-soft)}
+.addrhits .hit b{color:var(--green);font-size:10px;text-transform:uppercase;letter-spacing:.06em;flex:none}
+.addrnote{font-size:12px;color:var(--text-3)}
 
 /* ---- the detail sheet ---- */
-/* Shaped after an iOS sheet: a blurred scrim, a large-radius card that rises
-   from the bottom on a phone, grouped rows, and controls of one height so the
-   labels above them line up without being nudged. */
-.sheetback{
-  position:fixed;inset:0;z-index:100;background:rgba(16,18,22,.45);
-  display:flex;align-items:center;justify-content:center;padding:20px;
-  backdrop-filter:blur(14px) saturate(140%);
-  -webkit-backdrop-filter:blur(14px) saturate(140%);
-}
-.sheetback[hidden]{display:none}
-.sheet{
-  background:var(--card);border-radius:20px;
-  box-shadow:0 30px 70px -20px rgba(0,0,0,.45), 0 0 0 .5px var(--sep);
-  width:min(640px,100%);max-height:calc(100dvh - 40px);overflow-y:auto;
-  font-family:var(--ui);
-}
-.sheet > header{
-  padding:20px 22px 14px;border-bottom:.5px solid var(--sep);
-  display:flex;align-items:flex-start;gap:12px;position:sticky;top:0;z-index:2;
-  background:var(--card);border-radius:20px 20px 0 0;
-}
-.sheet h2{
-  font-family:"Fraunces",Georgia,serif;font-size:22px;margin:0;
-  font-weight:600;line-height:1.2;flex:1;letter-spacing:-.01em;
-}
-.sheetclose{
-  border:0;background:var(--card-2);color:var(--ink-2);
-  width:30px;height:30px;border-radius:50%;font-size:16px;line-height:1;
-  cursor:pointer;flex:none;display:grid;place-items:center;
-}
-.sheetclose:hover{background:var(--line);color:var(--ink)}
-.sheetbody{padding:16px 22px 22px;display:grid;gap:20px}
-
-.srow{display:grid;gap:8px}
-.slabel{
-  font-family:var(--ui);font-size:12px;font-weight:600;letter-spacing:.02em;
-  text-transform:uppercase;color:var(--ink-3);
-}
-.sval{font-size:15.5px;color:var(--ink);line-height:1.45}
-.sval.muted{color:var(--ink-3);font-size:14px}
-
 /* One row, one line — and it stays one line. Wrapping is off, so when the
    sheet narrows the name and the day give up width instead of the To field
    dropping underneath. Below 560px it becomes a grid instead; see there. */
 .sfields{display:flex;gap:10px;align-items:flex-end;flex-wrap:nowrap}
-.sfields label{
-  display:flex;flex-direction:column;gap:6px;
-  font-size:12.5px;color:var(--ink-2);flex:0 1 auto;min-width:0;
-}
-.sfields label.wide{flex:1 1 110px}
-.sfields input,.sfields select{
-  font:inherit;font-family:var(--ui);font-size:15px;height:38px;
-  padding:0 11px;border-radius:10px;
-  border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink);
-  -webkit-appearance:none;appearance:none;
-}
-.sfields select{padding-right:30px;
-  background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
-                   linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
-  background-position:calc(100% - 16px) 17px,calc(100% - 11px) 17px;
-  background-size:5px 5px,5px 5px;background-repeat:no-repeat;
-}
+.sfields .field{flex:0 1 auto;min-width:0}
+.sfields .field.wide{flex:1 1 110px}
 .sfields input[type=time]{width:104px;flex:none;text-align:center}
-.sfields select{max-width:170px;min-width:0;width:100%}
-.sfields label.wide input{width:100%}
-.sfields input:focus,.sfields select:focus{
-  outline:none;border-color:var(--tint);box-shadow:0 0 0 3px var(--tint-bg);
-}
-
+.sfields .select{max-width:190px;min-width:0}
 .svoters{display:flex;gap:6px;flex-wrap:wrap}
-.svoter{
-  font-size:13px;background:var(--card-2);border-radius:999px;padding:4px 12px;
-  color:var(--ink);
-}
 .slinks{display:flex;gap:8px;flex-wrap:wrap}
-.slinks a{
-  font-size:14px;font-weight:600;text-decoration:none;padding:9px 14px;
-  border-radius:10px;background:var(--tint-bg);color:var(--tint);
-  border:.5px solid var(--tint-br);
-}
-.slinks a:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
-
-.sfoot{
-  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
-  padding-top:18px;border-top:.5px solid var(--sep);
-}
-.sfoot .save{
-  font-family:var(--ui);font-size:15px;font-weight:600;padding:11px 20px;
-  border-radius:12px;border:0;background:var(--tint);color:var(--on-tint);cursor:pointer;
-}
-.sfoot .save:hover{filter:brightness(1.08)}
-.sfoot .danger{
-  font-family:var(--ui);font-size:14px;font-weight:600;padding:10px 15px;
-  border-radius:12px;border:.5px solid var(--danger);
-  background:var(--danger-bg);color:var(--danger);cursor:pointer;margin-left:auto;
-}
-.sfoot .danger:hover{background:var(--danger);color:var(--on-danger)}
-
-li.stop{cursor:pointer}
-li.stop:hover{background:var(--card-2)}
-.openhint{
-  font-family:var(--ui);font-size:11px;font-weight:600;color:var(--tint);
-  opacity:0;transition:opacity .12s;
-}
-li.stop:hover .openhint{opacity:1}
-
+.sfoot .right{margin-left:auto}
 @media (max-width:560px){
-  /* name over day over from|to — four fields never fit one line here */
   .sfields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .sfields label,.sfields label.wide{grid-column:1 / -1}
-  .sfields label[data-half]{grid-column:auto}
-  .sfields input,.sfields select{width:100%}
-  .sfields input[type=time]{width:100%;flex:auto}
-  .sfields select{max-width:none}
-  .sheetbody{padding:14px 18px 20px;gap:17px}
-  .sheet > header{padding:20px 18px 13px}
-  .sheet h2{font-size:20px}
-  .sfoot .danger{margin-left:0;flex:1}
-  .sfoot .save{flex:1}
+  .sfields .field,.sfields .field.wide{grid-column:1 / -1}
+  .sfields .field[data-half]{grid-column:auto}
+  .sfields input,.sfields .select{width:100%;max-width:none}
+  .sfields input[type=time]{width:100%}
+  .sfoot .btn{flex:1}
+  .sfoot .right{margin-left:0}
 }
 
-@media (max-width:600px){
-  .sheetback{padding:0;align-items:flex-end}
-  .sheet{max-height:92dvh;border-radius:20px 20px 0 0;width:100%}
-  .sheet > header{border-radius:20px 20px 0 0}
-  /* the iOS grabber */
-  .sheet > header::before{
-    content:"";position:absolute;top:7px;left:50%;transform:translateX(-50%);
-    width:36px;height:5px;border-radius:3px;background:var(--line-2);
-  }
-  .sheet > header{padding-top:20px}
-}
-
-/* ---- day columns ---- */
-/* auto-fit rather than fixed breakpoints: the columns are sized by what a day
-   actually needs, so a 1280px laptop gets three of them and not two wide ones. */
-.days{display:grid;gap:18px;margin-top:26px;
-  grid-template-columns:repeat(auto-fit,minmax(330px,1fr))}
-@media (max-width:380px){.days{grid-template-columns:1fr}}
-.day{background:var(--card);border:.5px solid var(--line);border-radius:16px;
-  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
-.day > header{padding:14px 17px;border-bottom:.5px solid var(--sep);
-  background:var(--card-2);display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
-.day h2{font-family:"Fraunces",Georgia,serif;font-size:18px;margin:0;font-weight:600}
-.day .wd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--maroon)}
-.day .n{margin-left:auto;font-family:"IBM Plex Mono",monospace;
-  font-size:11px;color:var(--ink-3)}
-ol.stops{list-style:none;margin:0;padding:6px 0;flex:1;min-height:54px}
-li.stop{display:grid;grid-template-columns:auto 1fr;gap:12px;padding:11px 17px;
-  border-bottom:.5px solid var(--sep)}
-li.stop:last-child{border-bottom:0}
-.when{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);
-  white-space:nowrap;padding-top:1px;min-width:44px}
-.when em{display:block;font-style:normal;color:var(--ink-3);font-size:11px}
-.when.open{color:var(--ink-3)}
-.sname{font-weight:600;font-size:14.5px;line-height:1.3}
-.smeta{font-size:12px;color:var(--ink-3);margin-top:2px;
-  display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.src{font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  border-radius:4px;padding:1px 5px;border:1px solid}
-.src.booked{color:var(--green);border-color:var(--green);background:var(--green-soft)}
-.src.hand{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.stopact{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
-.stopact button,.fromhere{
-  font-family:var(--ui);font-size:12px;font-weight:600;line-height:1;
-  padding:6px 11px;border-radius:999px;cursor:pointer;text-decoration:none;
-  border:.5px solid var(--tint-br);background:var(--tint-bg);color:var(--tint);
-  display:inline-flex;align-items:center;gap:4px;
-}
-.stopact button:hover,.fromhere:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
-.dayempty{padding:20px 17px;color:var(--ink-3);font-size:13px}
-.dayroute{display:flex;gap:7px;align-items:center;flex-wrap:wrap;
-  padding:11px 17px;border-top:.5px solid var(--sep);background:var(--card-2)}
-.dayroute a{font-family:var(--ui);font-size:13px;font-weight:600;text-decoration:none;
-  padding:8px 13px;border-radius:999px;border:.5px solid var(--tint-br);
-  background:var(--tint-bg);color:var(--tint)}
-.dayroute a:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
-.routenote{font-size:12px;color:var(--ink-2);flex-basis:100%}
-
-.noloc{font-size:11px;color:var(--maroon);border:1px solid var(--maroon);
-  background:var(--maroon-soft);border-radius:5px;padding:1px 6px}
-.addrform{margin-top:8px;padding:11px;border:.5px solid var(--ctl-br);
-  border-radius:14px;background:var(--card-2)}
-.addrrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.addrrow input{font:inherit;font-size:13.5px;padding:8px 11px;border-radius:10px;flex:1;
-  min-width:170px;border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink)}
-.addrrow input:focus{outline:none;border-color:var(--tint);box-shadow:0 0 0 3px var(--tint-bg)}
-.linky{font-family:var(--ui);font-size:12px;font-weight:600;border:.5px solid var(--ctl-br);
-  background:var(--ctl);color:var(--ink-2);padding:6px 11px;border-radius:999px;cursor:pointer}
-.linky:hover{color:var(--ink);border-color:var(--ink-3)}
-.addrhits{display:grid;gap:3px;margin-top:7px}
-.addrhits button{text-align:left;font-size:13px;padding:8px 11px;border-radius:10px;
-  border:.5px solid var(--ctl-br);background:var(--ctl);color:var(--ink-2);cursor:pointer}
-.addrhits button:hover{border-color:var(--tint);color:var(--ink);background:var(--tint-bg)}
-.addrhits button b{color:var(--green);font-size:10px;text-transform:uppercase;
-  letter-spacing:.06em;margin-right:5px}
-.addrnote{font-size:11.5px;color:var(--ink-3)}
-
-/* ---- small screens ----
-   The desktop layout is a row of controls; below this width it becomes a
-   stack, and anything with a hard min-width has to give it up or the page
-   scrolls sideways. */
+/* ---- small screens ---- */
 @media (max-width:560px){
-  .wrap{padding:0 14px 60px}
-  .stats{gap:18px 24px;padding:18px 0 16px}
-  .stat b{font-size:24px}
-  .filters{gap:12px}
-  .startgroup{margin-left:0;flex-basis:100%}
-  .fgroup{width:100%}
-  input[type=text]{min-width:0}
-
-  .apbody{padding:14px 16px 16px;gap:12px}
-  .apbody label{flex:1 1 100%}
-  .apbody select,.apbody input,.apbody #own-what{min-width:0;width:100%}
-  /* the two times still belong side by side */
-  .apbody label[id$="-from-l"],.apbody label[id$="-to-l"]{flex:1 1 calc(50% - 6px)}
-  .apbody .btn{width:100%}
-  .apwhere label{min-width:0;flex:1 1 100%}
+  .apbody{padding:14px 16px 16px}
+  .apbody .field,.apbody .field.what{flex:1 1 100%}
+  .apbody .field.time{flex:1 1 calc(50% - 6px)}
+  .apbody > .btn{width:100%}
   .apwhere .addrrow{flex-wrap:wrap}
-  .apwhere .btn{width:auto;flex:1}
-
   .day > header{padding:12px 14px}
-  li.stop{padding:10px 14px;gap:9px}
+  li.stop{padding:11px 12px 11px 14px;gap:9px;grid-template-columns:48px 1fr auto}
   .dayroute{padding:10px 14px}
-  .addrrow input{min-width:0}
+  .addrrow .input{min-width:0}
 }
-
-/* ---- add to the plan ---- */
-.addplan{margin-top:26px;background:var(--card);border:1px solid var(--line);
-  border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
-.addplan > summary{padding:14px 18px;cursor:pointer;font-weight:600;font-size:15px}
-.apbody{padding:14px 18px 18px;border-top:1px solid var(--line);
-  display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
-.apbody label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2)}
-.apbody select,.apbody input{font:inherit;font-size:13.5px;padding:7px 10px;
-  border-radius:9px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.apbody select{min-width:230px;max-width:100%}
-.apbody.own{border-top:1px solid var(--line);padding-top:16px}
-.apbody #own-what{min-width:250px}
-.apwhere{flex-basis:100%;margin-top:12px;padding-top:12px;border-top:.5px solid var(--sep)}
-.apwhere .addrrow{align-items:flex-end}
-.apwhere label{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2);
-  flex:1;min-width:220px}
-.apwhere #own-where{width:100%}
-#own-where-note{margin:7px 0 0}
-#own-where-note.set{color:var(--green);font-weight:600}
-.apown{flex-basis:100%;margin:0 0 2px;font-weight:600;font-size:14px}
-.src.own{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
-.aphint{flex-basis:100%;font-size:12.5px;color:var(--ink-3);margin:2px 0 0}
-
-header{padding:40px 0 22px}
-.kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0 0 14px}
-h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
-  font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.02em;
-  margin:0 0 12px;text-wrap:balance}
-.lede{color:var(--ink-2);max-width:62ch;margin:0;font-size:16px}
-
-/* ---- identity ---- */
-.who{position:sticky;top:56px;z-index:30;margin:0 -20px;padding:12px 20px;
-  background:color-mix(in srgb,var(--paper) 93%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
-  display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.who label{font-size:13px;color:var(--ink-2);font-weight:500}
-input[type=text]{font:inherit;font-size:15px;padding:8px 12px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);min-width:150px}
-.status{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);margin-left:auto}
-button{font:inherit;cursor:pointer}
-
-/* ---- stats ---- */
-.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px}
-.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
-.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-
-/* ---- filters ---- */
-.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
-  padding:14px 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.fgroup .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
-.fgroup button{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2)}
-.fgroup button:hover{border-color:var(--ink-3);color:var(--ink)}
-.fgroup button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
-  font-weight:500;opacity:.55;margin-left:4px}
-
-.btn{font-family:var(--ui);font-size:13.5px;font-weight:600;padding:8px 14px;
-  border-radius:10px;border:.5px solid var(--tint-br);
-  background:var(--tint-bg);color:var(--tint);cursor:pointer}
-.btn:hover{background:var(--tint);color:var(--on-tint);border-color:var(--tint)}
-
-footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
-  font-size:13px;color:var(--ink-3)}
 </style>
 </head>
 <body>
 
-<nav class="topnav">
-  <div class="navinner">
-    <a class="brand" href="/">London&nbsp;2026</a>
-    <div class="navlinks">
-      <a href="/details" id="nav-details">Details</a>
-      <a href="/" id="nav-sights">Sights</a>
-      <a href="/bookings" id="nav-bookings">Bookings</a>
-      <a href="/plan" aria-current="page" id="nav-plan">Plan</a>
-    </div>
-    <div class="navtools">
-      <label class="visually-hidden" for="name" id="name-label">Your name</label>
-      <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="off" spellcheck="false" list="members">
-      <datalist id="members"></datalist>
-      <span class="langs" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="de" aria-pressed="false">DE</button>
-      </span>
-      <span class="navstatus" id="status">Loading…</span>
-    </div>
-  </div>
-</nav>
+<div id="shell" data-page="plan"></div>
 
-<div class="wrap">
-<header>
-  <p class="kicker" id="kicker">London · 11–16 September 2026</p>
-  <h1 id="headline">What we plan to see</h1>
-  <p class="lede" id="lede"></p>
+<main class="page">
+<header class="page-head">
+  <p class="eyebrow" id="kicker"></p>
+  <h1 class="large-title" id="headline"></h1>
+  <p class="subtitle" id="lede"></p>
 </header>
 
-<div class="stats" id="stats"></div>
-<div class="filters" id="filters"></div>
-<div class="baseform" id="baseform" hidden></div>
-<div class="adder" id="addplan" hidden>
+<div class="stat-row" id="stats"></div>
+<div class="toolbar" id="filters"></div>
+<div class="card baseform" id="baseform" hidden></div>
+<div class="card adder" id="addplan" hidden>
   <div class="addermodes">
-    <button type="button" data-mode="sight" aria-pressed="true" id="mode-sight">One of the sights</button>
-    <button type="button" data-mode="own" aria-pressed="false" id="mode-own">Something of my own</button>
+    <div class="seg" role="group">
+      <button type="button" data-mode="sight" aria-pressed="true" id="mode-sight">One of the sights</button>
+      <button type="button" data-mode="own" aria-pressed="false" id="mode-own">Something of my own</button>
+    </div>
   </div>
 
   <div class="apbody" id="form-sight">
-    <label id="ap-what-l">What
-      <select id="ap-what"></select></label>
-    <label id="ap-day-l">Day
-      <select id="ap-day"></select></label>
-    <label id="ap-from-l">From
-      <input id="ap-from" type="time"></label>
-    <label id="ap-to-l">To
-      <input id="ap-to" type="time"></label>
-    <button class="btn" id="ap-add" type="button">Add</button>
+    <label class="field what"><span id="ap-what-l">What</span>
+      <select class="select" id="ap-what"></select></label>
+    <label class="field"><span id="ap-day-l">Day</span>
+      <select class="select" id="ap-day"></select></label>
+    <label class="field time"><span id="ap-from-l">From</span>
+      <input class="input" id="ap-from" type="time"></label>
+    <label class="field time"><span id="ap-to-l">To</span>
+      <input class="input" id="ap-to" type="time"></label>
+    <button class="btn btn-primary" id="ap-add" type="button">Add</button>
     <p class="aphint" id="ap-hint"></p>
   </div>
 
   <div class="apbody" id="form-own" hidden>
-    <label id="own-what-l">What
-      <input id="own-what" type="text" maxlength="80" placeholder=""></label>
-    <label id="own-day-l">Day
-      <select id="own-day"></select></label>
-    <label id="own-from-l">From
-      <input id="own-from" type="time"></label>
-    <label id="own-to-l">To
-      <input id="own-to" type="time"></label>
-    <button class="btn" id="own-add" type="button">Add it</button>
+    <label class="field what"><span id="own-what-l">What</span>
+      <input class="input" id="own-what" type="text" maxlength="80" placeholder=""></label>
+    <label class="field"><span id="own-day-l">Day</span>
+      <select class="select" id="own-day"></select></label>
+    <label class="field time"><span id="own-from-l">From</span>
+      <input class="input" id="own-from" type="time"></label>
+    <label class="field time"><span id="own-to-l">To</span>
+      <input class="input" id="own-to" type="time"></label>
+    <button class="btn btn-primary" id="own-add" type="button">Add it</button>
     <div class="apwhere" data-addrbox="__new__">
       <div class="addrrow">
-        <label id="own-where-l">Where
-          <input id="own-where" type="text" maxlength="200" data-addrq placeholder=""></label>
-        <button class="btn" id="own-find" type="button" data-addrfind="__new__">Find</button>
-        <button type="button" class="linky" id="own-where-clear" hidden>Remove</button>
+        <label class="field"><span id="own-where-l">Where</span>
+          <input class="input" id="own-where" type="text" maxlength="200" data-addrq placeholder=""></label>
+        <button class="btn btn-quiet" id="own-find" type="button" data-addrfind="__new__">Find</button>
+        <button type="button" class="btn btn-ghost" id="own-where-clear" hidden>Remove</button>
       </div>
       <p class="addrnote" id="own-where-note"></p>
       <div class="addrhits" data-addrhits="__new__"></div>
@@ -536,42 +166,33 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 <div class="days" id="days"></div>
 <p class="hiddenby" id="hiddenby" hidden></p>
 
-<div class="sheetback" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+<div class="sheet-back" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
   <div class="sheet">
     <header>
       <h2 id="sheet-title"></h2>
-      <button class="sheetclose" id="sheet-close" type="button" aria-label="Close">×</button>
+      <button class="sheet-close" id="sheet-close" type="button" aria-label="Close"></button>
     </header>
-    <div class="sheetbody" id="sheet-body"></div>
+    <div class="sheet-body" id="sheet-body"></div>
   </div>
 </div>
 
-
-
-<footer><span id="foot"></span></footer>
-</div>
+<footer class="page-foot"><span id="foot"></span></footer>
+</main>
 
 <script type="module">
 import { routeLinks, routeFrom, hasPlace } from "/route.js";
-
-const $ = (s, r = document) => r.querySelector(s);
-const NAME_KEY = "london-vote-name";
-const CODE_KEY = "london-vote-code";
-const LANG_KEY = "london-vote-lang";
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
+         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort } from "/shell.js";
 
 const T = {
   en: {
-    kicker: "London · 11–16 September 2026",
+    pageTitle: "Plan",
     headline: "The plan",
     lede: "Anything booked with a date lands here on its own. Everything else you place by hand — pick a day and a rough time and it slots in.",
-    nameLabel: "Your name",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
     loading: "Loading…", saving: "Saving…", saved: "Saved",
-    needName: "Enter your name first.",
+    needName: "Enter your name in the bar first.",
     fVotes: "Votes", fAll: "All", fPlus: "+", fSource: "From",
-    fOr: "or", fCustom: "any number",
+    fOr: "or", fCustom: "any",
     fCustomTitle: "Type a threshold — 3 means three votes or more",
     fBooked: "Bookings", fHand: "By hand",
     filteredOut: (n) => `${n} hidden by the filters`,
@@ -580,7 +201,7 @@ const T = {
     dayEmpty: "Nothing planned yet.",
     stops: (n) => `${n} ${n === 1 ? "stop" : "stops"}`,
     noTime: "any time",
-    routeGoogle: "Route · Google", routeApple: "Route · Apple",
+    routeGoogle: "Google Maps", routeApple: "Apple Maps",
     routeFromHere: "Route from here",
     routeSkipped: (n) => `${n} without a location left out`,
     routeCapped: "Google's link takes the first 9 stops.",
@@ -620,7 +241,7 @@ const T = {
     startNoneTitle: "No starting point — the app you open decides",
     locAsking: "Asking your browser…", locDenied: "Your browser wouldn't share it.",
     locFrom: "from you", baseFrom: "from the hotel",
-    baseEdit: "Change", baseNone: "No address set for where we're staying.",
+    baseEdit: "Change where the days start", baseNone: "No address set for where we're staying.",
     basePh: "Hotel address, maps link or coordinates",
     modeSight: "One of the sights", modeOwn: "Something of my own",
     ownTitle: "Or add your own entry",
@@ -633,13 +254,11 @@ const T = {
     foot: "No routes and no travel times here — just what happens when. Times are what you enter, not what anything works out.",
   },
   de: {
-    kicker: "London · 11.–16. September 2026",
-    headline: "Was wir geplant haben",
-    lede: "Alles mit Datum gebuchte landet automatisch hier. Alles andere trägst du selbst ein – Tag und ungefähre Zeit wählen, fertig.",
-    nameLabel: "Dein Name",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
+    pageTitle: "Plan",
+    headline: "Der Plan",
+    lede: "Alles mit Datum Gebuchte landet automatisch hier. Alles andere trägst du selbst ein – Tag und ungefähre Zeit wählen, fertig.",
     loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert",
-    needName: "Bitte zuerst den Namen eintragen.",
+    needName: "Trag oben zuerst deinen Namen ein.",
     fVotes: "Stimmen", fAll: "Alle", fPlus: "+", fSource: "Quelle",
     fOr: "oder", fCustom: "beliebig",
     fCustomTitle: "Schwelle eintippen – 3 heißt drei Stimmen oder mehr",
@@ -650,7 +269,7 @@ const T = {
     dayEmpty: "Noch nichts geplant.",
     stops: (n) => `${n} ${n === 1 ? "Stopp" : "Stopps"}`,
     noTime: "egal wann",
-    routeGoogle: "Route · Google", routeApple: "Route · Apple",
+    routeGoogle: "Google Maps", routeApple: "Apple Maps",
     routeFromHere: "Route ab hier",
     routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
     routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
@@ -668,7 +287,7 @@ const T = {
     shBookedBy: "gebucht von", shRef: "Referenz", shCost: "Preis",
     shNotBooked: "Noch nicht gebucht",
     shBookedNote: "Der Termin kommt aus der Buchung – hier Datum und Uhrzeit ändern.",
-    shOwnNote: "Ein eigener Eintrag – keine Sehenswürdigkeit.",
+    shOwnNote: "Ein eigener Eintrag – kein Ort von der Liste.",
     shSightNote: "Von Hand eingetragen. Was du hier änderst, ändert den Plan.",
     shStatus: "Status",
     stTodo: "noch zu buchen", stBooked: "gebucht", stSkipped: "buchen wir nicht",
@@ -690,21 +309,20 @@ const T = {
     startNoneTitle: "Kein Startpunkt – die geöffnete App entscheidet",
     locAsking: "Browser wird gefragt…", locDenied: "Der Browser hat den Standort nicht geteilt.",
     locFrom: "ab dir", baseFrom: "ab der Unterkunft",
-    baseEdit: "Ändern", baseNone: "Für die Unterkunft ist keine Adresse hinterlegt.",
+    baseEdit: "Startpunkt der Tage ändern", baseNone: "Für die Unterkunft ist keine Adresse hinterlegt.",
     basePh: "Adresse der Unterkunft, Maps-Link oder Koordinaten",
-    modeSight: "Eine Sehenswürdigkeit", modeOwn: "Etwas Eigenes",
+    modeSight: "Ein Ort von der Liste", modeOwn: "Etwas Eigenes",
     ownTitle: "Oder einen eigenen Eintrag",
     ownWhat: "Was", ownPh: "Musical · Abendessen mit Anna · Zug zurück",
     ownAdd: "Eintragen",
-    ownHint: "Alles, was keine Sehenswürdigkeit ist. Nur Name und Tag sind nötig.",
+    ownHint: "Alles, was kein Ort von der Liste ist. Nur Name und Tag sind nötig.",
     srcOwn: "eigener", fOwn: "Eigene",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "gebucht von", addedBy: "eingetragen von",
     foot: "Keine Routen und keine Fahrtzeiten – nur was wann passiert. Die Zeiten sind die, die du einträgst.",
   },
 };
-let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
-const t = () => T[lang];
+const t = () => T[getLang()];
 
 let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
 let minVotes = 0;
@@ -712,36 +330,21 @@ let editingAddress = null;   // sight id whose address form is open
 // A place picked on the add form, held until the entry it belongs to exists.
 let pendingPlace = null;     // { label, lat, lon } | null
 let addMode = "sight";       // which half of the add panel is showing
-let openedOnce = false;
-let sheetFor = null;   // { id, source } of the stop whose detail sheet is open      // so an empty plan opens it once, not on every render
+let openedOnce = false;      // so an empty plan opens the adder once, not on every render
+let sheetFor = null;         // { id, source } of the stop whose detail sheet is open
 // Where you are. Kept in memory only: it is nobody else's business, least of
 // all the shared plan's.
 let myPos = null;
 // "base" | "me" | "none". The hotel is the sensible default: it is where every
 // morning starts. Personal to this browser — it changes links, not the plan.
-let startFrom = localStorage.getItem("london-plan-start") || "base";
+const START_KEY = "trip-plan-start";
+let startFrom = localStorage.getItem(START_KEY) || localStorage.getItem("london-plan-start") || "base";
 let editingBase = false;
-let source = "all";       // all | booked | hand
+let source = "all";       // all | booked | hand | own
 
-const nameOf = () => $("#name").value.trim();
-const setStatus = (m) => { $("#status").textContent = m; };
-const title = (s) => (lang === "de" && s.name_de) || s.name;
+const title = (s) => (getLang() === "de" && s.name_de) || s.name;
 const all = () => [...SIGHTS, ...CUSTOM];
 const byId = (id) => all().find((s) => s.id === id);
-
-async function api(path, options) {
-  const res = await fetch(path, { ...options, headers: {
-    "content-type": "application/json",
-    ...(localStorage.getItem(CODE_KEY) ? { "x-access-code": localStorage.getItem(CODE_KEY) } : {}),
-  }});
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401) {
-    const entered = window.prompt("Access code / Zugangscode:");
-    if (entered) { localStorage.setItem(CODE_KEY, entered); return api(path, options); }
-  }
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
-}
 
 /* -------------------------------------------------------------- the plan */
 
@@ -775,54 +378,20 @@ function originNow() {
   return null;
 }
 
-
-/** Names of everyone on the trip, offered as suggestions on the name box.
- *  Still a free-text field: whoever is not on the list yet can just type. */
-/** The line above the headline: whatever the trip says it is. */
-function tripKicker(trip) {
-  if (!trip) return "";
-  const fmt = (iso) => iso
-    ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-        { day: "numeric", month: "long", timeZone: "UTC" })
-    : "";
-  const when = trip.startDate && trip.endDate
-    ? `${fmt(trip.startDate)} – ${fmt(trip.endDate)}` : "";
-  return [trip.destination || trip.name, when].filter(Boolean).join(" · ");
-}
-
-function fillMembers(list) {
-  const box = document.getElementById("members");
-  if (!box) return;
-  box.innerHTML = (list ?? []).map((m) =>
-    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
-}
-
-const dayLabel = (iso) =>
-  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-    { day: "numeric", month: "long", timeZone: "UTC" });
-const weekday = (iso) =>
-  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-    { weekday: "long", timeZone: "UTC" });
-
-/** "Fri", "Fr." — for the sheet, where a full weekday would break the line. */
-const weekdayShort = (iso) =>
-  new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-    { weekday: "short", timeZone: "UTC" });
-
 /** The place a stop routes to, whatever kind of stop it is. */
 const placeOf = (p) =>
   p.source === "own" ? NOTES.find((n) => n.id === p.id) ?? null : byId(p.id);
 
-/**
- * The thing whose address can be edited, and where to send it. Built-in sights
- * already have coordinates, so they answer null.
- */
 /** True when this stop could have a location and hasn't got one yet. */
 const needsPlace = (p) => {
   const target = locatable(p);
   return !!target && !hasPlace(target.it);
 };
 
+/**
+ * The thing whose address can be edited, and where to send it. Built-in sights
+ * already have coordinates, so they answer null.
+ */
 function locatable(p) {
   if (p.source === "own") {
     const n = NOTES.find((x) => x.id === p.id);
@@ -832,6 +401,8 @@ function locatable(p) {
   return s?.custom ? { it: s, name: s.name, path: "/api/sights/address" } : null;
 }
 
+const SRC_TAG = { booked: "tag-green", hand: "tag-tint", own: "tag-violet" };
+
 function stopHTML(p, i, stops) {
   const L = t();
   const own = p.source === "own";
@@ -840,6 +411,7 @@ function stopHTML(p, i, stops) {
   const onward = routeFrom(stops.map(placeOf), i, "transit", originNow());
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
+  const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
 
   return `<li class="stop" data-stop="${esc(p.id)}" data-src="${esc(p.source)}">
     <div class="when${p.start ? "" : " open"}">
@@ -847,18 +419,19 @@ function stopHTML(p, i, stops) {
       ${p.end ? `<em>${esc(p.end)}</em>` : ""}
     </div>
     <div>
-      <div class="sname">${esc(label)} <span class="openhint">${esc(L.open)} ↗</span></div>
+      <div class="sname">${esc(label)}</div>
       <div class="smeta">
-        ${p.source === "booked" ? `<span class="src booked">${esc(L.srcBooked)}</span>` : ""}
+        ${p.source !== "hand" ? `<span class="tag tag-sm ${SRC_TAG[p.source]}">${esc(srcLabel)}</span>` : ""}
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
         <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
-        ${needsPlace(p) ? `<span class="noloc">${esc(L.noLocation)}</span>` : ""}
+        ${needsPlace(p) ? `<span class="tag tag-sm tag-coral">${esc(L.noLocation)}</span>` : ""}
       </div>
       ${onward && i > 0 ? `<div class="stopact">
-        <a class="fromhere" href="${esc(onward.google)}" target="_blank" rel="noopener"
-           >${esc(L.routeFromHere)} ↗</a>
+        <a class="btn btn-sm btn-tint" href="${esc(onward.google)}" target="_blank" rel="noopener"
+           >${ICONS.route}${esc(L.routeFromHere)}</a>
       </div>` : ""}
     </div>
+    <span class="chev">${ICONS.chevron}</span>
   </li>`;
 }
 
@@ -879,9 +452,9 @@ function dayRouteHTML(stops) {
   if (!r) return `<div class="dayroute"><span class="routenote">${esc(L.routeNone)}</span></div>`;
 
   return `<div class="dayroute">
-    <a href="${esc(r.google)}" target="_blank" rel="noopener">${esc(L.routeGoogle)} ↗</a>
-    <a href="${esc(r.apple)}" target="_blank" rel="noopener">${esc(L.routeApple)} ↗</a>
-    ${r.from ? `<span class="fromyou">${esc(startFrom === "me" ? L.locFrom : L.baseFrom)}</span>` : ""}
+    <a class="btn btn-sm btn-tint" href="${esc(r.google)}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeGoogle)}</a>
+    <a class="btn btn-sm btn-tint" href="${esc(r.apple)}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeApple)}</a>
+    ${r.from ? `<span class="tag tag-sm tag-green">${esc(startFrom === "me" ? L.locFrom : L.baseFrom)}</span>` : ""}
     ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
     ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
   </div>`;
@@ -902,19 +475,19 @@ function addressControlHTML(p) {
 
   if (editingAddress !== it.id)
     return `<div class="stopact">
-      <button type="button" data-addr="${esc(it.id)}">${
+      <button class="btn btn-sm btn-tint" type="button" data-addr="${esc(it.id)}">${ICONS.pin}${
         esc(placed ? L.changeAddress : L.addAddress)}</button>
-      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(it.id)}">${
+      ${placed ? `<button type="button" class="btn btn-sm btn-ghost" data-addrclear="${esc(it.id)}">${
         esc(L.addrClear)}</button>` : ""}
     </div>`;
 
-  return `<div class="addrform" data-addrbox="${esc(it.id)}">
+  return `<div class="addrform inset" data-addrbox="${esc(it.id)}">
     <div class="addrrow">
-      <input type="text" data-addrq maxlength="500" placeholder="${esc(L.addrPh)}"
+      <input class="input" type="text" data-addrq maxlength="500" placeholder="${esc(L.addrPh)}"
              value="${esc(it.address ?? name)}">
-      <button class="btn" type="button" data-addrfind="${esc(it.id)}">${esc(L.addrFind)}</button>
-      <button type="button" class="linky" data-addrcancel>${esc(L.addrCancel)}</button>
-      ${placed ? `<button type="button" class="linky" data-addrclear="${esc(it.id)}">${esc(L.addrClear)}</button>` : ""}
+      <button class="btn btn-sm btn-primary" type="button" data-addrfind="${esc(it.id)}">${esc(L.addrFind)}</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-addrcancel>${esc(L.addrCancel)}</button>
+      ${placed ? `<button type="button" class="btn btn-sm btn-ghost" data-addrclear="${esc(it.id)}">${esc(L.addrClear)}</button>` : ""}
     </div>
     <div class="addrhits" data-addrhits="${esc(it.id)}"></div>
   </div>`;
@@ -933,12 +506,12 @@ function renderFilters() {
     (source === "all" || source === p.source)).length;
 
   const votesBtns = steps.map((n) =>
-    `<button type="button" data-votes="${n}" aria-pressed="${minVotes === n}">${
+    `<button class="chip" type="button" data-votes="${n}" aria-pressed="${minVotes === n}">${
       n === 0 ? esc(L.fAll) : n + esc(L.fPlus)} <b>${countAt(n)}</b></button>`).join("");
 
   const typed = !steps.includes(minVotes);
   const manual =
-    `<span class="fmanual"><span class="or">${esc(L.fOr)}</span>` +
+    `<span class="chip-input"><span class="or">${esc(L.fOr)}</span>` +
     `<input type="number" id="vmin" min="0" max="99" step="1"` +
     ` title="${esc(L.fCustomTitle)}" aria-label="${esc(L.fCustomTitle)}"` +
     ` placeholder="${esc(L.fCustom)}" value="${typed ? minVotes : ""}"` +
@@ -952,23 +525,22 @@ function renderFilters() {
     ["hand", L.fHand, list.filter((p) => p.source === "hand").length],
     ["own", L.fOwn, list.filter((p) => p.source === "own").length],
   ].map(([k, label, n]) =>
-    `<button type="button" data-source="${k}" aria-pressed="${source === k}">${esc(label)} <b>${n}</b></button>`).join("");
+    `<button class="chip" type="button" data-source="${k}" aria-pressed="${source === k}">${esc(label)} <b>${n}</b></button>`).join("");
 
   const open = !$("#addplan").hidden;
   $("#filters").innerHTML =
-    `<div class="fgroup"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
-    `<div class="fgroup"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
-    `<div class="fgroup startgroup"><span class="lbl">${esc(L.startLbl)}</span>` +
-    [["base", L.startBase, L.startBaseTitle],
-     ["me", L.startMe, L.startMeTitle],
-     ["none", L.startNone, L.startNoneTitle]].map(([k, label, title]) =>
-      `<button type="button" data-start="${k}" aria-pressed="${startFrom === k}"
-               title="${esc(title)}">${esc(label)}</button>`).join("") +
-    `<button type="button" class="baseedit" id="baseedit" title="${esc(L.baseEdit)}"
-             aria-label="${esc(L.baseEdit)}">✎</button></div>` +
-    `<button class="addbtn" id="addtoggle" type="button" aria-expanded="${open}"
-             title="${esc(open ? L.addClose : L.addNew)}"
-             aria-label="${esc(open ? L.addClose : L.addNew)}">${open ? "×" : "+"}</button>`;
+    `<div class="chips"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
+    `<div class="chips"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
+    `<div class="chips"><span class="lbl">${esc(L.startLbl)}</span>` +
+    [["base", L.startBase, L.startBaseTitle, ICONS.home],
+     ["me", L.startMe, L.startMeTitle, ICONS.locate],
+     ["none", L.startNone, L.startNoneTitle, ""]].map(([k, label, title, icon]) =>
+      `<button class="chip" type="button" data-start="${k}" aria-pressed="${startFrom === k}"
+               title="${esc(title)}">${icon}${esc(label)}</button>`).join("") +
+    `<button type="button" class="chip icon-chip" id="baseedit" title="${esc(L.baseEdit)}"
+             aria-label="${esc(L.baseEdit)}" aria-pressed="${editingBase}">${ICONS.pencil}</button></div>` +
+    `<button class="btn btn-sm ${open ? "btn-quiet" : "btn-primary"}" id="addtoggle" type="button" aria-expanded="${open}"
+             title="${esc(open ? L.addClose : L.addNew)}">${open ? ICONS.close : ICONS.plus}${esc(open ? L.addClose : L.addNew)}</button>`;
 }
 
 /** Where the days start. Collapsed unless you press the pencil. */
@@ -979,17 +551,18 @@ function renderBaseForm() {
   if (!editingBase) return;
 
   box.innerHTML =
-    `<p class="basewhere">${esc(TRIP.base ? TRIP.base.name ?? "" : L.baseNone)}</p>
-     <div class="addrform" data-addrbox="__base__">
+    `<div class="card-body">
+     <p class="basewhere">${ICONS.home} ${esc(TRIP.base ? TRIP.base.name ?? "" : L.baseNone)}</p>
+     <div class="addrform" data-addrbox="__base__" style="margin:0">
        <div class="addrrow">
-         <input type="text" data-addrq maxlength="500" placeholder="${esc(L.basePh)}"
+         <input class="input" type="text" data-addrq maxlength="500" placeholder="${esc(L.basePh)}"
                 value="${esc(TRIP.base?.name ?? "")}">
-         <button class="btn" type="button" data-addrfind="__base__">${esc(L.addrFind)}</button>
-         <button type="button" class="linky" data-basecancel>${esc(L.addrCancel)}</button>
-         ${TRIP.base ? `<button type="button" class="linky" data-baseclear>${esc(L.addrClear)}</button>` : ""}
+         <button class="btn btn-sm btn-primary" type="button" data-addrfind="__base__">${esc(L.addrFind)}</button>
+         <button type="button" class="btn btn-sm btn-ghost" data-basecancel>${esc(L.addrCancel)}</button>
+         ${TRIP.base ? `<button type="button" class="btn btn-sm btn-ghost danger" data-baseclear>${esc(L.addrClear)}</button>` : ""}
        </div>
        <div class="addrhits" data-addrhits="__base__"></div>
-     </div>`;
+     </div></div>`;
 }
 
 function renderAdder() {
@@ -1001,10 +574,10 @@ function renderAdder() {
     .sort((a, b) => (VOTES[b.id] ?? []).length - (VOTES[a.id] ?? []).length ||
                     title(a).localeCompare(title(b)));
 
-  $("#ap-what-l").firstChild.textContent = L.apWhat + " ";
-  $("#ap-day-l").firstChild.textContent = L.apDay + " ";
-  $("#ap-from-l").firstChild.textContent = L.apFrom + " ";
-  $("#ap-to-l").firstChild.textContent = L.apTo + " ";
+  $("#ap-what-l").textContent = L.apWhat;
+  $("#ap-day-l").textContent = L.apDay;
+  $("#ap-from-l").textContent = L.apFrom;
+  $("#ap-to-l").textContent = L.apTo;
   $("#ap-add").textContent = L.apAdd;
   $("#ap-hint").textContent = options.length ? L.apHint : L.apNone;
   $("#mode-sight").textContent = L.modeSight;
@@ -1013,12 +586,12 @@ function renderAdder() {
   $("#mode-own").setAttribute("aria-pressed", String(addMode === "own"));
   $("#form-sight").hidden = addMode !== "sight";
   $("#form-own").hidden = addMode !== "own";
-  $("#own-what-l").firstChild.textContent = L.ownWhat + " ";
-  $("#own-day-l").firstChild.textContent = L.apDay + " ";
-  $("#own-from-l").firstChild.textContent = L.apFrom + " ";
-  $("#own-to-l").firstChild.textContent = L.apTo + " ";
+  $("#own-what-l").textContent = L.ownWhat;
+  $("#own-day-l").textContent = L.apDay;
+  $("#own-from-l").textContent = L.apFrom;
+  $("#own-to-l").textContent = L.apTo;
   $("#own-what").placeholder = L.ownPh;
-  $("#own-where-l").firstChild.textContent = L.ownWhere + " ";
+  $("#own-where-l").textContent = L.ownWhere;
   $("#own-where").placeholder = L.ownWherePh;
   $("#own-find").textContent = L.addrFind;
   $("#own-where-clear").textContent = L.addrClear;
@@ -1039,7 +612,7 @@ function renderAdder() {
   if (options.some((s) => s.id === keepWhat)) $("#ap-what").value = keepWhat;
 
   const dayOptions = TRIP.days
-    .map((d) => `<option value="${esc(d)}">${esc(weekday(d))} ${esc(dayLabel(d))}</option>`).join("");
+    .map((d) => `<option value="${esc(d)}">${esc(weekday(d))} ${esc(dayLong(d))}</option>`).join("");
 
   for (const id of ["#ap-day", "#own-day"]) {
     const sel = $(id);
@@ -1049,15 +622,21 @@ function renderAdder() {
   }
 }
 
+function paintChrome() {
+  const L = t();
+  $("#headline").textContent = L.headline;
+  $("#lede").textContent = L.lede;
+  $("#foot").textContent = L.foot;
+  $("#kicker").textContent = tripKicker(TRIP);
+  $("#kicker").hidden = !$("#kicker").textContent;
+  $("#sheet-close").innerHTML = ICONS.close;
+  $("#sheet-close").setAttribute("aria-label", L.shClose);
+  setTrip(TRIP, L.pageTitle);
+}
+
 function render() {
   const L = t();
-  document.documentElement.lang = lang;
-  for (const [id, key] of [["kicker","kicker"],["headline","headline"],["lede","lede"],
-    ["foot","foot"],["name-label","nameLabel"],["nav-sights","navSights"],
-    ["nav-bookings","navBookings"],["nav-plan","navPlan"],["nav-details","navDetails"]])
-    $("#" + id).textContent = L[key];
-  $("#name").placeholder = L.nameLabel;
-  $("#kicker").textContent = tripKicker(TRIP) || L.kicker;
+  paintChrome();
 
   const list = planned();
   const shown = list.filter(passes);
@@ -1075,10 +654,10 @@ function render() {
 
   renderFilters();
   renderBaseForm();
-  $("#days").innerHTML = days.map((d) => `<section class="day">
+  $("#days").innerHTML = days.map((d) => `<section class="day card">
     <header>
       <span class="wd">${esc(weekday(d.date))}</span>
-      <h2>${esc(dayLabel(d.date))}</h2>
+      <h2>${esc(dayLong(d.date))}</h2>
       ${d.stops.length ? `<span class="n">${esc(L.stops(d.stops.length))}</span>` : ""}
     </header>
     ${d.stops.length
@@ -1088,7 +667,7 @@ function render() {
   </section>`).join("");
 
   // Nothing planned yet? Then adding is the only thing to do here.
-  if (!list.length && !openedOnce) { $("#addplan").hidden = false; openedOnce = true; }
+  if (!list.length && !openedOnce) { $("#addplan").hidden = false; openedOnce = true; renderFilters(); }
 
   const hidden = list.length - shown.length;
   $("#hiddenby").hidden = !hidden;
@@ -1121,14 +700,14 @@ function detailsOf(p) {
 function sheetHTML(x) {
   const L = t();
   const dayOpts = TRIP.days.map((d) =>
-    `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekdayShort(d))} ${esc(dayLabel(d))}</option>`).join("");
+    `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekdayShort(d))} ${esc(dayLong(d))}</option>`).join("");
   const kindLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[x.source];
   const route = hasPlace(x.place) ? routeLinks([x.place], "transit", originNow()) : null;
 
   return `
   <div class="srow">
     <span class="slabel">${esc(L.shKind)}</span>
-    <span class="sval"><span class="src ${x.source}">${esc(kindLabel)}</span></span>
+    <span class="sval"><span class="tag ${SRC_TAG[x.source]}">${esc(kindLabel)}</span></span>
     <span class="sval muted">${esc(
       x.source === "booked" ? L.shBookedNote : x.own ? L.shOwnNote : L.shSightNote)}</span>
   </div>
@@ -1136,10 +715,10 @@ function sheetHTML(x) {
   <div class="srow">
     <span class="slabel">${esc(L.shWhen)}</span>
     <div class="sfields">
-      ${x.own ? `<label class="wide">${esc(L.shName)}<input type="text" data-f="label" value="${esc(x.name)}"></label>` : ""}
-      <label>${esc(L.shDay)}<select data-f="day">${dayOpts}</select></label>
-      <label data-half>${esc(L.shFrom)}<input type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
-      <label data-half>${esc(L.shTo)}<input type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
+      ${x.own ? `<label class="field wide"><span>${esc(L.shName)}</span><input class="input" type="text" data-f="label" value="${esc(x.name)}"></label>` : ""}
+      <label class="field"><span>${esc(L.shDay)}</span><select class="select" data-f="day">${dayOpts}</select></label>
+      <label class="field" data-half><span>${esc(L.shFrom)}</span><input class="input" type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
+      <label class="field" data-half><span>${esc(L.shTo)}</span><input class="input" type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
     </div>
   </div>
 
@@ -1148,14 +727,14 @@ function sheetHTML(x) {
     <span class="sval${x.address ? "" : " muted"}">${esc(x.address || L.shNoPlace)}</span>
     ${addressControlHTML({ id: x.id, source: x.source })}
     ${route ? `<div class="slinks">
-      <a href="${esc(route.google)}" target="_blank" rel="noopener">${esc(L.shMap)} \u2197</a>
+      <a class="btn btn-sm btn-tint" href="${esc(route.google)}" target="_blank" rel="noopener">${ICONS.pin}${esc(L.shMap)}</a>
     </div>` : ""}
   </div>
 
   ${x.own ? "" : `<div class="srow">
     <span class="slabel">${esc(L.shVotes)}</span>
     ${x.voters.length
-      ? `<div class="svoters">${x.voters.map((v) => `<span class="svoter">${esc(v)}</span>`).join("")}</div>`
+      ? `<div class="svoters">${x.voters.map((v) => `<span class="pill-name">${esc(v)}</span>`).join("")}</div>`
       : `<span class="sval muted">${esc(L.shNoVotes)}</span>`}
   </div>`}
 
@@ -1163,23 +742,23 @@ function sheetHTML(x) {
     <span class="slabel">${esc(L.shBooking)}</span>
     ${x.booking
       ? `<span class="sval">${esc({ booked: L.stBooked, skipped: L.stSkipped }[x.booking.status] ?? L.stTodo)}${
-          x.booking.by ? ` \u00b7 ${esc(L.shBookedBy)} ${esc(x.booking.by)}` : ""}${
-          x.booking.reference ? ` \u00b7 ${esc(L.shRef)} ${esc(x.booking.reference)}` : ""}${
-          x.booking.cost ? ` \u00b7 ${esc(x.booking.cost)}` : ""}</span>`
+          x.booking.by ? ` · ${esc(L.shBookedBy)} ${esc(x.booking.by)}` : ""}${
+          x.booking.reference ? ` · ${esc(L.shRef)} ${esc(x.booking.reference)}` : ""}${
+          x.booking.cost ? ` · ${esc(x.booking.cost)}` : ""}</span>`
       : `<span class="sval muted">${esc(L.shNotBooked)}</span>`}
   </div>`}
 
   ${x.url || x.bookingUrl ? `<div class="srow">
     <span class="slabel">${esc(L.shLinks)}</span>
     <div class="slinks">
-      ${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(L.shSite)} \u2197</a>` : ""}
-      ${x.bookingUrl && x.bookingUrl !== x.url ? `<a href="${esc(x.bookingUrl)}" target="_blank" rel="noopener">${esc(L.shTickets)} \u2197</a>` : ""}
+      ${x.url ? `<a class="btn btn-sm btn-tint" href="${esc(x.url)}" target="_blank" rel="noopener">${esc(L.shSite)}${ICONS.external}</a>` : ""}
+      ${x.bookingUrl && x.bookingUrl !== x.url ? `<a class="btn btn-sm btn-tint" href="${esc(x.bookingUrl)}" target="_blank" rel="noopener">${esc(L.shTickets)}${ICONS.external}</a>` : ""}
     </div>
   </div>` : ""}
 
   <div class="sfoot">
-    <button class="save" type="button" data-sheet-save>${esc(L.shSave)}</button>
-    <button class="danger" type="button" data-sheet-remove>${esc(L.shRemove)}</button>
+    <button class="btn btn-primary" type="button" data-sheet-save>${esc(L.shSave)}</button>
+    <button class="btn btn-danger right" type="button" data-sheet-remove>${esc(L.shRemove)}</button>
   </div>`;
 }
 
@@ -1247,9 +826,9 @@ async function lookUp(id) {
     });
     hits.innerHTML = d.results.length
       ? `<span class="addrnote">${esc(L.addrPick)}</span>` + d.results.map((r) =>
-          `<button type="button" data-hit-id="${esc(id)}" data-hit-lat="${r.lat}"
+          `<button type="button" class="hit" data-hit-id="${esc(id)}" data-hit-lat="${r.lat}"
                    data-hit-lon="${r.lon}" data-hit-label="${esc(r.label)}">${
-            r.from ? `<b>${esc(r.from)}</b>` : ""}${esc(r.label)}</button>`).join("")
+            r.from ? `<b>${esc(r.from)}</b>` : ""}<span>${esc(r.label)}</span></button>`).join("")
       : `<span class="addrnote">${esc(L.addrNoHits)}</span>`;
   } catch (err) {
     hits.innerHTML = `<span class="addrnote">${esc(err.message)}</span>`;
@@ -1257,8 +836,8 @@ async function lookUp(id) {
 }
 
 async function mutate(path, body) {
-  if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
-  setStatus(t().saving);
+  if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
+  setStatus(t().saving, "sticky");
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
     // Every one of these can change on any mutation — a booking places a
@@ -1274,7 +853,7 @@ async function mutate(path, body) {
     render();
     renderSheet();
     setStatus(t().saved);
-  } catch (err) { setStatus(err.message); }
+  } catch (err) { setStatus(err.message, "err"); }
 }
 
 $("#ap-add").addEventListener("click", () => {
@@ -1339,7 +918,7 @@ document.addEventListener("click", (ev) => {
   if (ev.target.closest("[data-sheet-save]")) return void saveSheet();
   if (ev.target.closest("[data-sheet-remove]")) return void removeFromSheet();
   // Clicking the backdrop itself, or the ×, closes it.
-  if (ev.target.id === "sheet-close" || ev.target.id === "sheet") return void closeSheet();
+  if (ev.target.closest("#sheet-close") || ev.target.id === "sheet") return void closeSheet();
 
   const row = ev.target.closest("li.stop");
   // Buttons, links and fields inside a row do their own job; only the row
@@ -1354,18 +933,18 @@ document.addEventListener("click", (ev) => {
   const st = ev.target.closest("[data-start]");
   if (st) {
     startFrom = st.dataset.start;
-    localStorage.setItem("london-plan-start", startFrom);
+    localStorage.setItem(START_KEY, startFrom);
     // Only "me" needs permission, and only the first time.
     if (startFrom === "me" && !myPos) {
-      if (!navigator.geolocation) { setStatus(t().locDenied); return void render(); }
-      setStatus(t().locAsking);
+      if (!navigator.geolocation) { setStatus(t().locDenied, "err"); return void render(); }
+      setStatus(t().locAsking, "sticky");
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
           setStatus("");
           render();
         },
-        () => { setStatus(t().locDenied); render(); },
+        () => { setStatus(t().locDenied, "err"); render(); },
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
       );
     }
@@ -1399,7 +978,7 @@ document.addEventListener("click", (ev) => {
 
   const openAddr = ev.target.closest("[data-addr]");
   if (openAddr) {
-    if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
+    if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
     editingAddress = openAddr.dataset.addr;
     render();
     renderSheet();
@@ -1420,7 +999,7 @@ document.addEventListener("click", (ev) => {
       { id: clear.dataset.addrclear, address: null, lat: null, lon: null });
   }
 
-  if (ev.target.id === "own-where-clear") {
+  if (ev.target.closest("#own-where-clear")) {
     pendingPlace = null;
     $("#own-where").value = "";
     $("[data-addrhits='__new__']").innerHTML = "";
@@ -1460,24 +1039,14 @@ document.addEventListener("click", (ev) => {
       lon: Number(hit.dataset.hitLon),
     });
   }
-
-  const lb = ev.target.closest(".langs button");
-  if (lb) {
-    lang = lb.dataset.lang;
-    localStorage.setItem(LANG_KEY, lang);
-    for (const b of document.querySelectorAll(".langs button"))
-      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
-    render();
-  }
 });
 
-$("#name").addEventListener("input", () => localStorage.setItem(NAME_KEY, nameOf()));
-$("#name").value = localStorage.getItem(NAME_KEY) || "";
-for (const b of document.querySelectorAll(".langs button"))
-  b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+onLang(() => {
+  if (SIGHTS.length || TRIP.days.length) { render(); renderSheet(); }
+  else paintChrome();
+});
 
 (async () => {
-  setStatus(t().loading);
   try {
     const d = await api("/api/sights");
     SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes;
@@ -1485,8 +1054,7 @@ for (const b of document.querySelectorAll(".langs button"))
     TRIP = d.trip ?? { days: [] };
     fillMembers(d.members);
     render();
-    setStatus("");
-  } catch (err) { setStatus(err.message); }
+  } catch (err) { setStatus(err.message, "err"); }
 })();
 </script>
 </body>

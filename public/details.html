@@ -2,331 +2,146 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
-<title>London — trip details</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧳</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Details</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
 <style>
-:root{
-  --paper:#F3F4F0; --card:#FBFCF9; --card-2:#EDEFE9;
-  --ink:#171D19; --ink-2:#4B554E; --ink-3:#78837A;
-  --line:#D9DDD4; --line-2:#C4CABD;
-  --maroon:#7B2230; --maroon-soft:#F0E2E3;
-  --green:#1F4A3C; --green-soft:#E1EAE4;
-  --brass:#8A6118; --brass-soft:#F2E9D6;
-  --shadow:0 1px 2px rgba(23,29,25,.06), 0 10px 28px -20px rgba(23,29,25,.35);
+.panels{display:grid;gap:16px;margin-top:6px}
+@media (min-width:900px){
+  .panels{grid-template-columns:1fr 1fr}
+  .panel.wide{grid-column:1 / -1}
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#101410; --card:#171C18; --card-2:#1E241F;
-    --ink:#E9ECE5; --ink-2:#A7B1A6; --ink-3:#7C867C;
-    --line:#2A322B; --line-2:#3A443B;
-    --maroon:#E0868F; --maroon-soft:#2E1A1E;
-    --green:#7CBBA0; --green-soft:#152420;
-    --brass:#D9AC59; --brass-soft:#241D0F;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 32px -22px rgba(0,0,0,.9);
-  }
-}
-*{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Instrument Sans","Helvetica Neue",Arial,sans-serif;
-  font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
-a{color:var(--maroon)}
+.panel .card-head{background:transparent}
+.panel .card-head .ico{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;flex:none;
+  background:var(--tint-soft);color:var(--tint);align-self:center}
+.panel .card-head .ico svg{width:14px;height:14px}
+.frow{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.hint{font-size:12.5px;color:var(--text-3);margin:0}
 
-/* ---- top nav ---- */
-.topnav{position:sticky;top:0;z-index:40;
-  background:color-mix(in srgb,var(--paper) 88%,transparent);
-  backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid var(--line)}
-.navinner{max-width:1180px;margin:0 auto;padding:9px 20px;min-height:56px;
-  display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-.brand{font-family:"Fraunces",Georgia,serif;font-weight:600;font-size:17px;
-  letter-spacing:-.01em;color:var(--ink);text-decoration:none;white-space:nowrap}
-.navlinks{display:flex;gap:4px}
-.navlinks a{font-size:14px;font-weight:500;color:var(--ink-3);text-decoration:none;
-  padding:7px 14px;border-radius:9px;transition:color .15s,background .15s}
-.navlinks a:hover{color:var(--ink);background:var(--card-2)}
-.navlinks a[aria-current="page"]{color:var(--ink);background:var(--card-2);font-weight:600}
-.navtools{display:flex;gap:9px;align-items:center;margin-left:auto}
-.navtools input[type=text]{font:inherit;font-size:14px;padding:6px 11px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);width:132px}
-.navtools input[type=text]:focus{outline:2px solid var(--maroon);outline-offset:-1px;width:160px}
-.navstatus{font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-3);
-  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
-.langs{display:flex;border:1px solid var(--line-2);border-radius:9px;overflow:hidden;flex:none}
-.langs button{padding:6px 10px;font-size:12px;font-weight:600;border:0;
-  background:var(--card);color:var(--ink-3)}
-.langs button[aria-pressed=true]{background:var(--ink);color:var(--paper)}
-.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
-  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
-@media (max-width:700px){
-  .navinner{padding:9px 16px;gap:10px}
-  .navtools{margin-left:auto;flex-wrap:wrap}
-  .navtools input[type=text]{width:112px}
-  .navstatus{flex-basis:100%;max-width:none;text-align:right}
-}
+/* members */
+.people{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.person{display:inline-flex;gap:8px;align-items:center;background:var(--surface-2);border-radius:var(--r-pill);
+  padding:5px 6px 5px 12px;font-size:14px}
+.person b{font-weight:600}
+.person em{font-style:normal;font-size:12px;color:var(--text-3)}
+.person button{border:0;background:transparent;color:var(--text-3);width:22px;height:22px;border-radius:50%;
+  display:grid;place-items:center}
+.person button svg{width:11px;height:11px}
+.person button:hover{color:var(--red);background:var(--red-soft)}
+.people-empty{font-size:13.5px;color:var(--text-3)}
 
+/* travel legs */
+.leg + .leg{margin-top:20px;padding-top:18px;border-top:1px solid var(--hair)}
+.leg h3{font-size:14px;font-weight:600;margin:0 0 12px;display:flex;align-items:center;gap:8px;color:var(--text-2)}
+.leg h3 .dir{width:22px;height:22px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center}
+.leg h3 .dir svg{width:12px;height:12px}
 
-/* ---- panels ---- */
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  box-shadow:var(--shadow);margin-top:18px;overflow:hidden}
-.panel > h2{font-family:"Fraunces",Georgia,serif;font-size:18px;font-weight:600;
-  margin:0;padding:15px 18px;border-bottom:1px solid var(--line);background:var(--card-2);
-  display:flex;align-items:baseline;gap:9px}
-.panel > h2 span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;color:var(--ink-3);font-weight:500}
-.pbody{padding:16px 18px}
-.grid2{display:grid;gap:14px}
-@media(min-width:760px){.grid2{grid-template-columns:repeat(2,1fr)}}
-label.f{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--ink-2)}
-label.f input,label.f select,label.f textarea{
-  font:inherit;font-size:14px;padding:8px 11px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink);width:100%}
-label.f textarea{min-height:78px;resize:vertical}
-.frow{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:14px}
-.btn{font-size:13px;font-weight:500;padding:8px 15px;border-radius:9px;
-  border:1px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer}
-.btn.quiet{border-color:var(--line-2);background:var(--card-2);color:var(--ink)}
-.hint{font-size:12.5px;color:var(--ink-3);margin:10px 0 0}
-
-/* ---- members ---- */
-.people{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
-.person{display:flex;gap:8px;align-items:center;background:var(--card-2);
-  border:1px solid var(--line-2);border-radius:999px;padding:6px 8px 6px 14px}
-.person b{font-weight:600;font-size:14px}
-.person em{font-style:normal;font-size:11.5px;color:var(--ink-3)}
-.person button{border:0;background:none;color:var(--ink-3);cursor:pointer;
-  font-size:14px;line-height:1;padding:2px 5px;border-radius:50%}
-.person button:hover{color:var(--maroon);background:var(--maroon-soft)}
-.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px}
-.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
-.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-.saved{font-size:12.5px;color:var(--green)}
-
-header{padding:40px 0 22px}
-.kicker{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:11px;
-  letter-spacing:.16em;text-transform:uppercase;color:var(--maroon);margin:0 0 14px}
-h1{font-family:"Fraunces",Georgia,serif;font-weight:600;
-  font-size:clamp(30px,5vw,44px);line-height:1.05;letter-spacing:-.02em;
-  margin:0 0 12px;text-wrap:balance}
-.lede{color:var(--ink-2);max-width:62ch;margin:0;font-size:16px}
-
-/* ---- identity ---- */
-.who{position:sticky;top:56px;z-index:30;margin:0 -20px;padding:12px 20px;
-  background:color-mix(in srgb,var(--paper) 93%,transparent);
-  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
-  display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.who label{font-size:13px;color:var(--ink-2);font-weight:500}
-input[type=text]{font:inherit;font-size:15px;padding:8px 12px;border-radius:9px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink);min-width:150px}
-.status{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-3);margin-left:auto}
-button{font:inherit;cursor:pointer}
-
-/* ---- stats ---- */
-.stats{display:flex;gap:30px;flex-wrap:wrap;padding:22px 0 20px}
-.stat b{display:block;font-family:"Fraunces",Georgia,serif;font-size:28px;line-height:1.1}
-.stat span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-
-/* ---- filters ---- */
-.filters{display:flex;gap:18px;flex-wrap:wrap;align-items:center;
-  padding:14px 0 18px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.fgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.fgroup .lbl{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
-.fgroup button{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card);color:var(--ink-2)}
-.fgroup button:hover{border-color:var(--ink-3);color:var(--ink)}
-.fgroup button[aria-pressed=true]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-.fgroup button b{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
-  font-weight:500;opacity:.55;margin-left:4px}
-
-/* ---- list ---- */
-.list{display:grid;gap:12px;margin-top:24px}
-@media(min-width:860px){.list{grid-template-columns:repeat(2,1fr)}}
-.item{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  box-shadow:var(--shadow);padding:16px 18px;display:flex;flex-direction:column;gap:8px}
-.itop{display:flex;gap:10px;align-items:flex-start}
-.iname{font-weight:600;font-size:16px;line-height:1.3;flex:1}
-.price{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink);
-  white-space:nowrap;font-weight:500}
-.tags{display:flex;gap:5px;flex-wrap:wrap}
-.tag{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  border-radius:5px;padding:2px 7px;border:1px solid}
-.tag.paid{color:var(--maroon);border-color:var(--maroon);background:var(--maroon-soft)}
-.tag.book{color:var(--brass);border-color:var(--brass);background:var(--brass-soft)}
-.tag.added{color:var(--green);border-color:var(--green);background:var(--green-soft)}
-.blurb{font-size:13.5px;color:var(--ink-2);margin:0}
-.voters{font-size:12.5px;color:var(--ink-3)}
-.voters b{color:var(--ink-2);font-weight:600}
-.iact{display:flex;gap:8px;align-items:center;flex-wrap:wrap;
-  padding-top:10px;margin-top:auto;border-top:1px dashed var(--line)}
-.iact a{font-size:13px;font-weight:500;text-decoration:none;padding:6px 12px;
-  border-radius:8px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.iact a:hover{border-color:var(--ink-3)}
-.remove{font-size:12.5px;border:0;background:none;color:var(--ink-3);
-  padding:6px 4px;margin-left:auto}
-.remove:hover{color:var(--maroon)}
-
-.empty{color:var(--ink-3);font-size:14.5px;padding:40px 0;text-align:center}
-
-/* ---- slot form ---- */
-.slot{padding-top:11px;margin-top:auto;border-top:1px dashed var(--line);
-  display:grid;gap:9px}
-.slotrow{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
-.slot label{display:flex;gap:6px;align-items:center;font-size:12.5px;color:var(--ink-2)}
-.slot input{font:inherit;font-size:13px;padding:5px 9px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.slotshown{font-family:"IBM Plex Mono",monospace;font-size:12.5px;
-  color:var(--green);border:1px solid var(--green);border-radius:6px;
-  padding:1px 8px;white-space:nowrap}
-.slotshown.none{color:var(--ink-3);border-color:var(--line-2)}
-.done.editing{display:block}
-.done.editing .n{display:block;margin-bottom:2px}
-
-/* ---- booked ---- */
-.section{margin-top:34px}
-.section h2{font-family:"Fraunces",Georgia,serif;font-size:19px;font-weight:600;
-  margin:0 0 4px;display:flex;align-items:baseline;gap:9px}
-.section h2 span{font-family:"IBM Plex Mono",monospace;font-size:11px;
-  letter-spacing:.1em;color:var(--ink-3);font-weight:500}
-.section .note{font-size:13px;color:var(--ink-3);margin:0 0 14px}
-.donelist{display:grid;gap:8px}
-.done{display:flex;gap:11px;align-items:center;flex-wrap:wrap;
-  background:var(--green-soft);border:1px solid var(--line);
-  border-radius:11px;padding:11px 15px}
-.done .tick{color:var(--green);font-weight:700;flex:none}
-.done .n{font-weight:600;font-size:15px;flex:1;min-width:150px}
-.done .voters{font-size:12.5px;color:var(--ink-3)}
-.btn.book{border-color:var(--green);color:var(--green)}
-.btn.book:hover{background:var(--green);color:var(--paper);border-color:var(--green)}
-details.gone{margin-top:26px;background:var(--card);border:1px solid var(--line);
-  border-radius:13px;overflow:hidden}
-details.gone>summary{padding:13px 18px;cursor:pointer;font-weight:600;font-size:14.5px}
-.gonebody{padding:6px 18px 14px;border-top:1px solid var(--line)}
-.grow{display:flex;gap:10px;align-items:center;padding:9px 0;flex-wrap:wrap;
-  border-bottom:1px dashed var(--line)}
-.grow:last-child{border-bottom:0}
-.grow .n{flex:1;min-width:160px;font-size:14.5px}
-.btn{font-size:13px;font-weight:500;padding:6px 12px;border-radius:8px;
-  border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)}
-.btn:hover{border-color:var(--ink-3)}
-footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
-  font-size:13px;color:var(--ink-3)}
+/* stay */
+.stay-now{display:flex;align-items:center;gap:9px;font-size:14px;margin:0 0 10px;color:var(--text)}
+.stay-now .pin{width:26px;height:26px;border-radius:8px;background:var(--green-soft);color:var(--green);display:grid;place-items:center;flex:none}
+.stay-now .pin svg{width:14px;height:14px}
+.stay-now.none{color:var(--text-3)}
+.stay-now.none .pin{background:var(--surface-2);color:var(--text-3)}
+.addrrow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.addrrow .input{flex:1;min-width:200px;height:34px;font-size:14px}
+.addrhits{display:grid;gap:4px;margin-top:8px}
+.addrhits .hit{text-align:left;font-size:13.5px;padding:8px 11px;border-radius:var(--r-md);
+  border:1px solid var(--hair-2);background:var(--surface);color:var(--text-2)}
+.addrhits .hit:hover{border-color:var(--tint);color:var(--text);background:var(--tint-soft)}
+.textarea.notes{min-height:120px}
 </style>
 </head>
 <body>
 
-<nav class="topnav">
-  <div class="navinner">
-    <a class="brand" href="/">London&nbsp;2026</a>
-    <div class="navlinks">
-      <a href="/details" aria-current="page" id="nav-details">Details</a>
-      <a href="/" id="nav-sights">Sights</a>
-      <a href="/bookings" id="nav-bookings">Bookings</a>
-      <a href="/plan" id="nav-plan">Plan</a>
-    </div>
-    <div class="navtools">
-      <label class="visually-hidden" for="name" id="name-label">Your name</label>
-      <input id="name" type="text" maxlength="32" placeholder="Your name"
-             autocomplete="off" spellcheck="false" list="members">
-      <datalist id="members"></datalist>
-      <span class="langs" role="group" aria-label="Language">
-        <button type="button" data-lang="en" aria-pressed="true">EN</button>
-        <button type="button" data-lang="de" aria-pressed="false">DE</button>
-      </span>
-      <span class="navstatus" id="status">Loading…</span>
-    </div>
-  </div>
-</nav>
+<div id="shell" data-page="details"></div>
 
-<div class="wrap">
-<header>
-  <p class="kicker" id="kicker">London · 11–16 September 2026</p>
-  <h1 id="headline">Trip details</h1>
-  <p class="lede" id="lede"></p>
+<main class="page">
+<header class="page-head">
+  <p class="eyebrow" id="kicker"></p>
+  <h1 class="large-title" id="headline"></h1>
+  <p class="subtitle" id="lede"></p>
 </header>
 
-<div class="stats" id="stats"></div>
+<div class="stat-row" id="stats"></div>
 
-<section class="panel">
-  <h2 id="h-trip">Where and when</h2>
-  <div class="pbody">
-    <div class="grid2">
-      <label class="f" id="l-name">Trip name<input id="t-name" maxlength="80"></label>
-      <label class="f" id="l-dest">Destination<input id="t-dest" maxlength="80"></label>
-      <label class="f" id="l-start">First day<input id="t-start" type="date"></label>
-      <label class="f" id="l-end">Last day<input id="t-end" type="date"></label>
+<div class="panels">
+
+<section class="card panel">
+  <div class="card-head"><span class="ico" data-ico="calendar"></span><h2 id="h-trip">Where and when</h2></div>
+  <div class="card-body">
+    <div class="grid-2">
+      <label class="field"><span id="l-name">Trip name</span><input class="input" id="t-name" maxlength="80"></label>
+      <label class="field"><span id="l-dest">Destination</span><input class="input" id="t-dest" maxlength="80"></label>
+      <label class="field"><span id="l-start">First day</span><input class="input" id="t-start" type="date"></label>
+      <label class="field"><span id="l-end">Last day</span><input class="input" id="t-end" type="date"></label>
     </div>
     <div class="frow">
-      <button class="btn" id="t-save" type="button">Save</button>
+      <button class="btn btn-primary" id="t-save" type="button">Save</button>
       <span class="hint" id="t-hint"></span>
     </div>
   </div>
 </section>
 
-<section class="panel">
-  <h2 id="h-stay">Where we're staying</h2>
-  <div class="pbody">
-    <p class="hint" id="stay-current"></p>
-    <div class="addrform" id="stay-addr"></div>
-    <div class="grid2" style="margin-top:14px">
-      <label class="f" id="l-in">Check-in<input id="t-in" type="time"></label>
-      <label class="f" id="l-out">Check-out<input id="t-out" type="time"></label>
-      <label class="f" id="l-ref">Booking reference<input id="t-ref" maxlength="80"></label>
-      <label class="f" id="l-phone">Phone<input id="t-phone" maxlength="40"></label>
+<section class="card panel">
+  <div class="card-head"><span class="ico" data-ico="home"></span><h2 id="h-stay">Where we're staying</h2></div>
+  <div class="card-body">
+    <p class="stay-now" id="stay-current"></p>
+    <div id="stay-addr"></div>
+    <div class="grid-2" style="margin-top:14px">
+      <label class="field"><span id="l-in">Check-in</span><input class="input" id="t-in" type="time"></label>
+      <label class="field"><span id="l-out">Check-out</span><input class="input" id="t-out" type="time"></label>
+      <label class="field"><span id="l-ref">Booking reference</span><input class="input" id="t-ref" maxlength="80"></label>
+      <label class="field"><span id="l-phone">Phone</span><input class="input" id="t-phone" maxlength="40"></label>
     </div>
-    <div class="frow"><button class="btn" id="stay-save" type="button">Save</button></div>
+    <div class="frow"><button class="btn btn-primary" id="stay-save" type="button">Save</button></div>
   </div>
 </section>
 
-<section class="panel">
-  <h2 id="h-travel">Getting there and back</h2>
-  <div class="pbody" id="travel-body"></div>
+<section class="card panel wide">
+  <div class="card-head"><span class="ico" data-ico="route"></span><h2 id="h-travel">Getting there and back</h2></div>
+  <div class="card-body" id="travel-body"></div>
 </section>
 
-<section class="panel">
-  <h2><span id="h-people">Who's coming</span> <span id="people-count"></span></h2>
-  <div class="pbody">
+<section class="card panel">
+  <div class="card-head"><span class="ico" data-ico="person"></span><h2 id="h-people">Who's coming</h2><span class="count" id="people-count"></span></div>
+  <div class="card-body">
     <div class="people" id="people"></div>
-    <div class="frow">
-      <label class="f" id="l-newname" style="max-width:220px">Name<input id="m-name" maxlength="32"></label>
-      <label class="f" id="l-newnote" style="max-width:260px">Note<input id="m-note" maxlength="120"></label>
-      <button class="btn quiet" id="m-add" type="button">Add</button>
+    <div class="field-row">
+      <label class="field" style="max-width:220px"><span id="l-newname">Name</span><input class="input" id="m-name" maxlength="32"></label>
+      <label class="field" style="max-width:260px"><span id="l-newnote">Note</span><input class="input" id="m-note" maxlength="120"></label>
+      <button class="btn btn-quiet" id="m-add" type="button">Add</button>
     </div>
-    <p class="hint" id="people-hint"></p>
+    <p class="hint" id="people-hint" style="margin-top:10px"></p>
   </div>
 </section>
 
-<section class="panel">
-  <h2 id="h-notes">Good to know</h2>
-  <div class="pbody">
-    <label class="f" id="l-notes"><textarea id="t-notes" maxlength="2000"></textarea></label>
-    <div class="frow"><button class="btn quiet" id="notes-save" type="button">Save</button></div>
+<section class="card panel">
+  <div class="card-head"><span class="ico" data-ico="info"></span><h2 id="h-notes">Good to know</h2></div>
+  <div class="card-body">
+    <label class="field"><textarea class="textarea notes" id="t-notes" maxlength="2000"></textarea></label>
+    <div class="frow"><button class="btn btn-quiet" id="notes-save" type="button">Save</button></div>
   </div>
 </section>
 
-<footer><span id="foot"></span></footer>
 </div>
 
+<footer class="page-foot"><span id="foot"></span></footer>
+</main>
+
 <script type="module">
-const $ = (s, r = document) => r.querySelector(s);
-const NAME_KEY = "london-vote-name";
-const CODE_KEY = "london-vote-code";
-const LANG_KEY = "london-vote-lang";
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
+         setStatus, setTrip, tripKicker } from "/shell.js";
 
 const T = {
   en: {
-    headline: "Trip details", nameLabel: "Your name",
-    navSights: "Sights", navBookings: "Bookings", navPlan: "Plan", navDetails: "Details",
-    loading: "Loading…", saving: "Saving…", saved: "Saved", needName: "Enter your name first.",
-    lede: "Everything about the trip itself. The dates here decide which days the plan has, and where we're staying is where routes start — so this page is not just a notice board.",
+    pageTitle: "Details",
+    headline: "The trip",
+    loading: "Loading…", saving: "Saving…", saved: "Saved", needName: "Enter your name in the bar first.",
+    lede: "Everything about the trip itself. The dates decide which days the plan has, and where you're staying is where routes start — so this page is not just a notice board.",
     statDays: "days", statPeople: "coming", statNights: "nights", statUntil: "days to go",
     hTrip: "Where and when", hStay: "Where we're staying",
     hTravel: "Getting there and back", hPeople: "Who's coming", hNotes: "Good to know",
@@ -343,15 +158,16 @@ const T = {
     clearLeg: "Clear this one",
     fPerson: "Name", fPersonNote: "Note",
     peopleHint: "Everyone who has voted is already here. Names match the ones used to vote, so adding someone doesn't split their picks.",
+    peopleEmpty: "Nobody yet — add the people coming, or let them vote and they'll appear.",
     removePerson: "Remove from the list",
     notesPh: "Currency, emergency number, passport and insurance details, airport transfer — anything worth having in one place.",
-    nights: (n) => `${n}`,
+    foot: "Changes here are shared with everyone on the trip.",
   },
   de: {
-    headline: "Reisedetails", nameLabel: "Dein Name",
-    navSights: "Sehenswürdigkeiten", navBookings: "Buchungen", navPlan: "Plan", navDetails: "Details",
-    loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert", needName: "Bitte zuerst den Namen eintragen.",
-    lede: "Alles über die Reise selbst. Die Daten hier bestimmen, welche Tage der Plan hat, und die Unterkunft ist der Startpunkt der Routen – das hier ist also kein bloßes Infoblatt.",
+    pageTitle: "Details",
+    headline: "Die Reise",
+    loading: "Lädt…", saving: "Speichert…", saved: "Gespeichert", needName: "Trag oben zuerst deinen Namen ein.",
+    lede: "Alles über die Reise selbst. Die Daten bestimmen, welche Tage der Plan hat, und die Unterkunft ist der Startpunkt der Routen – das hier ist also kein bloßes Infoblatt.",
     statDays: "Tage", statPeople: "kommen mit", statNights: "Nächte", statUntil: "Tage bis dahin",
     hTrip: "Wo und wann", hStay: "Unterkunft",
     hTravel: "Hin und zurück", hPeople: "Wer mitkommt", hNotes: "Gut zu wissen",
@@ -368,70 +184,27 @@ const T = {
     clearLeg: "Diesen Eintrag löschen",
     fPerson: "Name", fPersonNote: "Notiz",
     peopleHint: "Wer abgestimmt hat, steht schon hier. Die Namen entsprechen denen beim Abstimmen, niemand wird also aufgeteilt.",
+    peopleEmpty: "Noch niemand – trag die Mitreisenden ein, oder lass sie abstimmen, dann erscheinen sie hier.",
     removePerson: "Von der Liste nehmen",
     notesPh: "Währung, Notrufnummer, Pass und Versicherung, Transfer vom Flughafen – alles, was an einem Ort stehen sollte.",
-    nights: (n) => `${n}`,
+    foot: "Was du hier änderst, sehen alle auf der Reise.",
   },
 };
-let lang = localStorage.getItem(LANG_KEY) || (navigator.language?.startsWith("de") ? "de" : "en");
-const t = () => T[lang];
+const t = () => T[getLang()];
 
 let TRIP = { days: [] }, MEMBERS = [], TRAVEL = [], VOTES = {};
-let editingStay = false;
-
-const nameOf = () => $("#name").value.trim();
-const setStatus = (m) => { $("#status").textContent = m; };
-
-async function api(path, options) {
-  const res = await fetch(path, { ...options, headers: {
-    "content-type": "application/json",
-    ...(localStorage.getItem(CODE_KEY) ? { "x-access-code": localStorage.getItem(CODE_KEY) } : {}),
-  }});
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401) {
-    const entered = window.prompt("Access code / Zugangscode:");
-    if (entered) { localStorage.setItem(CODE_KEY, entered); return api(path, options); }
-  }
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-  return data;
-}
-
-
-/** Names of everyone on the trip, offered as suggestions on the name box.
- *  Still a free-text field: whoever is not on the list yet can just type. */
-function fillMembers(list) {
-  const box = document.getElementById("members");
-  if (!box) return;
-  box.innerHTML = (list ?? []).map((m) =>
-    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
-}
-
-const dayLabel = (iso) => iso
-  ? new Date(iso + "T12:00:00Z").toLocaleDateString(lang === "de" ? "de-DE" : "en-GB",
-      { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" })
-  : "";
 
 /* ------------------------------------------------------------------ render */
 
 /**
  * Write text without taking the page down if the element moved or went away.
- *
  * One missing id used to throw halfway through render(), so everything after
- * it — including the member list — silently never drew, and the only sign was
- * an error string in the status bar. A label going untranslated is a far
- * smaller problem than half the page not appearing.
+ * it silently never drew. A label going untranslated is a far smaller problem
+ * than half the page not appearing.
  */
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
-}
-
-/** For a label wrapping an input: replace only its own text, not the input. */
-function setLabel(id, value) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (el.firstChild?.nodeType === Node.TEXT_NODE) el.firstChild.textContent = value;
-  else el.prepend(document.createTextNode(value));
 }
 
 function renderTravel() {
@@ -439,23 +212,23 @@ function renderTravel() {
   $("#travel-body").innerHTML = ["out", "back"].map((dir) => {
     const leg = TRAVEL.find((x) => x.direction === dir) ?? {};
     const d = (k) => esc(leg[k] ?? "");
-    return `<div class="leg" data-leg="${dir}" style="${dir === "back" ? "margin-top:22px;padding-top:18px;border-top:1px solid var(--line)" : ""}">
-      <h3 style="font-family:Fraunces,Georgia,serif;font-size:15px;margin:0 0 12px">${
+    return `<div class="leg" data-leg="${dir}">
+      <h3><span class="dir" aria-hidden="true">${dir === "out" ? ICONS.chevron : ICONS.arrowUp}</span>${
         esc(dir === "out" ? L.dirOut : L.dirBack)}</h3>
-      <div class="grid2">
-        <label class="f">${esc(L.fCarrier)}<input data-k="carrier" maxlength="80" value="${d("carrier")}"></label>
-        <label class="f">${esc(L.fMode)}<input data-k="mode" maxlength="30" value="${d("mode")}"></label>
-        <label class="f">${esc(L.fFrom)}<input data-k="from" maxlength="80" value="${d("from")}"></label>
-        <label class="f">${esc(L.fTo)}<input data-k="to" maxlength="80" value="${d("to")}"></label>
-        <label class="f">${esc(L.fDate)}<input data-k="date" type="date" value="${d("date")}"></label>
-        <label class="f">${esc(L.fRef)}<input data-k="reference" maxlength="80" value="${d("reference")}"></label>
-        <label class="f">${esc(L.fDep)}<input data-k="departTime" type="time" value="${d("departTime")}"></label>
-        <label class="f">${esc(L.fArr)}<input data-k="arriveTime" type="time" value="${d("arriveTime")}"></label>
+      <div class="grid-2">
+        <label class="field"><span>${esc(L.fCarrier)}</span><input class="input" data-k="carrier" maxlength="80" value="${d("carrier")}"></label>
+        <label class="field"><span>${esc(L.fMode)}</span><input class="input" data-k="mode" maxlength="30" value="${d("mode")}"></label>
+        <label class="field"><span>${esc(L.fFrom)}</span><input class="input" data-k="from" maxlength="80" value="${d("from")}"></label>
+        <label class="field"><span>${esc(L.fTo)}</span><input class="input" data-k="to" maxlength="80" value="${d("to")}"></label>
+        <label class="field"><span>${esc(L.fDate)}</span><input class="input" data-k="date" type="date" value="${d("date")}"></label>
+        <label class="field"><span>${esc(L.fRef)}</span><input class="input" data-k="reference" maxlength="80" value="${d("reference")}"></label>
+        <label class="field"><span>${esc(L.fDep)}</span><input class="input" data-k="departTime" type="time" value="${d("departTime")}"></label>
+        <label class="field"><span>${esc(L.fArr)}</span><input class="input" data-k="arriveTime" type="time" value="${d("arriveTime")}"></label>
       </div>
-      <label class="f" style="margin-top:14px">${esc(L.fNote)}<input data-k="note" maxlength="300" value="${d("note")}"></label>
+      <label class="field" style="margin-top:12px"><span>${esc(L.fNote)}</span><input class="input" data-k="note" maxlength="300" value="${d("note")}"></label>
       <div class="frow">
-        <button class="btn" data-savleg="${dir}" type="button">${esc(L.save)}</button>
-        ${leg.direction ? `<button class="btn quiet" data-clearleg="${dir}" type="button">${esc(L.clearLeg)}</button>` : ""}
+        <button class="btn btn-primary" data-savleg="${dir}" type="button">${esc(L.save)}</button>
+        ${leg.direction ? `<button class="btn btn-ghost danger" data-clearleg="${dir}" type="button">${esc(L.clearLeg)}</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -464,16 +237,17 @@ function renderTravel() {
 function renderStay() {
   const L = t();
   const b = TRIP.base;
-  $("#stay-current").textContent = b ? (b.name ?? `${b.lat}, ${b.lon}`) : L.stayNone;
+  const cur = $("#stay-current");
+  cur.classList.toggle("none", !b);
+  cur.innerHTML = `<span class="pin">${ICONS.pin}</span><span>${esc(b ? (b.name ?? `${b.lat}, ${b.lon}`) : L.stayNone)}</span>`;
 
-  $("#stay-addr").innerHTML = `<div class="addrrow" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-      <input type="text" data-addrq maxlength="500" placeholder="${esc(L.stayPh)}"
-             value="${esc(b?.name ?? "")}"
-             style="font:inherit;font-size:13px;padding:7px 10px;border-radius:9px;flex:1;min-width:200px;border:1px solid var(--line-2);background:var(--card-2);color:var(--ink)">
-      <button class="btn quiet" id="stay-find" type="button">${esc(L.find)}</button>
-      ${b ? `<button class="btn quiet" id="stay-clear" type="button">${esc(L.clear)}</button>` : ""}
+  $("#stay-addr").innerHTML = `<div class="addrrow">
+      <input class="input" type="text" data-addrq maxlength="500" placeholder="${esc(L.stayPh)}"
+             value="${esc(b?.name ?? "")}">
+      <button class="btn btn-sm btn-quiet" id="stay-find" type="button">${ICONS.search}${esc(L.find)}</button>
+      ${b ? `<button class="btn btn-sm btn-ghost danger" id="stay-clear" type="button">${esc(L.clear)}</button>` : ""}
     </div>
-    <div class="addrhits" id="stay-hits" style="display:grid;gap:3px;margin-top:8px"></div>`;
+    <div class="addrhits" id="stay-hits"></div>`;
 
   $("#t-in").value = b?.checkIn ?? "";
   $("#t-out").value = b?.checkOut ?? "";
@@ -489,30 +263,28 @@ function renderPeople() {
     votesBy[k] = (votesBy[k] ?? 0) + 1;
   }
   $("#people-count").textContent = MEMBERS.length || "";
-  $("#people").innerHTML = MEMBERS.map((m) => `<span class="person">
+  $("#people").innerHTML = MEMBERS.length ? MEMBERS.map((m) => `<span class="person">
       <b>${esc(m.name)}</b>
-      <em>${votesBy[m.key] ? `${votesBy[m.key]} ♥` : ""}${m.note ? ` · ${esc(m.note)}` : ""}</em>
+      ${votesBy[m.key] || m.note ? `<em>${votesBy[m.key] ? `${votesBy[m.key]} ♥` : ""}${m.note ? `${votesBy[m.key] ? " · " : ""}${esc(m.note)}` : ""}</em>` : ""}
       <button type="button" data-rmperson="${esc(m.id)}" title="${esc(L.removePerson)}"
-              aria-label="${esc(L.removePerson)}">×</button>
-    </span>`).join("");
+              aria-label="${esc(L.removePerson)}">${ICONS.close}</button>
+    </span>`).join("") : `<span class="people-empty">${esc(L.peopleEmpty)}</span>`;
   $("#people-hint").textContent = L.peopleHint;
 }
 
 function render() {
   const L = t();
-  document.documentElement.lang = lang;
-  for (const [id, key] of [["headline","headline"],["lede","lede"],["name-label","nameLabel"],
-    ["nav-sights","navSights"],["nav-bookings","navBookings"],["nav-plan","navPlan"],["nav-details","navDetails"],
-    ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"]])
-    setText(id, L[key]);
-  $("#name").placeholder = L.nameLabel;
-  $("#kicker").textContent = [TRIP.name, TRIP.startDate && `${dayLabel(TRIP.startDate)} – ${dayLabel(TRIP.endDate)}`]
-    .filter(Boolean).join(" · ");
-
-  for (const [id, key] of [["l-name","fName"],["l-dest","fDest"],["l-start","fStart"],["l-end","fLast"],
+  for (const [id, key] of [["headline","headline"],["lede","lede"],["foot","foot"],
+    ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"],
+    ["l-name","fName"],["l-dest","fDest"],["l-start","fStart"],["l-end","fLast"],
     ["l-in","fIn"],["l-out","fOut"],["l-ref","fRef"],["l-phone","fPhone"],
     ["l-newname","fPerson"],["l-newnote","fPersonNote"]])
-    setLabel(id, L[key]);
+    setText(id, L[key]);
+  $("#kicker").textContent = tripKicker(TRIP);
+  $("#kicker").hidden = !$("#kicker").textContent;
+  setTrip(TRIP, L.pageTitle);
+  for (const el of document.querySelectorAll("[data-ico]")) el.innerHTML = ICONS[el.dataset.ico] ?? "";
+
   for (const id of ["t-save","stay-save","notes-save"]) $("#" + id).textContent = L.save;
   $("#m-add").textContent = L.add;
   $("#t-hint").textContent = L.tripHint;
@@ -542,15 +314,15 @@ function render() {
 /* ----------------------------------------------------------------- actions */
 
 async function mutate(path, body) {
-  if (!nameOf()) { setStatus(t().needName); $("#name").focus(); return; }
-  setStatus(t().saving);
+  if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
+  setStatus(t().saving, "sticky");
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? VOTES;
     fillMembers(d.members);
     render();
     setStatus(t().saved);
-  } catch (err) { setStatus(err.message); }
+  } catch (err) { setStatus(err.message, "err"); }
 }
 
 $("#t-save").addEventListener("click", () => mutate("/api/trip/settings", {
@@ -604,7 +376,7 @@ document.addEventListener("click", async (ev) => {
         body: JSON.stringify({ voter: nameOf() || "?", q: $("[data-addrq]", $("#stay-addr")).value }) });
       hits.innerHTML = d.results.length
         ? `<span class="hint">${esc(L.pick)}</span>` + d.results.map((r) =>
-            `<button type="button" class="btn quiet" style="text-align:left"
+            `<button type="button" class="hit"
                      data-stayhit data-lat="${r.lat}" data-lon="${r.lon}"
                      data-label="${esc(r.label)}">${esc(r.label)}</button>`).join("")
         : `<span class="hint">${esc(L.noHits)}</span>`;
@@ -615,31 +387,21 @@ document.addEventListener("click", async (ev) => {
   const hit = ev.target.closest("[data-stayhit]");
   if (hit) return void mutate("/api/trip/base", {
     name: hit.dataset.label, lat: Number(hit.dataset.lat), lon: Number(hit.dataset.lon) });
-
-  const lb = ev.target.closest(".langs button");
-  if (lb) {
-    lang = lb.dataset.lang;
-    localStorage.setItem(LANG_KEY, lang);
-    for (const b of document.querySelectorAll(".langs button"))
-      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
-    render();
-  }
 });
 
-$("#name").addEventListener("input", () => localStorage.setItem(NAME_KEY, nameOf()));
-$("#name").value = localStorage.getItem(NAME_KEY) || "";
-for (const b of document.querySelectorAll(".langs button"))
-  b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+$("#stay-addr").addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" && ev.target.matches("[data-addrq]")) { ev.preventDefault(); $("#stay-find")?.click(); }
+});
+
+onLang(() => render());
 
 (async () => {
-  setStatus(t().loading);
   try {
     const d = await api("/api/sights");
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? {};
     fillMembers(d.members);
     render();
-    setStatus("");
-  } catch (err) { setStatus(err.message); }
+  } catch (err) { setStatus(err.message, "err"); }
 })();
 </script>
 </body>

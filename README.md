@@ -10,10 +10,12 @@ API, and votes live in D1 (Cloudflare's SQLite). No build step, no framework,
 no npm dependencies at runtime.
 
 ```
-public/index.html      the vote page — HTML, CSS and JS in one file
+public/index.html      the Sights page — vote on what to see
 public/bookings.html   the bookings overview
 public/plan.html       the day-by-day plan
 public/details.html    the trip itself
+public/app.css         the design system every page shares: tokens, colours, components
+public/shell.js        the shared shell: nav and tab bar, name field, language, status toast
 public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
@@ -26,6 +28,29 @@ scripts/fetch-images.mjs   optional: self-host the photos
 scripts/migrate.mjs        applies every migration below, skipping done ones
 scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
+
+## The design
+
+One stylesheet, `public/app.css`, and one small module, `public/shell.js`, are
+shared by every page; each page adds only its own layout on top. The look is
+deliberately quiet: the system font, a near-white ground with white cards and
+hairline edges, large radii, and very little decoration. On a phone the four
+pages become a bottom tab bar.
+
+Colour always means the same thing:
+
+| Colour | Means |
+| --- | --- |
+| **Blue** (the tint) | something you can do — buttons, links, the selected filter, a stop you placed by hand |
+| **Green** | good news and done things — free entry, booked, has a location, saved |
+| **Amber** | money — anything that costs, and the price itself |
+| **Coral** | needs attention before the trip — book ahead, limited entry, no address yet |
+| **Violet** | personal — things you or the group added yourselves |
+| **Red** | destructive, and only destructive |
+
+Light and dark follow the system setting. Nothing about the trip is written
+into the pages: the bar shows whatever the Details page calls the trip, and the
+dates and destination come from the same place.
 
 ## The Bookings page
 
