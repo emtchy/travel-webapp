@@ -1,0 +1,238 @@
+# Plan & decision log
+
+Living document. Tick the status boxes as work lands, and **append** to the
+decision log rather than rewriting it.
+
+Last updated: 2026-09-18
+
+---
+
+## 1. Where this is going
+
+A **trip builder** anyone can use. One person creates a trip and invites the
+people coming; everyone invited gets access, and edit rights where the owner
+grants them. The group adds places, votes on them, books what needs booking,
+and lays the result onto the days of the trip with maps routes for each day.
+
+We do **not** author itineraries for cities. Users build their own. London was
+the first trip — a real one, 11–16 September 2026, for four people — and it is
+now the migration test case, not the product. Its four names (Emily, Manuel,
+Maya, Roswitha) become the first four accounts.
+
+### The inversion that defines the refactor
+
+| | Today | Target |
+| --- | --- | --- |
+| Built-in places | hardcoded array in `src/sights.js` | rows in the database, imported once as the first trip's items |
+| User-added places | `custom_sights` (the exception) | **the normal case** — one `items` table |
+| Trip | one row, `trip_settings` `id = 1` | many rows, each with an owner and members |
+| Identity | a typed name, lowercased | an account, signed in by email link |
+| Access | anyone with the URL | members of the trip; roles decide who may edit |
+
+`custom_sights` is already the shape we need. Generalising is mostly *deleting
+the special case* — routing built-ins through the same table — not inventing a
+new model.
+
+---
+
+## 2. What exists today (main, September 2026)
+
+Four pages on one Cloudflare Worker with D1, no build step:
+
+| Path | Page | What it does |
+| --- | --- | --- |
+| `/details` | Details | the trip: name, destination, dates, where we stay, travel, who is coming, notes |
+| `/` | Sights | the 55 built-ins plus added places; votes, comments, "add to a day" |
+| `/bookings` | Bookings | what costs money or needs booking; still to book / booked / not booking |
+| `/plan` | Plan | a column per day; stops placed by hand or by a booking; maps routes; a detail sheet |
+
+The plan is **placed by hand**. There is no scheduler on main; the automatic
+day planner that was built on `feature/day-planner` was not merged (see the
+decision log, 2026-09). Bookings with a date place themselves; everything else
+you drag onto a day yourself, and the app never rearranges what you did.
+
+Design: one shared stylesheet (`public/app.css`) and shell (`public/shell.js`),
+Apple-like, with a colour concept where every hue means one thing. See the
+README's "The design" section.
+
+Identity is still a typed name. That is the thing Phase 2 replaces.
+
+---
+
+## 3. Roadmap
+
+| Phase | What | Status |
+| --- | --- | --- |
+| 0 | The London trip on the current stack: vote, book, plan by hand | ✅ done, trip travelled |
+| 0.5 | Redesign on a shared design system; nothing London-specific in the pages | ✅ done 2026-09-11 |
+| **1** | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ⬜ next |
+| 2 | **Accounts** — email-link sign-in, members linked to accounts, invites, roles, settings (maps app, language) | ⬜ |
+| 3 | Create your own trip: trip list, new-trip flow, the London 55 as an optional template | ⬜ |
+| 4 | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ |
+
+Phases 1 and 2 are cut into steps small enough to ship one at a time against
+the live database, each with a migration and a test.
+
+### Phase 1 — trips and items
+
+- [ ] **Step 1 — `trips` exists.** A `trips` table; `trip_settings` row 1
+      becomes trip 1. Every table gets a `trip_id` column defaulting to 1.
+      No UI change. Migration 007.
+- [ ] **Step 2 — one `items` table.** Built-ins and added sights become rows:
+      `(id, trip_id, name, summary, url, area, station, cost, price_label,
+      booking_required, address, lat, lon, added_by, source)`. The London 55
+      are imported keeping their ids, so **no vote is lost**. `src/sights.js`
+      stops being read at runtime and becomes the template file. Migration 008.
+- [ ] **Step 3 — the API is trip-scoped.** Every endpoint takes the trip from
+      the URL (`/api/t/<trip>/…`), with the old paths kept as aliases for
+      trip 1 until the pages move. `snapshot()` returns one trip.
+- [ ] **Step 4 — the pages are trip-scoped.** `/t/<trip>/plan` and friends; the
+      old URLs redirect to trip 1 so the London link keeps working.
+
+### Phase 2 — accounts
+
+- [ ] **Step 5 — sign in.** `users (id, email, display_name, created_at)` and
+      `sessions`. Magic link by email, no passwords. Sending goes through
+      Cloudflare's email service; the Worker never stores a password.
+- [ ] **Step 6 — claim your name.** On first sign-in, pick which existing
+      member you are; that member row gets your `user_id`, and votes, comments
+      and bookings stay attached through `name_key`. The four London names are
+      claimed once and the typed-name field disappears.
+- [ ] **Step 7 — invites and roles.** `members (trip_id, user_id, role)` with
+      `owner | editor | viewer`. The owner invites by email; the invite is a
+      link that signs the person in and adds them. The API checks membership on
+      every trip-scoped call and the role on every write.
+- [ ] **Step 8 — settings.** An account page: display name, language, and
+      **which maps app "Open in Maps" means** (Apple or Google). The setting
+      replaces the per-device guess in `shell.js`, which stays as the default
+      for anyone who has not chosen.
+
+### Phase 3 — your own trip
+
+- [ ] A trip list at `/`, a "new trip" flow, the London list offered as a
+      template when the destination is London, and a landing page for people
+      who are not signed in.
+
+### Phase 4 — public hardening
+
+- [ ] Rate limits on writes and on geocoding; geocoder results cached in KV;
+      photos cached server-side; abuse reporting; a privacy note.
+
+---
+
+## 4. Migration rules
+
+The remote database holds real data. Every schema change is a numbered
+`scripts/migrate-NNN-*.sql`, applied by `npm run migrate` locally first and by
+`npm run migrate:remote` only when asked. A migration must:
+
+- be additive (new tables, new columns with defaults) or copy data before it
+  drops anything;
+- keep every existing id — sight ids are the vote key;
+- leave the app working between the migration and the deploy that uses it.
+
+---
+
+## 5. Decision log
+
+Append; don't rewrite.
+
+**2026-08-25 — Planning logic stays destination-agnostic.**
+Map-link building and anything that reasons about places is a pure function
+over `{lat, lon, …}`. Phase 1 changes where items come from, not the engine.
+
+**2026-08-25 — Booking is a tracker, not an integration.**
+Deep links plus status tracking. Affiliate ticket APIs are a later monetisation
+question, not a planning feature. In-app payment is not happening.
+
+**2026-08-25 — Stack: stay on Worker + D1, no build step.**
+Plain HTML/JS pages with one shared stylesheet and shell module. A framework is
+reconsidered at the Phase 3 boundary, when there are trip-list, sign-in and
+settings views; not before.
+
+**2026-08-25 — Auth will be magic-link email.**
+Cloudflare Access is for private orgs, not public signup. Passwordless keeps us
+out of password storage entirely.
+
+**2026-08-25 — No landing page yet; the vote page keeps `/`.**
+The group has the `/` link. A landing page belongs with signup (Phase 3).
+
+**2026-08-27 — The route origin is personal; the trip's base is shared.**
+Where a day starts for *the group* (the hotel) is a trip setting. Where a route
+starts for *you* (hotel, your position, or nothing) is your device's choice and
+lives in `localStorage`. Two questions that look like one.
+
+**2026-08-27 — Not everything has a location, and that is not an error state.**
+A tour or a day pass has no address. Such a stop sits on the day it was given
+and is left out of the route; the row says "no address yet" rather than failing.
+
+**2026-08-27 — A pasted maps link is the escape hatch for geocoding.**
+The one search box takes a name, an address, a Google/Apple Maps link or raw
+coordinates (`src/maplink.js`). The share sheet on a phone gives you a link and
+nothing else.
+
+**2026-09 — The plan is placed by hand; the automatic scheduler was not merged.**
+`feature/day-planner` carries a complete deterministic scheduler (clustering,
+day assignment, ordering, travel-time estimates). Main went the other way: a
+column per day, stops placed by people, a booking with a date placing itself.
+The reason is trust — the group wanted to see exactly what they decided, with
+nothing moving underneath them. The scheduler stays on its branch as a possible
+later "suggest a day" feature, additive and never automatic.
+
+**2026-09-11 — One design system, nothing London in the chrome.**
+All pages share `app.css` and `shell.js`. System font, one blue for actions,
+green = done/free, amber = money, coral = needs attention, violet = added by the
+group, red = destructive. The bar shows the trip's own name. Storage keys became
+generic, with a one-time read of the old ones.
+
+**2026-09-18 — "Open in Maps" means the maps app you prefer.**
+Plan rows offer *Open in Maps* for the place; the route on from a stop through
+the rest of the day moved into the stop's sheet. Which app opens is a
+preference: Apple on Apple devices, Google elsewhere, overridable per browser
+today and a per-account setting in Phase 2 (`shell.js` `mapsApp()`).
+
+**2026-09-18 — Access is by membership; the owner invites.**
+One account creates a trip and owns it. The owner invites others by email; an
+invited person gets access to that trip and a role (`owner`, `editor`,
+`viewer`) that decides what they may change. Nobody sees a trip they were not
+invited to. The London trip's four voters become its first four members by
+claiming their names at first sign-in, so nothing they voted or booked is lost.
+
+**2026-09-18 — Phase 1 before Phase 2.**
+Accounts, invites and per-account settings all hang off a user row *and* a
+membership row, and membership is per trip. Doing trips and items first means
+the account work is done once, against the final model, instead of once for a
+single trip and again for many.
+
+---
+
+## 6. Out of scope (deliberately)
+
+Recorded so these get reconsidered on purpose, not stumbled into.
+
+- **Automatic day planning.** On `feature/day-planner`, unmerged. Possible later
+  as an optional suggestion, never as something that rearranges a plan by itself.
+- **LLM-generated plans.** Rejected as the engine. A later additive "review my
+  plan" pass (pacing, food stops, a blurb per day) would be fine because it
+  cannot change the schedule.
+- **Ticket sales / affiliate booking APIs.** Phase 4 at the earliest.
+- **Geocoding at public scale.** Nominatim allows about one request a second.
+  Fine for a group; a public product needs a cache and probably a paid geocoder.
+- **Per-row translations for user content.** `name_de` / `summary_de` exist
+  only because the London 55 were authored. User content is one language; i18n
+  stays for UI chrome.
+- **Passwords.** Magic link only.
+
+---
+
+## 7. Open questions
+
+- URL scheme for many trips: `/t/<id>/plan` with the old paths redirecting to
+  trip 1, or a subdomain per trip? (Leaning: path. Nothing to configure.)
+- Which sender for magic-link mail: Cloudflare Email Service from the Worker,
+  or a third party? (Leaning: Cloudflare, no extra account.)
+- Should a `viewer` be able to vote? (Leaning: yes — voting is the point of
+  inviting someone; `editor` adds places, bookings and plan changes; `owner`
+  edits the trip itself and members.)
+- Does the London trip stay reachable at its old links after Phase 1 Step 4?
+  (Yes, by redirect, until the four accounts exist and have claimed it.)
