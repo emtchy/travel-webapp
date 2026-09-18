@@ -273,6 +273,26 @@ export async function api(path, options, retried = false) {
   return data;
 }
 
+/* ------------------------------------------------------------- maps */
+
+/**
+ * Which maps app "Open in Maps" means. Apple devices get Apple Maps, everything
+ * else Google, unless this browser has said otherwise. A per-account setting
+ * will replace the storage lookup once accounts exist; the call stays the same.
+ */
+export function mapsApp() {
+  try {
+    const pref = localStorage.getItem("trip-maps");
+    if (pref === "apple" || pref === "google") return pref;
+  } catch {}
+  const ua = navigator.userAgent || "";
+  const apple = /iPhone|iPad|iPod|Macintosh/.test(ua) && !/Android/.test(ua);
+  return apple ? "apple" : "google";
+}
+
+/** The one link out of a routeLinks() result that matches the preference. */
+export const mapLink = (r) => (r ? r[mapsApp()] : null);
+
 /* ------------------------------------------------------------- back to top */
 
 export function backToTop(label) {

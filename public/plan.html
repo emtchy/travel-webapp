@@ -182,7 +182,7 @@ li.stop:hover .chev{opacity:1}
 <script type="module">
 import { routeLinks, routeFrom, hasPlace } from "/route.js";
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort } from "/shell.js";
+         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink } from "/shell.js";
 
 const T = {
   en: {
@@ -407,8 +407,9 @@ function stopHTML(p, i, stops) {
   const L = t();
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
-  // "I have done the first two" — a link on each stop covering it and the rest.
-  const onward = routeFrom(stops.map(placeOf), i, "transit", originNow());
+  // Just this place, in whichever maps app this device prefers. The route on
+  // from here lives in the sheet, one tap further in.
+  const here = hasPlace(placeOf(p)) ? routeLinks([placeOf(p)], "transit", null) : null;
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
   const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
@@ -426,9 +427,9 @@ function stopHTML(p, i, stops) {
         <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
         ${needsPlace(p) ? `<span class="tag tag-sm tag-coral">${esc(L.noLocation)}</span>` : ""}
       </div>
-      ${onward && i > 0 ? `<div class="stopact">
-        <a class="btn btn-sm btn-tint" href="${esc(onward.google)}" target="_blank" rel="noopener"
-           >${ICONS.route}${esc(L.routeFromHere)}</a>
+      ${here ? `<div class="stopact">
+        <a class="btn btn-sm btn-tint" href="${esc(mapLink(here))}" target="_blank" rel="noopener"
+           >${ICONS.pin}${esc(L.shMap)}</a>
       </div>` : ""}
     </div>
     <span class="chev">${ICONS.chevron}</span>
@@ -702,7 +703,11 @@ function sheetHTML(x) {
   const dayOpts = TRIP.days.map((d) =>
     `<option value="${esc(d)}"${x.day === d ? " selected" : ""}>${esc(weekdayShort(d))} ${esc(dayLong(d))}</option>`).join("");
   const kindLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[x.source];
-  const route = hasPlace(x.place) ? routeLinks([x.place], "transit", originNow()) : null;
+  const route = hasPlace(x.place) ? routeLinks([x.place], "transit", null) : null;
+  // "I have done the first two" — this stop and the rest of its day, in order.
+  const dayStops = planned().filter(passes).filter((q) => q.day === x.day).sort(byClock);
+  const idx = dayStops.findIndex((q) => q.id === x.id && q.source === x.source);
+  const onward = idx >= 0 ? routeFrom(dayStops.map(placeOf), idx, "transit", originNow()) : null;
 
   return `
   <div class="srow">
@@ -727,7 +732,8 @@ function sheetHTML(x) {
     <span class="sval${x.address ? "" : " muted"}">${esc(x.address || L.shNoPlace)}</span>
     ${addressControlHTML({ id: x.id, source: x.source })}
     ${route ? `<div class="slinks">
-      <a class="btn btn-sm btn-tint" href="${esc(route.google)}" target="_blank" rel="noopener">${ICONS.pin}${esc(L.shMap)}</a>
+      <a class="btn btn-sm btn-tint" href="${esc(mapLink(route))}" target="_blank" rel="noopener">${ICONS.pin}${esc(L.shMap)}</a>
+      ${onward && onward.used > 1 ? `<a class="btn btn-sm btn-tint" href="${esc(mapLink(onward))}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeFromHere)}</a>` : ""}
     </div>` : ""}
   </div>
 
