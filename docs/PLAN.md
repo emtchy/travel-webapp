@@ -75,9 +75,12 @@ the live database, each with a migration and a test.
 
 ### Phase 1 — trips and items
 
-- [ ] **Step 1 — `trips` exists.** A `trips` table; `trip_settings` row 1
-      becomes trip 1. Every table gets a `trip_id` column defaulting to 1.
-      No UI change. Migration 007.
+- [x] **Step 1 — `trips` exists.** *(2026-09-18)* A `trips` table; `trip_settings`
+      row 1 became trip 1. Every table has a `trip_id` defaulting to 1, and the
+      two keys that were global (a member's name, a journey's direction) are
+      per trip. Every query is scoped; `tripOf()` answers 1 until step 3. No UI
+      change. Migration 007. `trip_settings` is left in place, unread, until a
+      later migration drops it.
 - [ ] **Step 2 — one `items` table.** Built-ins and added sights become rows:
       `(id, trip_id, name, summary, url, area, station, cost, price_label,
       booking_required, address, lat, lon, added_by, source)`. The London 55
@@ -197,6 +200,23 @@ invited person gets access to that trip and a role (`owner`, `editor`,
 `viewer`) that decides what they may change. Nobody sees a trip they were not
 invited to. The London trip's four voters become its first four members by
 claiming their names at first sign-in, so nothing they voted or booked is lost.
+
+**2026-09-18 — Migrations run once, and the database remembers which.**
+The runner used to replay every file on every run, relying on "duplicate
+column" errors to skip work. That made a migration that rebuilds a table
+unsafe to keep around, and 007 has to rebuild two. `schema_migrations` now
+records each file; a fresh `schema.sql` pre-records all of them, and an older
+database is read from its own shape (a table or column that only a given file
+creates) and recorded without replaying — replaying 006 re-added a member who
+had been taken off the list. If the table cannot be read, the runner stops
+before touching anything.
+
+**2026-09-18 — Ids stay global; `trip_id` rides alongside.**
+Place, comment and entry ids are uuids (or the London built-in ids, which
+belong to trip 1), so tables keyed on them keep their one-column keys and get
+`trip_id` as a column rather than part of the key. Only the two keys that were
+genuinely per trip — member name, journey direction — were rebuilt. Less
+churn, and the vote key — the thing that must never change — is untouched.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

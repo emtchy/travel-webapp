@@ -16,6 +16,13 @@ const bad = (message, status = 400) => json({ error: message }, status);
 const BUILT_IN_IDS = new Set(SIGHTS.map((s) => s.id));
 
 /**
+ * Which trip a request is about. One trip for now — Phase 1 step 3 reads it
+ * from the URL — but every query already asks, so that step changes this one
+ * line and nothing else.
+ */
+const tripOf = (url) => 1;
+
+/**
  * What the trip is, read from the database rather than written here.
  *
  * This used to be a constant, which is exactly why there could only ever be
@@ -45,17 +52,18 @@ function daysBetween(start, end) {
 const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) &&
   !Number.isNaN(Date.parse(`${v}T00:00:00Z`));
 
-async function getTrip(env) {
+async function getTrip(env, trip) {
   const row = await env.DB.prepare(
     `SELECT name, destination, start_date, end_date,
             base_name, base_lat, base_lon, base_checkin, base_checkout,
             base_ref, base_phone, near_lat, near_lon, notes, set_by
-       FROM trip_settings WHERE id = 1`
-  ).first();
+       FROM trips WHERE id = ?1`
+  ).bind(trip).first();
 
   const days = daysBetween(row?.start_date, row?.end_date);
 
   return {
+    id: trip,
     name: row?.name ?? FALLBACK_TRIP.name,
     destination: row?.destination ?? FALLBACK_TRIP.destination,
     startDate: row?.start_date ?? null,
@@ -125,7 +133,7 @@ function cleanUrl(raw) {
 }
 
 /** Optional shared passphrase. Unset => open access. */
-function checkAccess(request, env) {
+function checkAccess(request, env, trip) {
   const expected = env.ACCESS_CODE;
   if (!expected) return true;
   const supplied =
@@ -136,22 +144,22 @@ function checkAccess(request, env) {
 
 /* --------------------------------------------------------------- database */
 
-async function getVotes(env) {
+async function getVotes(env, trip) {
   const { results } = await env.DB.prepare(
-    "SELECT sight_id, voter_name FROM votes ORDER BY created_at ASC"
-  ).all();
+    "SELECT sight_id, voter_name FROM votes WHERE trip_id = ?1 ORDER BY created_at ASC"
+  ).bind(trip).all();
 
   const byId = {};
   for (const row of results ?? []) (byId[row.sight_id] ||= []).push(row.voter_name);
   return byId;
 }
 
-async function getCustom(env) {
+async function getCustom(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT id, name, summary, url, added_by, created_at,
             costs, price_label, booking_required, address, lat, lon
-       FROM custom_sights ORDER BY created_at ASC`
-  ).all();
+       FROM custom_sights WHERE trip_id = ?1 ORDER BY created_at ASC`
+  ).bind(trip).all();
 
   return (results ?? []).map((row) => ({
     id: row.id,
@@ -174,12 +182,12 @@ async function getCustom(env) {
  * Booked, or decided against. Anything not listed here is still to be sorted
  * out, which is the common case and costs no storage.
  */
-async function getBookingStatus(env) {
+async function getBookingStatus(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT sight_id, status, marked_by, booked_date, booked_time, booked_end,
             created_at
-       FROM booking_status ORDER BY created_at ASC`
-  ).all();
+       FROM booking_status WHERE trip_id = ?1 ORDER BY created_at ASC`
+  ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.sight_id,
     status: r.status,
@@ -199,11 +207,11 @@ async function isKnownSight(env, id) {
   return !!row;
 }
 
-async function getComments(env) {
+async function getComments(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT id, sight_id, author, body, created_at
-       FROM comments ORDER BY created_at ASC`
-  ).all();
+       FROM comments WHERE trip_id = ?1 ORDER BY created_at ASC`
+  ).bind(trip).all();
 
   const bySight = {};
   for (const row of results ?? []) {
@@ -218,21 +226,21 @@ async function getComments(env) {
 }
 
 /** Everything the page needs, so a mutation never needs a follow-up GET. */
-const snapshot = async (env) => ({
-  custom: await getCustom(env),
-  votes: await getVotes(env),
-  comments: await getComments(env),
-  bookings: await getBookingStatus(env),
-  plan: await getPlanEntries(env),
-  notes: await getPlanNotes(env),
-  trip: await getTrip(env),
-  members: await getMembers(env),
-  travel: await getTravel(env),
+const snapshot = async (env, trip) => ({
+  custom: await getCustom(env, trip),
+  votes: await getVotes(env, trip),
+  comments: await getComments(env, trip),
+  bookings: await getBookingStatus(env, trip),
+  plan: await getPlanEntries(env, trip),
+  notes: await getPlanNotes(env, trip),
+  trip: await getTrip(env, trip),
+  members: await getMembers(env, trip),
+  travel: await getTravel(env, trip),
 });
 
 /* ------------------------------------------------------------- handlers */
 
-async function handleVote(request, env) {
+async function handleVote(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -250,12 +258,12 @@ async function handleVote(request, env) {
 
   if (wanted) {
     await env.DB.prepare(
-      `INSERT INTO votes (sight_id, voter_key, voter_name, created_at)
-       VALUES (?1, ?2, ?3, ?4)
+      `INSERT INTO votes (sight_id, voter_key, voter_name, created_at, trip_id)
+       VALUES (?1, ?2, ?3, ?4, ?5)
        ON CONFLICT (sight_id, voter_key)
        DO UPDATE SET voter_name = excluded.voter_name`
     )
-      .bind(sightId, voterKey(name), name, Date.now())
+      .bind(sightId, voterKey(name), name, Date.now(), trip)
       .run();
   } else {
     await env.DB.prepare(
@@ -265,10 +273,10 @@ async function handleVote(request, env) {
       .run();
   }
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handleAddSight(request, env) {
+async function handleAddSight(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -296,14 +304,14 @@ async function handleAddSight(request, env) {
   if (priceLabel === undefined) return bad("Keep the price under 40 characters.");
 
   const { count } = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM custom_sights"
-  ).first();
+    "SELECT COUNT(*) AS count FROM custom_sights WHERE trip_id = ?1"
+  ).bind(trip).first();
   if (count >= 100) return bad("That's 100 added sights — plenty. Remove some first.");
 
   const duplicate = await env.DB.prepare(
-    "SELECT 1 FROM custom_sights WHERE lower(name) = lower(?1)"
+    "SELECT 1 FROM custom_sights WHERE lower(name) = lower(?1) AND trip_id = ?2"
   )
-    .bind(name)
+    .bind(name, trip)
     .first();
   if (duplicate) return bad("Someone already added that one.");
 
@@ -311,22 +319,22 @@ async function handleAddSight(request, env) {
 
   await env.DB.prepare(
     `INSERT INTO custom_sights (id, name, summary, url, added_by, added_by_key,
-                                created_at, costs, price_label, booking_required)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
+                                created_at, costs, price_label, booking_required, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
   )
     .bind(id, name, summary, url, addedBy, voterKey(addedBy), Date.now(),
-          costs ? 1 : 0, priceLabel, bookingRequired ? 1 : 0)
+          costs ? 1 : 0, priceLabel, bookingRequired ? 1 : 0, trip)
     .run();
 
   // Adding something counts as wanting it.
   await env.DB.prepare(
-    `INSERT INTO votes (sight_id, voter_key, voter_name, created_at)
-     VALUES (?1, ?2, ?3, ?4)`
+    `INSERT INTO votes (sight_id, voter_key, voter_name, created_at, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5)`
   )
-    .bind(id, voterKey(addedBy), addedBy, Date.now())
+    .bind(id, voterKey(addedBy), addedBy, Date.now(), trip)
     .run();
 
-  return json({ ok: true, id, ...(await snapshot(env)) });
+  return json({ ok: true, id, ...(await snapshot(env, trip)) });
 }
 
 /**
@@ -336,7 +344,7 @@ async function handleAddSight(request, env) {
  * are facts about the place rather than something owned — and the person who
  * knows a tour has to be booked is often not the person who added it.
  */
-async function handleEditSight(request, env) {
+async function handleEditSight(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -369,7 +377,7 @@ async function handleEditSight(request, env) {
     .bind(costs ? 1 : 0, costs ? priceLabel : null, bookingRequired ? 1 : 0, id)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /**
@@ -384,7 +392,7 @@ async function handleEditSight(request, env) {
  * an identifying User-Agent and about one call a second, which is fine for a
  * group filling in a handful. A public version would need a cache and a limit.
  */
-async function handleGeocode(request, env) {
+async function handleGeocode(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -420,7 +428,7 @@ async function handleGeocode(request, env) {
 
   // A maps link with a name but no coordinates: search for the name, not the URL.
   const term = mapSearchTerm(q) ?? q;
-  const { lat, lon } = (await getTrip(env)).near;
+  const { lat, lon } = (await getTrip(env, trip)).near;
   const d = 0.6; // roughly 60 km, wide enough for a day trip out of town
 
   let results;
@@ -448,7 +456,7 @@ async function handleGeocode(request, env) {
  * only the table and the id prefix differ.
  */
 function makeAddressHandler({ table, prefix, missing, wrongKind }) {
-  return async function handleAddress(request, env) {
+  return async function handleAddress(request, env, trip) {
     let body;
     try {
       body = await request.json();
@@ -485,7 +493,7 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
       .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id)
       .run();
 
-    return json({ ok: true, ...(await snapshot(env)) });
+    return json({ ok: true, ...(await snapshot(env, trip)) });
   };
 }
 
@@ -501,7 +509,7 @@ const handleNoteAddress = makeAddressHandler({
   wrongKind: "That isn't one of your own entries.",
 });
 
-async function handleDeleteSight(request, env) {
+async function handleDeleteSight(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -530,10 +538,10 @@ async function handleDeleteSight(request, env) {
   await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM custom_sights WHERE id = ?1").bind(id).run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handleAddComment(request, env) {
+async function handleAddComment(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -560,16 +568,16 @@ async function handleAddComment(request, env) {
   if (existing.count >= 50) return bad("That's 50 comments on one option — enough.");
 
   await env.DB.prepare(
-    `INSERT INTO comments (id, sight_id, author, author_key, body, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`
+    `INSERT INTO comments (id, sight_id, author, author_key, body, created_at, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
   )
-    .bind(`c-${crypto.randomUUID()}`, sightId, author, voterKey(author), text, Date.now())
+    .bind(`c-${crypto.randomUUID()}`, sightId, author, voterKey(author), text, Date.now(), trip)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handleRemoveComment(request, env) {
+async function handleRemoveComment(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -590,15 +598,15 @@ async function handleRemoveComment(request, env) {
     return bad("Only the person who wrote it can delete it.", 403);
 
   await env.DB.prepare("DELETE FROM comments WHERE id = ?1").bind(id).run();
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /** Sights placed on the plan by hand. Booked ones are not in here. */
-async function getPlanEntries(env) {
+async function getPlanEntries(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT sight_id, day, start_time, end_time, added_by
-       FROM plan_entries ORDER BY day ASC, start_time ASC`
-  ).all();
+       FROM plan_entries WHERE trip_id = ?1 ORDER BY day ASC, start_time ASC`
+  ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.sight_id,
     day: r.day,
@@ -619,7 +627,7 @@ async function getPlanEntries(env) {
  * whatever happens here. Anyone can set it and anyone can undo it — a shared
  * list for a group that trusts each other, same as everything else.
  */
-async function handleBookingStatus(request, env) {
+async function handleBookingStatus(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -639,7 +647,7 @@ async function handleBookingStatus(request, env) {
   // The slot we actually hold. Only meaningful for a booking, so anything else
   // clears it rather than leaving a date attached to a decision not to go.
   const date = body?.bookedDate == null || body.bookedDate === "" ? null : body.bookedDate;
-  const tripDays = new Set((await getTrip(env)).days);
+  const tripDays = new Set((await getTrip(env, trip)).days);
   if (date !== null && (typeof date !== "string" || !tripDays.has(date)))
     return bad("That date isn't a day of this trip.");
 
@@ -668,37 +676,38 @@ async function handleBookingStatus(request, env) {
 
     await env.DB.prepare(
       `INSERT INTO booking_status (sight_id, status, marked_by,
-                                   booked_date, booked_time, booked_end, created_at)
-       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                                   booked_date, booked_time, booked_end, created_at, trip_id)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
        ON CONFLICT (sight_id) DO UPDATE SET
          status = excluded.status, marked_by = excluded.marked_by,
          booked_date = excluded.booked_date, booked_time = excluded.booked_time,
          booked_end = excluded.booked_end, created_at = excluded.created_at`
     )
-      .bind(sightId, status, name, date, time, end, Date.now())
+      .bind(sightId, status, name, date, time, end, Date.now(), trip)
       .run();
   }
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /** Who is coming. The key is the lowercased name, same identity as a vote. */
-async function getMembers(env) {
+async function getMembers(env, trip) {
   const { results } = await env.DB.prepare(
-    "SELECT id, name, name_key, note, added_by FROM trip_members ORDER BY name COLLATE NOCASE"
-  ).all();
+    `SELECT id, name, name_key, note, added_by FROM trip_members
+      WHERE trip_id = ?1 ORDER BY name COLLATE NOCASE`
+  ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.id, name: r.name, key: r.name_key, note: r.note, addedBy: r.added_by,
   }));
 }
 
 /** Getting there and back. At most one row each way. */
-async function getTravel(env) {
+async function getTravel(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT direction, mode, carrier, from_place, to_place,
             depart_date, depart_time, arrive_time, reference, note, set_by
-       FROM trip_travel`
-  ).all();
+       FROM trip_travel WHERE trip_id = ?1`
+  ).bind(trip).all();
   return (results ?? []).map((r) => ({
     direction: r.direction, mode: r.mode, carrier: r.carrier,
     from: r.from_place, to: r.to_place,
@@ -708,7 +717,7 @@ async function getTravel(env) {
 }
 
 /** What the trip is: name, destination, dates, and the hotel's details. */
-async function handleTripSettings(request, env) {
+async function handleTripSettings(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -748,31 +757,31 @@ async function handleTripSettings(request, env) {
 
   // Only what was sent changes; COALESCE keeps the rest.
   await env.DB.prepare(
-    `INSERT INTO trip_settings (id, name, destination, start_date, end_date,
-                                base_checkin, base_checkout, base_ref, base_phone,
-                                notes, set_by, updated_at)
-     VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+    `INSERT INTO trips (id, name, destination, start_date, end_date,
+                        base_checkin, base_checkout, base_ref, base_phone,
+                        notes, set_by, updated_at, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
      ON CONFLICT (id) DO UPDATE SET
-       name          = COALESCE(excluded.name, trip_settings.name),
-       destination   = COALESCE(excluded.destination, trip_settings.destination),
-       start_date    = COALESCE(excluded.start_date, trip_settings.start_date),
-       end_date      = COALESCE(excluded.end_date, trip_settings.end_date),
-       base_checkin  = COALESCE(excluded.base_checkin, trip_settings.base_checkin),
-       base_checkout = COALESCE(excluded.base_checkout, trip_settings.base_checkout),
-       base_ref      = COALESCE(excluded.base_ref, trip_settings.base_ref),
-       base_phone    = COALESCE(excluded.base_phone, trip_settings.base_phone),
-       notes         = COALESCE(excluded.notes, trip_settings.notes),
+       name          = COALESCE(excluded.name, trips.name),
+       destination   = COALESCE(excluded.destination, trips.destination),
+       start_date    = COALESCE(excluded.start_date, trips.start_date),
+       end_date      = COALESCE(excluded.end_date, trips.end_date),
+       base_checkin  = COALESCE(excluded.base_checkin, trips.base_checkin),
+       base_checkout = COALESCE(excluded.base_checkout, trips.base_checkout),
+       base_ref      = COALESCE(excluded.base_ref, trips.base_ref),
+       base_phone    = COALESCE(excluded.base_phone, trips.base_phone),
+       notes         = COALESCE(excluded.notes, trips.notes),
        set_by = excluded.set_by, updated_at = excluded.updated_at`
   )
-    .bind(name, destination, startDate || null, endDate || null,
-          checkIn, checkOut, reference, phone, notes, who, Date.now())
+    .bind(trip, name, destination, startDate || null, endDate || null,
+          checkIn, checkOut, reference, phone, notes, who, Date.now(), Date.now())
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /** Who is coming. */
-async function handleMemberAdd(request, env) {
+async function handleMemberAdd(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -790,24 +799,24 @@ async function handleMemberAdd(request, env) {
   if (note === undefined) return bad("Keep the note under 120 characters.");
 
   const { count } = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM trip_members"
-  ).first();
+    "SELECT COUNT(*) AS count FROM trip_members WHERE trip_id = ?1"
+  ).bind(trip).first();
   if (count >= 50) return bad("Fifty people is not a trip, it's a coach tour.");
 
   // name_key is unique, so adding someone twice quietly updates the spelling
   // rather than making a second person who owns half their votes.
   await env.DB.prepare(
-    `INSERT INTO trip_members (id, name, name_key, note, added_by, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-     ON CONFLICT (name_key) DO UPDATE SET name = excluded.name, note = excluded.note`
+    `INSERT INTO trip_members (id, name, name_key, note, added_by, created_at, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+     ON CONFLICT (trip_id, name_key) DO UPDATE SET name = excluded.name, note = excluded.note`
   )
-    .bind(`m-${crypto.randomUUID()}`, name, voterKey(name), note, who, Date.now())
+    .bind(`m-${crypto.randomUUID()}`, name, voterKey(name), note, who, Date.now(), trip)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handleMemberRemove(request, env) {
+async function handleMemberRemove(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -822,11 +831,11 @@ async function handleMemberRemove(request, env) {
   // Votes and comments are keyed on the name, not on this row, so they stay.
   // Taking someone off the list is not the same as erasing what they wanted.
   await env.DB.prepare("DELETE FROM trip_members WHERE id = ?1").bind(id).run();
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /** How we get there and back. */
-async function handleTravel(request, env) {
+async function handleTravel(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -842,9 +851,9 @@ async function handleTravel(request, env) {
     return bad("Direction must be out or back.");
 
   if (body?.clear === true) {
-    await env.DB.prepare("DELETE FROM trip_travel WHERE direction = ?1")
-      .bind(direction).run();
-    return json({ ok: true, ...(await snapshot(env)) });
+    await env.DB.prepare("DELETE FROM trip_travel WHERE direction = ?1 AND trip_id = ?2")
+      .bind(direction, trip).run();
+    return json({ ok: true, ...(await snapshot(env, trip)) });
   }
 
   const text = (v, max, label) => {
@@ -877,9 +886,9 @@ async function handleTravel(request, env) {
   await env.DB.prepare(
     `INSERT INTO trip_travel (direction, mode, carrier, from_place, to_place,
                               depart_date, depart_time, arrive_time,
-                              reference, note, set_by, updated_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-     ON CONFLICT (direction) DO UPDATE SET
+                              reference, note, set_by, updated_at, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+     ON CONFLICT (trip_id, direction) DO UPDATE SET
        mode = excluded.mode, carrier = excluded.carrier,
        from_place = excluded.from_place, to_place = excluded.to_place,
        depart_date = excluded.depart_date, depart_time = excluded.depart_time,
@@ -887,14 +896,14 @@ async function handleTravel(request, env) {
        note = excluded.note, set_by = excluded.set_by, updated_at = excluded.updated_at`
   )
     .bind(direction, mode, carrier, from, to, date || null,
-          departTime, arriveTime, reference, note, who, Date.now())
+          departTime, arriveTime, reference, note, who, Date.now(), trip)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /** Change where the days start, or clear it. */
-async function handleTripBase(request, env) {
+async function handleTripBase(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -918,25 +927,25 @@ async function handleTripBase(request, env) {
   }
 
   await env.DB.prepare(
-    `INSERT INTO trip_settings (id, base_name, base_lat, base_lon, set_by, updated_at)
-     VALUES (1, ?1, ?2, ?3, ?4, ?5)
+    `INSERT INTO trips (id, base_name, base_lat, base_lon, set_by, updated_at, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
      ON CONFLICT (id) DO UPDATE SET
        base_name = excluded.base_name, base_lat = excluded.base_lat,
        base_lon = excluded.base_lon, set_by = excluded.set_by,
        updated_at = excluded.updated_at`
   )
-    .bind(clearing ? null : name, clearing ? null : lat, clearing ? null : lon,
-          who, Date.now())
+    .bind(trip, clearing ? null : name, clearing ? null : lat, clearing ? null : lon,
+          who, Date.now(), Date.now())
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function getPlanNotes(env) {
+async function getPlanNotes(env, trip) {
   const { results } = await env.DB.prepare(
     `SELECT id, day, start_time, end_time, label, added_by, address, lat, lon
-       FROM plan_notes ORDER BY day ASC, start_time ASC`
-  ).all();
+       FROM plan_notes WHERE trip_id = ?1 ORDER BY day ASC, start_time ASC`
+  ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.id,
     day: r.day,
@@ -951,7 +960,7 @@ async function getPlanNotes(env) {
 }
 
 /** Something on the plan that isn't a sight — a musical, dinner, a train. */
-async function handleNoteAdd(request, env) {
+async function handleNoteAdd(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -969,7 +978,7 @@ async function handleNoteAdd(request, env) {
   if (!label) return bad("Give it a name — \"Musical\", \"Dinner with Anna\".");
 
   const { day } = body ?? {};
-  if (typeof day !== "string" || !(await getTrip(env)).days.includes(day))
+  if (typeof day !== "string" || !(await getTrip(env, trip)).days.includes(day))
     return bad("That date isn't a day of this trip.");
 
   const start = cleanClock(body?.start);
@@ -991,21 +1000,21 @@ async function handleNoteAdd(request, env) {
     return bad("Those coordinates don't look right.");
 
   const { count } = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM plan_notes"
-  ).first();
+    "SELECT COUNT(*) AS count FROM plan_notes WHERE trip_id = ?1"
+  ).bind(trip).first();
   if (count >= 200) return bad("That's 200 entries — plenty. Remove some first.");
 
   await env.DB.prepare(
     `INSERT INTO plan_notes
-       (id, day, start_time, end_time, label, added_by, created_at, address, lat, lon)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`
+       (id, day, start_time, end_time, label, added_by, created_at, address, lat, lon, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
   )
     .bind(`note-${crypto.randomUUID()}`, day, start, end, label, name, Date.now(),
           placed ? address : (address ?? null),
-          placed ? lat : null, placed ? lon : null)
+          placed ? lat : null, placed ? lon : null, trip)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /**
@@ -1015,7 +1024,7 @@ async function handleNoteAdd(request, env) {
  * attached to it and breaks anything holding the old one. Only the fields
  * actually sent are changed.
  */
-async function handleNoteUpdate(request, env) {
+async function handleNoteUpdate(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -1039,8 +1048,8 @@ async function handleNoteUpdate(request, env) {
 
   const { day } = body ?? {};
   if (day != null && day !== "") {
-    const trip = await getTrip(env);
-    if (typeof day !== "string" || !trip.days.includes(day))
+    const info = await getTrip(env, trip);
+    if (typeof day !== "string" || !info.days.includes(day))
       return bad("That date isn't a day of this trip.");
   }
 
@@ -1071,10 +1080,10 @@ async function handleNoteUpdate(request, env) {
     .bind(label, day || null, nextStart, nextEnd, id)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handleNoteRemove(request, env) {
+async function handleNoteRemove(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -1088,7 +1097,7 @@ async function handleNoteRemove(request, env) {
     return bad("That isn't one of your own entries.");
 
   await env.DB.prepare("DELETE FROM plan_notes WHERE id = ?1").bind(id).run();
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /**
@@ -1098,7 +1107,7 @@ async function handleNoteRemove(request, env) {
  * other way. Anything booked with a date is placed by its booking instead, and
  * is refused here so the same sight can't appear on the plan twice.
  */
-async function handlePlanSet(request, env) {
+async function handlePlanSet(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -1112,7 +1121,7 @@ async function handlePlanSet(request, env) {
   const { sightId, day } = body ?? {};
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
     return bad("Unknown sight.");
-  if (typeof day !== "string" || !(await getTrip(env)).days.includes(day))
+  if (typeof day !== "string" || !(await getTrip(env, trip)).days.includes(day))
     return bad("That date isn't a day of this trip.");
 
   const start = cleanClock(body?.start);
@@ -1130,20 +1139,20 @@ async function handlePlanSet(request, env) {
     return bad("That one is already on the plan from its booking. Change the slot on the Bookings page.");
 
   await env.DB.prepare(
-    `INSERT INTO plan_entries (sight_id, day, start_time, end_time, added_by, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+    `INSERT INTO plan_entries (sight_id, day, start_time, end_time, added_by, created_at, trip_id)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
      ON CONFLICT (sight_id) DO UPDATE SET
        day = excluded.day, start_time = excluded.start_time,
        end_time = excluded.end_time, added_by = excluded.added_by,
        created_at = excluded.created_at`
   )
-    .bind(sightId, day, start, end, name, Date.now())
+    .bind(sightId, day, start, end, name, Date.now(), trip)
     .run();
 
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
-async function handlePlanRemove(request, env) {
+async function handlePlanRemove(request, env, trip) {
   let body;
   try {
     body = await request.json();
@@ -1158,7 +1167,7 @@ async function handlePlanRemove(request, env) {
   await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1")
     .bind(sightId)
     .run();
-  return json({ ok: true, ...(await snapshot(env)) });
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /* ------------------------------------------------------------------ entry */
@@ -1173,72 +1182,73 @@ export default {
 
     const { pathname } = url;
     const { method } = request;
+    const trip = tripOf(url);
 
     if (pathname === "/api/sights" && method === "GET")
-      return json({ sights: SIGHTS, ...(await snapshot(env)) });
+      return json({ sights: SIGHTS, ...(await snapshot(env, trip)) });
 
     if (pathname === "/api/state" && method === "GET")
-      return json(await snapshot(env));
+      return json(await snapshot(env, trip));
 
     if (pathname === "/api/vote" && method === "POST")
-      return handleVote(request, env);
+      return handleVote(request, env, trip);
 
     if (pathname === "/api/sights/add" && method === "POST")
-      return handleAddSight(request, env);
+      return handleAddSight(request, env, trip);
 
     if (pathname === "/api/geocode" && method === "POST")
-      return handleGeocode(request, env);
+      return handleGeocode(request, env, trip);
 
     if (pathname === "/api/sights/address" && method === "POST")
-      return handleSightAddress(request, env);
+      return handleSightAddress(request, env, trip);
 
     if (pathname === "/api/plan/note/address" && method === "POST")
-      return handleNoteAddress(request, env);
+      return handleNoteAddress(request, env, trip);
 
     if (pathname === "/api/trip/base" && method === "POST")
-      return handleTripBase(request, env);
+      return handleTripBase(request, env, trip);
 
     if (pathname === "/api/trip/settings" && method === "POST")
-      return handleTripSettings(request, env);
+      return handleTripSettings(request, env, trip);
 
     if (pathname === "/api/trip/member/add" && method === "POST")
-      return handleMemberAdd(request, env);
+      return handleMemberAdd(request, env, trip);
 
     if (pathname === "/api/trip/member/remove" && method === "POST")
-      return handleMemberRemove(request, env);
+      return handleMemberRemove(request, env, trip);
 
     if (pathname === "/api/trip/travel" && method === "POST")
-      return handleTravel(request, env);
+      return handleTravel(request, env, trip);
 
     if (pathname === "/api/sights/edit" && method === "POST")
-      return handleEditSight(request, env);
+      return handleEditSight(request, env, trip);
 
     if (pathname === "/api/sights/remove" && method === "POST")
-      return handleDeleteSight(request, env);
+      return handleDeleteSight(request, env, trip);
 
     if (pathname === "/api/comments/add" && method === "POST")
-      return handleAddComment(request, env);
+      return handleAddComment(request, env, trip);
 
     if (pathname === "/api/comments/remove" && method === "POST")
-      return handleRemoveComment(request, env);
+      return handleRemoveComment(request, env, trip);
 
     if (pathname === "/api/bookings/status" && method === "POST")
-      return handleBookingStatus(request, env);
+      return handleBookingStatus(request, env, trip);
 
     if (pathname === "/api/plan/set" && method === "POST")
-      return handlePlanSet(request, env);
+      return handlePlanSet(request, env, trip);
 
     if (pathname === "/api/plan/remove" && method === "POST")
-      return handlePlanRemove(request, env);
+      return handlePlanRemove(request, env, trip);
 
     if (pathname === "/api/plan/note/add" && method === "POST")
-      return handleNoteAdd(request, env);
+      return handleNoteAdd(request, env, trip);
 
     if (pathname === "/api/plan/note/update" && method === "POST")
-      return handleNoteUpdate(request, env);
+      return handleNoteUpdate(request, env, trip);
 
     if (pathname === "/api/plan/note/remove" && method === "POST")
-      return handleNoteRemove(request, env);
+      return handleNoteRemove(request, env, trip);
 
     return bad("Not found.", 404);
   },

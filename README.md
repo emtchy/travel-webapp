@@ -20,12 +20,12 @@ public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the 55 sights (generated; edit freely)
 src/maplink.js         reads coordinates out of a pasted maps link
-schema.sql             nine tables
+schema.sql             the schema for a fresh database; existing ones use the migrations
 wrangler.toml          config — you paste your database id here
 scripts/setup.mjs      one-time: creates the database, fills in wrangler.toml
 scripts/fetch-geo.mjs      fills in coordinates from Wikipedia
 scripts/fetch-images.mjs   optional: self-host the photos
-scripts/migrate.mjs        applies every migration below, skipping done ones
+scripts/migrate.mjs        applies each migration below once, recording it in schema_migrations
 scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
 

@@ -911,5 +911,50 @@ t5("every built-in sight has coordinates",
 t5("and all of them are in Greater London",
    list.sights.every(s => s.lat > 51.2 && s.lat < 51.8 && s.lon > -0.65 && s.lon < 0.4));
 
+// --- Phase 1, step 1: the trip is a row, and everything belongs to it
+const tripCall = (p, b) => call(p, { method: "POST", body: JSON.stringify(b) });
+
+let ts = await (await tripCall("/api/trip/settings",
+  { voter: "Emily", name: "London 2026", destination: "London" })).json();
+t5("the trip is trip 1", ts.trip.id === 1 && ts.trip.name === "London 2026");
+t5("its days come from the trips table", ts.trip.days.length === 6);
+t5("there is exactly one trip row", db.prepare("SELECT COUNT(*) AS n FROM trips").get().n === 1);
+
+let mm = await (await tripCall("/api/trip/member/add", { voter: "Emily", name: "Roswitha" })).json();
+t5("a member can be added", mm.members.some(m => m.name === "Roswitha"));
+mm = await (await tripCall("/api/trip/member/add",
+  { voter: "Emily", name: "roswitha", note: "arrives late" })).json();
+t5("adding the same name again updates rather than duplicates",
+   mm.members.filter(m => m.key === "roswitha").length === 1 &&
+   mm.members.find(m => m.key === "roswitha").note === "arrives late");
+
+const tvOut = await (await tripCall("/api/trip/travel",
+  { voter: "Emily", direction: "out", carrier: "BA2865", date: "2026-09-11" })).json();
+t5("the journey out is recorded", tvOut.travel.find(x => x.direction === "out")?.carrier === "BA2865");
+
+t5("every vote belongs to trip 1",
+   db.prepare("SELECT COUNT(*) AS n FROM votes WHERE trip_id <> 1").get().n === 0);
+t5("so does every added sight, comment, booking, plan entry, note, member and journey",
+   ["custom_sights", "comments", "booking_status", "plan_entries", "plan_notes",
+    "trip_members", "trip_travel"].every(tb =>
+     db.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE trip_id <> 1`).get().n === 0));
+
+// A second trip may have a member of the same name and its own journeys —
+// the two keys that used to be global are per trip now.
+db.prepare("INSERT INTO trips (id, name, created_at) VALUES (2, 'Rome', 0)").run();
+let separate = true;
+try {
+  db.prepare(`INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at)
+              VALUES ('m-rome', 2, 'Roswitha', 'roswitha', 'Emily', 0)`).run();
+  db.prepare(`INSERT INTO trip_travel (trip_id, direction, set_by, updated_at)
+              VALUES (2, 'out', 'Emily', 0)`).run();
+} catch { separate = false; }
+t5("a second trip can have the same member name and its own journey", separate);
+
+const snap2 = await (await call("/api/sights")).json();
+t5("and trip 1 does not see trip 2's rows",
+   !snap2.members.some(m => m.id === "m-rome") &&
+   snap2.travel.filter(x => x.direction === "out").length === 1);
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);
