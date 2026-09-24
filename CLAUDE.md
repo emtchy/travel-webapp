@@ -39,7 +39,7 @@ npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a 
 npm test                # 277 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
-npm run deploy          # only when asked; a push to main also deploys
+npm run deploy          # only when asked — a push to main does NOT deploy
 ```
 
 ## API
@@ -66,9 +66,10 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
 - **No build step, no runtime dependencies.** Plain HTML pages import
   `/shell.js` and link `/app.css`. New UI uses the classes in `app.css` before
   inventing page-specific ones; a colour must mean what the colour concept says.
-- **Never deploy or touch the remote database unprompted.** A push to `main`
-  deploys. `npm run migrate:remote`, `npm run db:remote` and `npm run deploy`
-  run only when asked.
+- **Never deploy or touch the remote database unprompted.** No build is
+  connected to the repo, so a push to `main` changes nothing live; only
+  `npm run deploy` does, and it, `npm run migrate:remote` and `npm run db:remote`
+  run only when asked. Live: https://travel-webapp.emily-gombocz.workers.dev
 - **Commits in Emily's name only.** No co-author trailers.
 - **Schema changes are numbered migrations** in `scripts/`, additive, applied
   locally first. `CREATE TABLE IF NOT EXISTS` cannot add a column.
