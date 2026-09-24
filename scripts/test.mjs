@@ -2,10 +2,14 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import worker from "../src/worker.js";
 
+import { splitStatements } from "./sql-split.mjs";
+
 const db = new DatabaseSync(":memory:");
-const sql = readFileSync(new URL("../schema.sql", import.meta.url), "utf8")
-  .replace(/--[^\n]*/g, "");
-for (const stmt of sql.split(";")) if (stmt.trim()) db.exec(stmt + ";");
+// A fresh database, plus the London places the way `npm run migrate` would
+// import them — so the tests see the same trip 1 the live database has.
+for (const file of ["../schema.sql", "./migrate-009-london-items.sql"])
+  for (const stmt of splitStatements(readFileSync(new URL(file, import.meta.url), "utf8")))
+    db.exec(stmt + ";");
 // Minimal D1 shim over node:sqlite
 const DB = {
   prepare(sql) {
@@ -955,6 +959,49 @@ const snap2 = await (await call("/api/sights")).json();
 t5("and trip 1 does not see trip 2's rows",
    !snap2.members.some(m => m.id === "m-rome") &&
    snap2.travel.filter(x => x.direction === "out").length === 1);
+
+// --- Phase 1, step 2: one items table, whoever the place came from
+{
+  const snap = await (await call("/api/sights")).json();
+  const rows = (src) => db.prepare("SELECT COUNT(*) AS n FROM items WHERE source = ? AND trip_id = 1").get(src).n;
+  t5("the built-ins are rows in items, not a file", rows("builtin") === 55);
+  t5("and the API serves them from there", snap.sights.length === rows("builtin"));
+  t5("every added place is a row in the same table", rows("added") === snap.custom.length);
+  t5("nothing is read from custom_sights any more",
+     db.prepare("SELECT COUNT(*) AS n FROM custom_sights").get().n === 0);
+
+  const globe = snap.sights.find(x => x.id === "shakespeares-globe");
+  t5("a summary with a semicolon in it survived the import", /;/.test(globe?.summary ?? ""));
+  t5("the built-in shape is unchanged on the wire",
+     ["rank", "tier", "categories", "openOn", "flags", "wiki", "name_de", "priceLabel_de", "lat", "lon"]
+       .every(k => k in snap.sights[0]) && Array.isArray(snap.sights[0].openOn));
+  t5("the order is the list order", snap.sights[0].rank === 1 && snap.sights.at(-1).rank === 55);
+
+  const added = (await (await add({ voter: "Maya", name: "Sky Pod", costs: true, priceLabel: "£8" })).json());
+  const mine = added.custom.find(c => c.name === "Sky Pod");
+  const row = db.prepare("SELECT source, cost, price_label, trip_id FROM items WHERE id = ?").get(mine.id);
+  t5("an added place lands in items as 'added' on this trip",
+     row?.source === "added" && row.trip_id === 1);
+  t5("'costs something' is stored as cost = paid", row?.cost === "paid" && mine.costs === true);
+
+  const cheaper = await (await call("/api/sights/edit", { method: "POST",
+    body: JSON.stringify({ voter: "Maya", id: mine.id, costs: false, bookingRequired: true }) })).json();
+  const edited = cheaper.custom.find(c => c.id === mine.id);
+  t5("editing it back to free clears the price",
+     edited.costs === false && edited.priceLabel === null && edited.bookingRequired === true &&
+     db.prepare("SELECT cost FROM items WHERE id = ?").get(mine.id).cost === "free");
+
+  t5("a built-in still cannot be edited as if it were added",
+     (await call("/api/sights/edit", { method: "POST",
+        body: JSON.stringify({ voter: "Maya", id: "tower-of-london", costs: true, bookingRequired: false }) })).status === 400);
+
+  const gone = await (await del({ voter: "Maya", id: mine.id })).json();
+  t5("removing it deletes the items row",
+     !gone.custom.some(c => c.id === mine.id) &&
+     db.prepare("SELECT COUNT(*) AS n FROM items WHERE id = ?").get(mine.id).n === 0);
+  t5("the built-ins are untouched by that",
+     db.prepare("SELECT COUNT(*) AS n FROM items WHERE source = 'builtin'").get().n === 55);
+}
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

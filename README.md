@@ -18,7 +18,8 @@ public/app.css         the design system every page shares: tokens, colours, com
 public/shell.js        the shared shell: nav and tab bar, name field, language, status toast
 public/route.js        builds the Google and Apple Maps links
 src/worker.js          the API, and the static-file fallthrough
-src/sights.js          the 55 sights (generated; edit freely)
+src/sights.js          the London template: the 55 places a fresh database is seeded with
+scripts/build-items-seed.mjs   turns that template into migration 009
 src/maplink.js         reads coordinates out of a pasted maps link
 schema.sql             the schema for a fresh database; existing ones use the migrations
 wrangler.toml          config — you paste your database id here
@@ -367,29 +368,27 @@ entries get a plain coloured strip instead — no photo needed.
 
 ## Editing the list
 
-`src/sights.js` is a plain array. Add, remove or reword freely:
+Every place — the 55 that came with the London trip and everything the group
+added — is a row in the `items` table, and the database is what the app shows.
+The 55 were imported once by `scripts/migrate-009-london-items.sql`, keeping
+their ids, so every vote carried straight over.
 
-```js
-{
-  id: "tower-of-london",      // the vote key — changing it resets that row's votes
-  rank: 1,
-  name: "Tower of London",
-  summary: "Nine hundred years of Norman keep…",
-  area: "Tower Hill",
-  station: "Tower Hill",
-  cost: "paid",               // "free" | "free-limited" | "paid" | "mixed"
-  priceLabel: "£37",
-  bookingRequired: true,      // shows on /bookings even when it is free
-  url: "https://www.hrp.org.uk/tower-of-london/",
-  wiki: "Tower of London",    // Wikipedia article title, for the photo
-}
+`src/sights.js` is now the **template** that import came from. Editing it does
+not change a database that has already imported the places; it changes what a
+*fresh* database is seeded with. To update the template, edit the array and
+regenerate the migration:
+
+```bash
+node scripts/build-items-seed.mjs     # rewrites scripts/migrate-009-london-items.sql
 ```
 
-Redeploy with `npm run deploy`. Votes are keyed on `id`, so keep ids stable and
-old votes survive any amount of rewording.
+The migration is `INSERT OR IGNORE`, so re-running it against a database that
+already has the places leaves every row exactly as it is — a correction someone
+made in the app is never overwritten by the template.
 
-To regenerate the file from the trip dataset, re-run the generator against
-`london-trip-2026.json`.
+To change a place on the live trip, change the row. There is no page for that
+yet; `npx wrangler d1 execute london-votes --remote --command "UPDATE items …"`
+does it, keyed on `id`. Ids are the vote key: never change one.
 
 ## The API
 

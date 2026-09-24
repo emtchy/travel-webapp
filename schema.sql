@@ -43,7 +43,45 @@ CREATE INDEX IF NOT EXISTS idx_votes_sight ON votes (sight_id);
 CREATE INDEX IF NOT EXISTS idx_votes_voter ON votes (voter_key);
 CREATE INDEX IF NOT EXISTS idx_votes_trip  ON votes (trip_id);
 
--- Sights people add themselves. Name is required, link and description optional.
+-- Every place on a trip, wherever it came from. `source` is 'builtin' for a
+-- place imported from a template (the London list, migration 009) and 'added'
+-- for one somebody typed in. The id is the vote key and never changes.
+CREATE TABLE IF NOT EXISTS items (
+  id               TEXT    PRIMARY KEY,   -- built-in slug, or "custom-<uuid>"
+  trip_id          INTEGER NOT NULL DEFAULT 1,
+  source           TEXT    NOT NULL DEFAULT 'added'
+                           CHECK (source IN ('builtin', 'added')),
+  rank             INTEGER,               -- built-ins: their place in the list
+  tier             TEXT,
+  name             TEXT    NOT NULL,
+  name_de          TEXT,
+  summary          TEXT,
+  summary_de       TEXT,
+  categories       TEXT,                  -- JSON array
+  area             TEXT,
+  station          TEXT,
+  cost             TEXT    NOT NULL DEFAULT 'free'
+                           CHECK (cost IN ('free', 'free-limited', 'paid', 'mixed')),
+  price_label      TEXT,
+  price_label_de   TEXT,
+  open_on          TEXT,                  -- JSON array of weekdays
+  booking_required INTEGER NOT NULL DEFAULT 0,
+  flags            TEXT,                  -- JSON array
+  url              TEXT,
+  wiki             TEXT,                  -- Wikipedia title, for the photo
+  address          TEXT,                  -- without lat/lon it is left out of routes
+  lat              REAL,
+  lon              REAL,
+  added_by         TEXT    NOT NULL,      -- as typed; 'setup' for an import
+  added_by_key     TEXT    NOT NULL,      -- lowercased; only they can remove an added one
+  created_at       INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_items_trip ON items (trip_id, source, rank, created_at);
+
+-- Superseded by `items` (migration 008 copied it across). Kept so a database
+-- built from this file matches one brought forward by the migrations; a later
+-- migration drops it from both.
 CREATE TABLE IF NOT EXISTS custom_sights (
   id           TEXT    PRIMARY KEY,   -- "custom-<uuid>"
   name         TEXT    NOT NULL,
@@ -186,7 +224,10 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-004-note-address.sql', 0),
   ('migrate-005-trip-base.sql', 0),
   ('migrate-006-trip.sql', 0),
-  ('migrate-007-trips.sql', 0);
+  ('migrate-007-trips.sql', 0),
+  ('migrate-008-items.sql', 0);
+-- 009, the London places, is deliberately not recorded: `npm run migrate` on
+-- a fresh database imports them, so trip 1 is the London trip there too.
 
 -- The first trip. Seeded here as well as by the migrations, so a database
 -- built fresh from this file and one brought forward end up identical.

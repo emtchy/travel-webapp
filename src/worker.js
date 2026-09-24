@@ -1,4 +1,3 @@
-import { SIGHTS } from "./sights.js";
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 
 /* ------------------------------------------------------------------ utils */
@@ -12,8 +11,6 @@ const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
 
 const bad = (message, status = 400) => json({ error: message }, status);
-
-const BUILT_IN_IDS = new Set(SIGHTS.map((s) => s.id));
 
 /**
  * Which trip a request is about. One trip for now — Phase 1 step 3 reads it
@@ -154,28 +151,82 @@ async function getVotes(env, trip) {
   return byId;
 }
 
-async function getCustom(env, trip) {
-  const { results } = await env.DB.prepare(
-    `SELECT id, name, summary, url, added_by, created_at,
-            costs, price_label, booking_required, address, lat, lon
-       FROM custom_sights WHERE trip_id = ?1 ORDER BY created_at ASC`
-  ).bind(trip).all();
+/* ---- places ----
+ * One table, two shapes on the wire. A built-in place carries the fields the
+ * London template had (rank, German text, opening days); an added one carries
+ * who added it and whether it costs anything. The pages tell them apart by
+ * `custom`, as they always did, so the API's shape did not change when the
+ * storage did.
+ */
 
-  return (results ?? []).map((row) => ({
+const parseList = (text) => {
+  try { const v = JSON.parse(text ?? "[]"); return Array.isArray(v) ? v : []; }
+  catch { return []; }
+};
+
+const ITEM_COLUMNS = `id, source, rank, tier, name, name_de, summary, summary_de,
+  categories, area, station, cost, price_label, price_label_de, open_on,
+  booking_required, flags, url, wiki, address, lat, lon, added_by, created_at`;
+
+function builtinOf(row) {
+  return {
+    id: row.id,
+    rank: row.rank,
+    tier: row.tier,
+    name: row.name,
+    categories: parseList(row.categories),
+    summary: row.summary,
+    area: row.area,
+    station: row.station,
+    cost: row.cost,
+    priceLabel: row.price_label,
+    openOn: parseList(row.open_on),
+    bookingRequired: !!row.booking_required,
+    flags: parseList(row.flags),
+    url: row.url,
+    wiki: row.wiki,
+    name_de: row.name_de,
+    summary_de: row.summary_de,
+    priceLabel_de: row.price_label_de,
+    lat: row.lat,
+    lon: row.lon,
+  };
+}
+
+function addedOf(row) {
+  return {
     id: row.id,
     name: row.name,
     summary: row.summary,
     url: row.url,
     addedBy: row.added_by,
     createdAt: row.created_at,
-    costs: !!row.costs,
+    costs: row.cost !== "free",
     priceLabel: row.price_label,
     bookingRequired: !!row.booking_required,
     address: row.address,
     lat: row.lat,
     lon: row.lon,
     custom: true,
-  }));
+  };
+}
+
+/** The trip's built-in places, in list order. */
+async function getSights(env, trip) {
+  const { results } = await env.DB.prepare(
+    `SELECT ${ITEM_COLUMNS} FROM items
+      WHERE trip_id = ?1 AND source = 'builtin' ORDER BY rank ASC, name ASC`
+  ).bind(trip).all();
+  return (results ?? []).map(builtinOf);
+}
+
+/** The places people added, oldest first. */
+async function getCustom(env, trip) {
+  const { results } = await env.DB.prepare(
+    `SELECT ${ITEM_COLUMNS} FROM items
+      WHERE trip_id = ?1 AND source = 'added' ORDER BY created_at ASC`
+  ).bind(trip).all();
+  return (results ?? []).map(addedOf);
 }
 
 /**
@@ -199,10 +250,9 @@ async function getBookingStatus(env, trip) {
   }));
 }
 
-async function isKnownSight(env, id) {
-  if (BUILT_IN_IDS.has(id)) return true;
-  const row = await env.DB.prepare("SELECT 1 FROM custom_sights WHERE id = ?1")
-    .bind(id)
+async function isKnownSight(env, id, trip) {
+  const row = await env.DB.prepare("SELECT 1 FROM items WHERE id = ?1 AND trip_id = ?2")
+    .bind(id, trip)
     .first();
   return !!row;
 }
@@ -252,7 +302,7 @@ async function handleVote(request, env, trip) {
   const name = cleanName(body?.voter);
 
   if (!name) return bad("Enter a name between 1 and 32 characters.");
-  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
     return bad("Unknown sight.");
   if (typeof wanted !== "boolean") return bad("`wanted` must be true or false.");
 
@@ -304,12 +354,12 @@ async function handleAddSight(request, env, trip) {
   if (priceLabel === undefined) return bad("Keep the price under 40 characters.");
 
   const { count } = await env.DB.prepare(
-    "SELECT COUNT(*) AS count FROM custom_sights WHERE trip_id = ?1"
+    "SELECT COUNT(*) AS count FROM items WHERE trip_id = ?1 AND source = 'added'"
   ).bind(trip).first();
   if (count >= 100) return bad("That's 100 added sights — plenty. Remove some first.");
 
   const duplicate = await env.DB.prepare(
-    "SELECT 1 FROM custom_sights WHERE lower(name) = lower(?1) AND trip_id = ?2"
+    "SELECT 1 FROM items WHERE lower(name) = lower(?1) AND trip_id = ?2"
   )
     .bind(name, trip)
     .first();
@@ -318,12 +368,12 @@ async function handleAddSight(request, env, trip) {
   const id = `custom-${crypto.randomUUID()}`;
 
   await env.DB.prepare(
-    `INSERT INTO custom_sights (id, name, summary, url, added_by, added_by_key,
-                                created_at, costs, price_label, booking_required, trip_id)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
+    `INSERT INTO items (id, source, name, summary, url, added_by, added_by_key,
+                        created_at, cost, price_label, booking_required, trip_id)
+     VALUES (?1, 'added', ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)`
   )
     .bind(id, name, summary, url, addedBy, voterKey(addedBy), Date.now(),
-          costs ? 1 : 0, priceLabel, bookingRequired ? 1 : 0, trip)
+          costs ? "paid" : "free", priceLabel, bookingRequired ? 1 : 0, trip)
     .run();
 
   // Adding something counts as wanting it.
@@ -362,19 +412,20 @@ async function handleEditSight(request, env, trip) {
   if (typeof bookingRequired !== "boolean")
     return bad("`bookingRequired` must be true or false.");
 
-  const row = await env.DB.prepare("SELECT 1 FROM custom_sights WHERE id = ?1")
-    .bind(id).first();
+  const row = await env.DB.prepare(
+    "SELECT 1 FROM items WHERE id = ?1 AND trip_id = ?2 AND source = 'added'"
+  ).bind(id, trip).first();
   if (!row) return bad("That sight is already gone.", 404);
 
   const priceLabel = cleanText(body?.priceLabel, 40);
   if (priceLabel === undefined) return bad("Keep the price under 40 characters.");
 
   await env.DB.prepare(
-    `UPDATE custom_sights
-        SET costs = ?1, price_label = ?2, booking_required = ?3
-      WHERE id = ?4`
+    `UPDATE items
+        SET cost = ?1, price_label = ?2, booking_required = ?3
+      WHERE id = ?4 AND trip_id = ?5`
   )
-    .bind(costs ? 1 : 0, costs ? priceLabel : null, bookingRequired ? 1 : 0, id)
+    .bind(costs ? "paid" : "free", costs ? priceLabel : null, bookingRequired ? 1 : 0, id, trip)
     .run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -470,8 +521,8 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
     const { id, lat, lon } = body ?? {};
     if (typeof id !== "string" || !id.startsWith(prefix)) return bad(wrongKind);
 
-    const row = await env.DB.prepare(`SELECT 1 FROM ${table} WHERE id = ?1`)
-      .bind(id).first();
+    const row = await env.DB.prepare(`SELECT 1 FROM ${table} WHERE id = ?1 AND trip_id = ?2`)
+      .bind(id, trip).first();
     if (!row) return bad(missing, 404);
 
     const address = cleanText(body?.address, 200);
@@ -488,9 +539,9 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
     }
 
     await env.DB.prepare(
-      `UPDATE ${table} SET address = ?1, lat = ?2, lon = ?3 WHERE id = ?4`
+      `UPDATE ${table} SET address = ?1, lat = ?2, lon = ?3 WHERE id = ?4 AND trip_id = ?5`
     )
-      .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id)
+      .bind(clearing ? null : address, clearing ? null : lat, clearing ? null : lon, id, trip)
       .run();
 
     return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -498,7 +549,7 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
 }
 
 const handleSightAddress = makeAddressHandler({
-  table: "custom_sights", prefix: "custom-",
+  table: "items", prefix: "custom-",
   missing: "That sight is already gone.",
   wrongKind: "Only added sights need an address filling in.",
 });
@@ -524,9 +575,9 @@ async function handleDeleteSight(request, env, trip) {
     return bad("Only added sights can be removed.");
 
   const row = await env.DB.prepare(
-    "SELECT added_by_key FROM custom_sights WHERE id = ?1"
+    "SELECT added_by_key FROM items WHERE id = ?1 AND trip_id = ?2 AND source = 'added'"
   )
-    .bind(id)
+    .bind(id, trip)
     .first();
   if (!row) return bad("That sight is already gone.", 404);
   if (row.added_by_key !== voterKey(name))
@@ -536,7 +587,7 @@ async function handleDeleteSight(request, env, trip) {
   await env.DB.prepare("DELETE FROM comments WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM booking_status WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1").bind(id).run();
-  await env.DB.prepare("DELETE FROM custom_sights WHERE id = ?1").bind(id).run();
+  await env.DB.prepare("DELETE FROM items WHERE id = ?1 AND trip_id = ?2").bind(id, trip).run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
 }
@@ -553,7 +604,7 @@ async function handleAddComment(request, env, trip) {
   if (!author) return bad("Enter your name first.");
 
   const { sightId } = body ?? {};
-  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
     return bad("Unknown sight.");
 
   const text = cleanText(body?.body, 500);
@@ -639,7 +690,7 @@ async function handleBookingStatus(request, env, trip) {
   if (!name) return bad("Enter your name first.");
 
   const { sightId, status } = body ?? {};
-  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
     return bad("Unknown sight.");
   if (status !== null && status !== "booked" && status !== "skipped")
     return bad("Status must be booked, skipped, or null.");
@@ -1119,7 +1170,7 @@ async function handlePlanSet(request, env, trip) {
   if (!name) return bad("Enter your name first.");
 
   const { sightId, day } = body ?? {};
-  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId)))
+  if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
     return bad("Unknown sight.");
   if (typeof day !== "string" || !(await getTrip(env, trip)).days.includes(day))
     return bad("That date isn't a day of this trip.");
@@ -1185,7 +1236,7 @@ export default {
     const trip = tripOf(url);
 
     if (pathname === "/api/sights" && method === "GET")
-      return json({ sights: SIGHTS, ...(await snapshot(env, trip)) });
+      return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)) });
 
     if (pathname === "/api/state" && method === "GET")
       return json(await snapshot(env, trip));

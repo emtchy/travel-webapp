@@ -25,7 +25,8 @@ public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, name, language, toast, api(), maps preference
 public/route.js       Google / Apple Maps links for a day or a stop
 src/worker.js         the API and the static-asset fallthrough
-src/sights.js         the 55 London built-ins (bilingual) — becomes a template in Phase 1
+src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
+                      (places live in the `items` table — this file is not read at runtime)
 src/maplink.js        coordinates out of a pasted maps link
 schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql
 scripts/migrate.mjs   applies every migration, skipping done ones
@@ -73,7 +74,8 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
 - **Commits in Emily's name only.** No co-author trailers.
 - **Schema changes are numbered migrations** in `scripts/`, additive, applied
   locally first. `CREATE TABLE IF NOT EXISTS` cannot add a column.
-- **Sight ids are the vote key.** Changing an id resets that row's votes.
+- **Place ids are the vote key.** Changing an id resets that row's votes. Places
+  are rows in `items` (`source` = builtin | added); nothing reads `sights.js` live.
 - **Bind D1 parameters by number.** `?1`, `?2` are positional *by number*.
   Keep them ascending anyway.
 - **A place may have no location.** `hasPlace()` guards every route.

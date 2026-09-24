@@ -27,6 +27,7 @@
 import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { promisify } from "node:util";
+import { splitStatements } from "./sql-split.mjs";
 
 const run = promisify(execFile);
 const DIR = new URL("./", import.meta.url);
@@ -45,6 +46,7 @@ const PROOF = {
   "migrate-005-trip-base.sql":      "SELECT base_lat FROM trip_settings LIMIT 0",
   "migrate-006-trip.sql":           "SELECT 1 FROM trip_travel LIMIT 0",
   "migrate-007-trips.sql":          "SELECT trip_id FROM trip_travel LIMIT 0",
+  // 008 onwards only ever meet a database that already tracks itself.
 };
 
 const kindOf = (sql) =>
@@ -137,13 +139,9 @@ for (const file of files) {
     continue;
   }
 
-  const sql = await readFile(new URL(file, DIR), "utf8");
-  // Strip comments so a semicolon inside one can't split a statement.
-  const statements = sql
-    .replace(/--[^\n]*/g, "")
-    .split(";")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  // Split with a proper walk, not on every semicolon: a place's summary can
+  // contain one, and a URL is a hyphen away from looking like a comment.
+  const statements = splitStatements(await readFile(new URL(file, DIR), "utf8"));
 
   const results = [];
   for (const statement of statements) {

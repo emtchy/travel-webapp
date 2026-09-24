@@ -81,11 +81,13 @@ the live database, each with a migration and a test.
       per trip. Every query is scoped; `tripOf()` answers 1 until step 3. No UI
       change. Migration 007. `trip_settings` is left in place, unread, until a
       later migration drops it.
-- [ ] **Step 2 — one `items` table.** Built-ins and added sights become rows:
-      `(id, trip_id, name, summary, url, area, station, cost, price_label,
-      booking_required, address, lat, lon, added_by, source)`. The London 55
-      are imported keeping their ids, so **no vote is lost**. `src/sights.js`
-      stops being read at runtime and becomes the template file. Migration 008.
+- [x] **Step 2 — one `items` table.** *(2026-09-24)* Built-ins and added places
+      are rows in `items` with a `source` column. Migration 008 creates the
+      table and copies `custom_sights`; migration 009, generated from
+      `src/sights.js` by `scripts/build-items-seed.mjs`, imports the London 55
+      keeping their ids, so **no vote was lost**. The worker no longer imports
+      `sights.js`; the API's shape is unchanged, so no page changed.
+      `custom_sights` stays in place, unread, like `trip_settings`.
 - [ ] **Step 3 — the API is trip-scoped.** Every endpoint takes the trip from
       the URL (`/api/t/<trip>/…`), with the old paths kept as aliases for
       trip 1 until the pages move. `snapshot()` returns one trip.
@@ -217,6 +219,26 @@ belong to trip 1), so tables keyed on them keep their one-column keys and get
 `trip_id` as a column rather than part of the key. Only the two keys that were
 genuinely per trip — member name, journey direction — were rebuilt. Less
 churn, and the vote key — the thing that must never change — is untouched.
+
+**2026-09-24 — The template is imported, not read.**
+The London places could have stayed in `sights.js` with the database holding
+only what the group added. They are rows now because the product is a builder:
+a trip's places are the trip's data, editable in the app one day, and nothing
+about London belongs in the Worker. `sights.js` remains as the seed a fresh
+database gets and as a future "London" template. Consequence: editing the file
+no longer changes the live trip; the rows do.
+
+**2026-09-24 — One API shape, two sources.**
+`/api/sights` still answers `sights` (built-ins) and `custom` (added), read
+from the same table by `source`. Keeping the wire format let the storage move
+without touching a page; merging the two card designs is a UI decision for
+later and should not be forced by a schema change.
+
+**2026-09-24 — Migrations are split by a real SQL walk.**
+The runner split files on every semicolon and stripped everything after `--`,
+which would have cut a place's summary in half. `scripts/sql-split.mjs` walks
+the text and honours string literals and comments; the runner and the test
+harness both use it.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
