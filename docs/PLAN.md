@@ -166,10 +166,36 @@ is, show it, and offer the way in.
       and last day. The creator's account becomes the trip's owner as their
       display name. Optionally start from a template: the London 55 when the
       destination is London, the example's places otherwise. `POST
-      /api/trips`, `GET /api/trips` (mine).
-- [ ] **Step 13 — leave and delete.** A member can leave a trip; the owner
-      can delete one (everything under it goes; asks twice). Drops the two
-      unread tables `trip_settings` and `custom_sights` in the same migration.
+      /api/trips`, `GET /api/trips` (mine). Small, and it is what makes step
+      13 testable: until it exists nobody has two trips.
+- [ ] **Step 13 — your trips, organised.** *Proposed 2026-09-25, under
+      discussion — see §7.* Once a person has more than one trip, "Your trips"
+      stops being a list and becomes a home:
+
+      - **Now, or next.** One trip at the top, large. If a trip's dates
+        include today it is *current*: "Saturday · day 3 of 6", today's stops
+        from the plan with their times, Open in Maps and the day's route,
+        and a jump to the Plan. Otherwise the nearest future trip is *next*:
+        "in 23 days", and what still needs doing — places still to book,
+        places with votes that are not on a day yet, open invitations (for
+        the owner) — each a link into the right page.
+      - **Upcoming.** The other future trips, compact: name, dates, days,
+        your role. Trips with no dates yet sit here first, marked "no dates
+        yet", because they are the ones being planned.
+      - **Past.** Everything whose last day has passed, grouped by year,
+        collapsed. Still fully usable — people add notes and photos after a
+        trip — just out of the way. Derived from the dates; nothing to
+        maintain.
+      - **New trip** as a button beside the heading, and the examples only
+        for someone with no trips of their own (otherwise a small link).
+
+      Derived entirely from dates and the existing tables; no new state
+      unless a trip can be *cancelled* (a trip that never happened should
+      not sit in Past as if it did) — that would be one `status` column.
+- [ ] **Step 14 — leave, delete, cancel.** A member can leave a trip; the
+      owner can delete one (everything under it goes; asks twice) or mark it
+      cancelled. Drops the two unread tables `trip_settings` and
+      `custom_sights` in the same migration.
 
 ### Phase 4 — public hardening
 
@@ -422,4 +448,27 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 ---
 
 ## 7. Open questions
+
+**Step 13 — your trips, organised** *(2026-09-25, to settle before building)*
+
+- **What is "current" and "next"?** Proposed: by dates, automatically — a
+  trip that includes today is current; else the nearest future one is next.
+  Alternative: a manual pin ("show this one first"). Dates need no tending
+  and are right almost always; a pin could come later if a case turns up.
+- **What does the top card show?** Proposed: for a current trip, today's
+  plan; for a next trip, a countdown and three "still to do" numbers with
+  links. Alternative: just name, dates and a button, and let the trip's own
+  pages do the talking.
+- **Past trips: derived or explicit?** Proposed: derived from the end date,
+  grouped by year, collapsed, fully usable. Alternative: an explicit
+  "archive" action. Derived means nothing to forget; explicit means a trip
+  can be put away early or kept out on purpose.
+- **Cancelled trips.** A trip that was planned and never happened: hide it
+  (a `status` column, set by the owner) or let it fall into Past? Proposed:
+  a cancelled status, set from Details, shown under Past with a label.
+- **Trips without dates.** Where do they go? Proposed: top of Upcoming,
+  marked "no dates yet".
+- **Switching between trips from inside one.** Proposed: nothing new — the
+  brand goes home and home has the list. A switcher in the bar can wait for
+  someone who actually has five trips.
 
