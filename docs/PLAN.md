@@ -162,12 +162,16 @@ is, show it, and offer the way in.
       OpenStreetMap, three placeholder people, votes, a comment or two, one
       booking, a two-day plan and two entries of their own. Trip 2; ids
       prefixed `ams-`. London stays private.
-- [ ] **Step 12 — new trip.** From the front page: name, destination, first
-      and last day. The creator's account becomes the trip's owner as their
-      display name. Optionally start from a template: the London 55 when the
-      destination is London, the example's places otherwise. `POST
-      /api/trips`, `GET /api/trips` (mine). Small, and it is what makes step
-      13 testable: until it exists nobody has two trips.
+- [x] **Step 12 — new trip.** *(2026-09-25)* "New trip" on the front page
+      opens a sheet: name, destination, optional first and last day. The
+      creator's account becomes the owner under its display name, and the
+      page lands on the trip's Details. When the destination matches a
+      template it is offered: the London list (`src/templates.js`, from
+      `sights.js`) is copied in as the new trip's own rows with ids
+      `<slug>-t<trip>`, so votes never touch the original. The example's
+      places are not a template — they are Amsterdam-specific. A new trip
+      biases address lookups nowhere until it has a hotel; the London
+      fallback is gone. `POST /api/trips`, `GET /api/templates`.
 - [ ] **Step 13 — your trips, organised.** *Settled 2026-09-25; see §7.* Once a person has more than one trip, "Your trips"
       stops being a list and becomes a home:
 
@@ -423,6 +427,14 @@ which is `actor()` with one fallback for a public trip, and every write still
 goes through `actor()`. So the example can be looked at by the whole world and
 changed by nobody who is not on it. The example is seeded as data, not
 special-cased in code: it is a trip like any other that happens to be public.
+
+**2026-09-25 — A template is copied, not shared.**
+The London list could have been referenced by many trips. It is copied
+instead — 55 rows per trip that wants it — because a trip's places are its
+own: the group edits, removes and votes on them, and none of that may leak
+across trips. Ids get the trip's number appended, which keeps the vote key
+unique without a composite key anywhere. `sights.js` is exactly the file for
+this: it is the template, and nothing reads it at runtime except templating.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

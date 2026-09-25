@@ -2,6 +2,7 @@ import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
 import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
+import { TEMPLATES, ITEM_COLUMNS as TEMPLATE_COLUMNS, templatesFor } from "./templates.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -89,6 +90,67 @@ async function handleTripList(request, env) {
   });
 }
 
+/**
+ * POST /api/trips  { name, destination?, startDate?, endDate?, template? }
+ *
+ * Makes the trip and puts the signed-in account on it as its owner, under
+ * the account's display name. A template copies a ready-made list of places
+ * in as the trip's own rows. Answers with the new trip's id; the page goes
+ * to its Details.
+ */
+async function handleTripCreate(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+
+  const name = cleanText(body?.name, 80);
+  if (name === undefined) return bad("Keep the trip name under 80 characters.");
+  if (!name) return bad("Give the trip a name.");
+  const destination = cleanText(body?.destination, 80);
+  if (destination === undefined) return bad("Keep the destination under 80 characters.");
+
+  const { startDate, endDate } = body ?? {};
+  for (const [label, v] of [["first", startDate], ["last", endDate]])
+    if (v != null && v !== "" && !isDate(v)) return bad(`The ${label} day should look like 2027-03-13.`);
+  const start = startDate || null, end = endDate || null;
+  if ((start && !end) || (!start && end)) return bad("Give both a first and a last day, or neither.");
+  if (start && end && end < start) return bad("The trip can't end before it starts.");
+  if (start && end && daysBetween(start, end).length > 60)
+    return bad("That's more than sixty days. Split it into separate trips.");
+
+  const template = body?.template ? TEMPLATES.find((t) => t.key === body.template) : null;
+  if (body?.template && !template) return bad("Unknown template.");
+
+  const { count } = await env.DB.prepare(
+    "SELECT COUNT(*) AS count FROM trip_members WHERE user_id = ?1 AND role = 'owner'"
+  ).bind(user.id).first();
+  if (count >= 30) return bad("Thirty trips of your own is plenty. Delete one first.");
+
+  const now = Date.now();
+  const row = await env.DB.prepare(
+    `INSERT INTO trips (name, destination, start_date, end_date, set_by, updated_at, created_at, visibility)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, 'private') RETURNING id`
+  ).bind(name, destination, start, end, user.displayName, now, now).first();
+  const id = row.id;
+
+  const memberName = cleanName(user.displayName) || "Owner";
+  await env.DB.prepare(
+    `INSERT INTO trip_members (id, trip_id, name, name_key, note, added_by, created_at, user_id, role)
+     VALUES (?1, ?2, ?3, ?4, NULL, ?5, ?6, ?7, 'owner')`
+  ).bind(`m-${crypto.randomUUID()}`, id, memberName, voterKey(memberName), memberName, now, user.id).run();
+
+  if (template) {
+    const marks = TEMPLATE_COLUMNS.map((_, i) => `?${i + 1}`).join(", ");
+    const sql = `INSERT INTO items (${TEMPLATE_COLUMNS.join(", ")}) VALUES (${marks})`;
+    const stmts = template.rows(id, now).map((r) => env.DB.prepare(sql).bind(...r));
+    if (typeof env.DB.batch === "function") await env.DB.batch(stmts);
+    else for (const st of stmts) await st.run();
+  }
+
+  return json({ ok: true, id, trip: await getTrip(env, id) });
+}
+
 /** The public trips, for the front page. */
 async function publicTrips(env) {
   const { results } = await env.DB.prepare(
@@ -163,10 +225,7 @@ async function tripExists(env, trip) {
  * one trip. Everything downstream — which dates are valid, where address
  * lookups look — now follows whatever the Trip page says.
  */
-const FALLBACK_TRIP = {
-  name: "Trip", destination: "", startDate: null, endDate: null,
-  near: { lat: 51.5074, lon: -0.1278 },
-};
+const FALLBACK_TRIP = { name: "Trip", destination: "", startDate: null, endDate: null };
 
 /** Every date from start to end, inclusive. Empty if the dates aren't set. */
 function daysBetween(start, end) {
@@ -208,10 +267,12 @@ async function getTrip(env, trip) {
     // One set_by column covers the whole record, so it belongs here rather
     // than pretending to describe only the hotel.
     setBy: row?.set_by ?? null,
-    near: {
-      lat: row?.near_lat ?? row?.base_lat ?? FALLBACK_TRIP.near.lat,
-      lon: row?.near_lon ?? row?.base_lon ?? FALLBACK_TRIP.near.lon,
-    },
+    // Where address lookups are biased: the hotel once it is set, else what
+    // the trip itself says, else nowhere — a new trip has no reason to look
+    // for its places in London.
+    near: (row?.near_lat ?? row?.base_lat) != null
+      ? { lat: row.near_lat ?? row.base_lat, lon: row.near_lon ?? row.base_lon }
+      : null,
     base: row?.base_lat != null && row?.base_lon != null
       ? { name: row.base_name, lat: row.base_lat, lon: row.base_lon,
           checkIn: row.base_checkin, checkOut: row.base_checkout,
@@ -664,14 +725,14 @@ async function handleGeocode(request, env, trip) {
 
   // A maps link with a name but no coordinates: search for the name, not the URL.
   const term = mapSearchTerm(q) ?? q;
-  const { lat, lon } = (await getTrip(env, trip)).near;
+  const near = (await getTrip(env, trip)).near;
   const d = 0.6; // roughly 60 km, wide enough for a day trip out of town
 
   let results;
   try {
     const res = await fetch(
       "https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=0" +
-      `&viewbox=${lon - d},${lat + d},${lon + d},${lat - d}` +
+      (near ? `&viewbox=${near.lon - d},${near.lat + d},${near.lon + d},${near.lat - d}` : "") +
       `&q=${encodeURIComponent(term)}`,
       { headers: { "user-agent": "travel-webapp/1.0 (group trip planner)" } });
     if (!res.ok) return bad(`The lookup service answered ${res.status}. Try again shortly.`, 502);
@@ -1451,6 +1512,9 @@ export default {
 
     // Accounts, and the list of trips, are not part of any trip.
     if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
+    if (url.pathname === "/api/trips" && method === "POST") return handleTripCreate(request, env);
+    if (url.pathname === "/api/templates" && method === "GET")
+      return json({ templates: templatesFor(url.searchParams.get("destination")) });
     if (url.pathname === "/api/examples" && method === "GET") return json({ examples: await publicTrips(env) });
     if (url.pathname === "/api/auth/request" && method === "POST") return handleAuthRequest(request, env);
     if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);

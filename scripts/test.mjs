@@ -14,6 +14,7 @@ for (const file of ["../schema.sql", "./migrate-009-london-items.sql", "./migrat
   }
 // Minimal D1 shim over node:sqlite
 const DB = {
+  async batch(stmts) { const out = []; for (const st of stmts) out.push(await st.run()); return out; },
   prepare(sql) {
     const s = sql.replace(/\?(\d+)/g, "?");
     let args = [];
@@ -1401,6 +1402,49 @@ t5("and trip 1 does not see trip 2's rows",
   t5("nonsense is refused", (await vis("secret")).status === 400);
   t5("an owner's other settings leave visibility alone",
      (await (await call("/api/trip/settings", { method: "POST", body: JSON.stringify({ name: "London 2026", voter: "Emily" }) })).json()).trip.visibility === "private");
+}
+
+// --- Phase 3, step 12: a new trip
+{
+  const make = (b, h) => raw("/api/trips", { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("creating a trip needs a sign-in", (await make({ name: "x" })).status === 401);
+  const maker = asUser("maker@example.org");
+  db.prepare("UPDATE users SET display_name = 'Mia Maker' WHERE id = 'u-maker@example.org'").run();
+  t5("a name is required", (await make({ name: "  " }, maker)).status === 400);
+  t5("half a date range is refused", (await make({ name: "x", startDate: "2027-05-01" }, maker)).status === 400);
+  t5("an end before the start is refused", (await make({ name: "x", startDate: "2027-05-05", endDate: "2027-05-01" }, maker)).status === 400);
+  t5("a bad date is refused", (await make({ name: "x", startDate: "May 1", endDate: "2027-05-05" }, maker)).status === 400);
+  t5("an unknown template is refused", (await make({ name: "x", template: "mars" }, maker)).status === 400);
+
+  const made = await (await make({ name: " Rome in May ", destination: "Rome", startDate: "2027-05-01", endDate: "2027-05-04" }, maker)).json();
+  t5("a trip is created", made.ok && Number.isInteger(made.id) && made.trip.name === "Rome in May" && made.trip.days.length === 4);
+  t5("private by default", made.trip.visibility === "private");
+  const me = await (await raw(`/api/t/${made.id}/me`, { headers: maker })).json();
+  t5("the creator is its owner, under their display name", me.member?.role === "owner" && me.member.name === "Mia Maker");
+  const listed = await (await raw("/api/trips", { headers: maker })).json();
+  t5("and it is in their list", listed.trips.some(tr => tr.id === made.id && tr.role === "owner"));
+  t5("it starts empty", (await (await raw(`/api/t/${made.id}/sights`, { headers: maker })).json()).sights.length === 0);
+  t5("a lookup on it is not biased to London", (await (await raw(`/api/t/${made.id}/sights`, { headers: maker })).json()).trip.near === null);
+  t5("a stranger cannot see it", (await raw(`/api/t/${made.id}/sights`)).status === 401);
+  const undated = await (await make({ name: "Someday" }, maker)).json();
+  t5("a trip without dates is fine, with no days", undated.ok && undated.trip.days.length === 0 && undated.trip.startDate === null);
+
+  t5("templates are offered by destination",
+     (await (await raw("/api/templates?destination=London%20again")).json()).templates.some(tp => tp.key === "london" && tp.count === 55) &&
+     (await (await raw("/api/templates?destination=Rome")).json()).templates.length === 0);
+  const before = db.prepare("SELECT COUNT(*) AS n FROM items WHERE trip_id = 1").get().n;
+  const ldn = await (await make({ name: "London 2028", destination: "London", template: "london" }, maker)).json();
+  const copy = await (await raw(`/api/t/${ldn.id}/sights`, { headers: maker })).json();
+  t5("the London template copies the 55 places in as the new trip's own",
+     copy.sights.length === 55 && copy.sights[0].id === `tower-of-london-t${ldn.id}` && copy.sights[0].rank === 1 && copy.sights[0].name_de);
+  t5("with their coordinates and photos", copy.sights.every(x => typeof x.lat === "number" && x.wiki));
+  t5("the original London trip is untouched", db.prepare("SELECT COUNT(*) AS n FROM items WHERE trip_id = 1").get().n === before);
+  const v = await (await raw(`/api/t/${ldn.id}/vote`, { method: "POST", headers: maker,
+    body: JSON.stringify({ sightId: `tower-of-london-t${ldn.id}`, wanted: true }) })).json();
+  t5("votes on the copy stay on the copy", v.votes[`tower-of-london-t${ldn.id}`]?.includes("Mia Maker") &&
+     !db.prepare("SELECT 1 FROM votes WHERE sight_id = 'tower-of-london' AND voter_key = 'mia maker'").get());
+  t5("the original's id is not valid on the copy",
+     (await raw(`/api/t/${ldn.id}/vote`, { method: "POST", headers: maker, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 400);
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

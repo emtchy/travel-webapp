@@ -71,6 +71,15 @@ not on the trip sees only "This trip is private" and a Sign in button.
 There is no typed name any more: everything you do is recorded under your
 name on the trip, which the server takes from your session.
 
+## Your own trip
+
+**New trip** on the front page asks for a name, a destination and, if you
+know them, the first and last day. You become the trip's owner and land on
+its Details page, ready to invite people. If the destination is London, you
+can start with the London list of 55 places instead of an empty one; the copy
+is the trip's own, so what your group does with it never touches anyone
+else's. Other destinations start empty for now.
+
 ## Your account
 
 The button with your name opens your account: your display name, your

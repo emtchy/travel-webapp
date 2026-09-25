@@ -31,7 +31,8 @@ src/auth.js           sign-in by email link: tokens, sessions, the /auth callbac
 src/invites.js        invites: create, list, revoke, and the /invite link that joins a trip
 src/http.js           json() and bad()
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
-                      (places live in the `items` table — this file is not read at runtime)
+                      and src/templates.js copies it into a new trip that asks for it
+src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
 schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql
 scripts/migrate.mjs   applies every migration, skipping done ones
@@ -78,6 +79,8 @@ outside it may change.
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
 | GET | `/api/trips` | signed in: `{ user, trips, examples }` — the trips you are on, with your role |
 | GET | `/api/examples` | the public trips, for the front page; open to anyone |
+| POST | `/api/trips` | signed in: `{ name, destination?, startDate?, endDate?, template? }` → a trip you own |
+| GET | `/api/templates?destination=` | the templates that fit a destination (`london`) |
 | GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone |
 | POST | `/api/t/<trip>/invite` | owner: `{ email, role?, memberId? \| name?, lang? }` → mails an invite link |
 | GET | `/api/t/<trip>/invites` | owner: the open invites (also on `/api/sights` for owners) |

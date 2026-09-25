@@ -132,7 +132,8 @@
 </section>
 
 <section class="section" id="mine" hidden>
-  <div class="section-head"><h2 id="mine-h"></h2><span class="count" id="mine-n"></span></div>
+  <div class="section-head"><h2 id="mine-h"></h2><span class="count" id="mine-n"></span>
+    <button type="button" class="btn btn-primary btn-sm right" id="new-trip"></button></div>
   <div class="trips" id="mine-list"></div>
 </section>
 
@@ -155,6 +156,24 @@
 <footer class="page-foot"><span id="foot"></span></footer>
 </main>
 
+<div class="sheet-back" id="nt-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="nt-title">
+  <div class="sheet" style="width:min(480px,100%)">
+    <header><h2 id="nt-title"></h2><button class="sheet-close" id="nt-close" type="button"></button></header>
+    <form class="sheet-body" id="nt-form" style="gap:14px">
+      <label class="field"><span id="nt-l-name"></span><input class="input" id="nt-name" type="text" maxlength="80" required></label>
+      <label class="field"><span id="nt-l-dest"></span><input class="input" id="nt-dest" type="text" maxlength="80" autocomplete="off"></label>
+      <div class="field-row">
+        <label class="field"><span id="nt-l-first"></span><input class="input" id="nt-first" type="date"></label>
+        <label class="field"><span id="nt-l-last"></span><input class="input" id="nt-last" type="date"></label>
+      </div>
+      <p class="hint" id="nt-dates-hint" style="margin-top:-6px"></p>
+      <div class="field" id="nt-tpl" hidden><span id="nt-l-start"></span><div class="stack" id="nt-tpl-list" style="gap:8px"></div></div>
+      <p class="err" id="nt-err" hidden></p>
+      <div class="sfoot"><button class="btn btn-primary" type="submit" id="nt-submit"></button></div>
+    </form>
+  </div>
+</div>
+
 <script type="module">
 import { $, esc, api, ICONS, getLang, onLang, onUser, getUser, askName, setStatus, dayShort, roleLabel } from "/shell.js";
 
@@ -170,7 +189,11 @@ const T = {
     m1name: "Rijksmuseum", m1where: "Museumplein · tram 2", m1free: "Free", m1like: "Liked", m1votes: "votes",
     m2a: "Canal cruise", m2am: "Booked · Sat, 14:00", m2b: "Anne Frank House", m2bm: "Book ahead · sells out",
     m3wd: "Saturday", m3day: "13 March", m3a: "Rijksmuseum", m3am: "3 ♥ · added by Sam", m3b: "Canal cruise", m3bm: "booked",
-    mine: "Your trips", none: "You're not on a trip yet. Ask whoever runs one for an invitation.",
+    mine: "Your trips", none: "You're not on a trip yet. Start one, or ask whoever runs one for an invitation.",
+    newTrip: "New trip", ntTitle: "New trip", ntName: "Name", ntNamePh: "Rome in May", ntDest: "Destination", ntDestPh: "Rome",
+    ntFirst: "First day", ntLast: "Last day", ntDatesHint: "Optional — you can set the dates later on the trip's Details page.",
+    ntStart: "Start with", ntEmpty: "An empty list", ntTemplate: (t) => `${t.name}: ${t.count} places to vote on`,
+    ntCreate: "Create trip", ntCreating: "Creating…",
     examples: "Example trips", exLede: "Made-up trips you can look around, to see what a finished plan looks like.",
     siH: "Already on a trip?", siP: "Sign in with the address you were invited with and it's right here.",
     privacy: "Trips are private to the people on them. You sign in by a link sent to your email; there is no password and nothing to install.",
@@ -188,7 +211,11 @@ const T = {
     m1name: "Rijksmuseum", m1where: "Museumplein · Tram 2", m1free: "Kostenlos", m1like: "Liked", m1votes: "Stimmen",
     m2a: "Grachtenfahrt", m2am: "Gebucht · Sa, 14:00", m2b: "Anne-Frank-Haus", m2bm: "Vorab buchen · schnell ausverkauft",
     m3wd: "Samstag", m3day: "13. März", m3a: "Rijksmuseum", m3am: "3 ♥ · von Sam", m3b: "Grachtenfahrt", m3bm: "gebucht",
-    mine: "Deine Reisen", none: "Du bist noch auf keiner Reise. Bitte, wer eine verwaltet, um eine Einladung.",
+    mine: "Deine Reisen", none: "Du bist noch auf keiner Reise. Leg eine an, oder bitte, wer eine verwaltet, um eine Einladung.",
+    newTrip: "Neue Reise", ntTitle: "Neue Reise", ntName: "Name", ntNamePh: "Rom im Mai", ntDest: "Ziel", ntDestPh: "Rom",
+    ntFirst: "Erster Tag", ntLast: "Letzter Tag", ntDatesHint: "Optional – die Daten kannst du später auf der Details-Seite setzen.",
+    ntStart: "Beginnen mit", ntEmpty: "Einer leeren Liste", ntTemplate: (t) => `${t.name}: ${t.count} Orte zum Abstimmen`,
+    ntCreate: "Reise anlegen", ntCreating: "Wird angelegt…",
     examples: "Beispielreisen", exLede: "Ausgedachte Reisen zum Anschauen – so sieht ein fertiger Plan aus.",
     siH: "Schon auf einer Reise?", siP: "Melde dich mit der Adresse an, mit der du eingeladen wurdest – dann ist sie hier.",
     privacy: "Reisen sind privat für die, die dabei sind. Du meldest dich mit einem Link an deine E-Mail an; kein Passwort, nichts zu installieren.",
@@ -217,6 +244,14 @@ function paint() {
     ["si-h","siH"],["si-p","siP"],["si-btn","ctaIn"],["pv-p","privacy"],["foot","foot"],["mine-h","mine"],["ex-h","examples"],["ex-lede","exLede"]])
     $("#" + id).textContent = L[key];
   $("#m1-like").innerHTML = `${ICONS.heartFill}${esc(L.m1like)}`;
+  $("#new-trip").innerHTML = `${ICONS.plus}${esc(L.newTrip)}`;
+  $("#nt-title").textContent = L.ntTitle; $("#nt-close").innerHTML = ICONS.close;
+  $("#nt-l-name").textContent = L.ntName; $("#nt-name").placeholder = L.ntNamePh;
+  $("#nt-l-dest").textContent = L.ntDest; $("#nt-dest").placeholder = L.ntDestPh;
+  $("#nt-l-first").textContent = L.ntFirst; $("#nt-l-last").textContent = L.ntLast;
+  $("#nt-dates-hint").textContent = L.ntDatesHint; $("#nt-l-start").textContent = L.ntStart;
+  $("#nt-submit").textContent = L.ntCreate;
+  paintTemplates();
   $("#m2-tick").innerHTML = ICONS.check; $("#m2-warn").innerHTML = ICONS.ticket;
   $("#si-ico").innerHTML = ICONS.person; $("#pv-ico").innerHTML = ICONS.check;
 
@@ -250,6 +285,48 @@ async function load() {
 
 document.addEventListener("click", (e) => {
   if (e.target.closest("#cta-signin, #si-btn")) askName();
+  if (e.target.closest("#new-trip")) { $("#nt-sheet").hidden = false; setTimeout(() => $("#nt-name").focus(), 0); }
+  if (e.target.closest("#nt-close") || e.target.id === "nt-sheet") $("#nt-sheet").hidden = true;
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("#nt-sheet").hidden = true; });
+
+/* Templates: offered once the destination matches one. */
+let TEMPLATES = [];
+let tplTimer = 0;
+$("#nt-dest").addEventListener("input", () => {
+  clearTimeout(tplTimer);
+  tplTimer = setTimeout(async () => {
+    const dest = $("#nt-dest").value.trim();
+    try { TEMPLATES = dest ? (await api("/api/templates?destination=" + encodeURIComponent(dest))).templates : []; }
+    catch { TEMPLATES = []; }
+    paintTemplates();
+  }, 250);
+});
+function paintTemplates() {
+  const L = t();
+  const box = $("#nt-tpl");
+  box.hidden = !TEMPLATES.length;
+  const picked = $('input[name="nt-template"]:checked')?.value ?? "";
+  $("#nt-tpl-list").innerHTML = [{ key: "", label: L.ntEmpty }, ...TEMPLATES.map((tp) => ({ key: tp.key, label: L.ntTemplate(tp) }))]
+    .map((o) => `<label class="check"><input type="radio" name="nt-template" value="${esc(o.key)}"${o.key === picked ? " checked" : ""}><span>${esc(o.label)}</span></label>`).join("");
+  if (!$('input[name="nt-template"]:checked')) $('input[name="nt-template"]').checked = true;
+}
+
+$("#nt-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const L = t();
+  const btn = $("#nt-submit"), err = $("#nt-err");
+  btn.disabled = true; btn.textContent = L.ntCreating; err.hidden = true;
+  try {
+    const d = await api("/api/trips", { method: "POST", body: JSON.stringify({
+      name: $("#nt-name").value, destination: $("#nt-dest").value,
+      startDate: $("#nt-first").value || null, endDate: $("#nt-last").value || null,
+      template: $('input[name="nt-template"]:checked')?.value || null }) });
+    location.href = `/t/${d.id}/details`;
+  } catch (ex) {
+    err.textContent = ex.message; err.hidden = false;
+    btn.disabled = false; btn.textContent = L.ntCreate;
+  }
 });
 
 onLang(paint);
