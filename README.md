@@ -77,11 +77,12 @@ sign in on.
 
 ## Addresses
 
-Every page lives under its trip: `/t/1/` is the London trip's Sights page,
-`/t/1/plan` its plan, `/t/1/bookings` and `/t/1/details` the rest. The old
-addresses — `/`, `/plan`, `/bookings`, `/details` — redirect to trip 1, so a
-link that was sent around before still works. A trip that does not exist gets
-a plain "No such trip" page.
+`/` is the front page: what the app does, how it works, and — once you are
+signed in — your trips. Every trip page lives under its trip: `/t/1/` is the
+London trip's Sights page, `/t/1/plan` its plan, `/t/1/bookings` and
+`/t/1/details` the rest. The old addresses `/plan`, `/bookings` and
+`/details` redirect to trip 1, so a link that was sent around before still
+works. A trip that does not exist gets a plain "No such trip" page.
 
 The same four HTML files serve every trip: the Worker maps the address to the
 file, and the shared shell reads the trip number out of the address and puts it

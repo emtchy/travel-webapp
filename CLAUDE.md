@@ -17,6 +17,7 @@ itineraries for cities. The London list is content, not the app's spine.
 Cloudflare Worker + D1. No build step, no runtime dependencies, no framework.
 
 ```
+public/home.html      Home      /                   the front page: what this is, your trips, sign in
 public/details.html   Details   /t/<trip>/details   the trip itself
 public/index.html     Sights    /t/<trip>/          vote, comment, add places, put one on a day
 public/bookings.html  Bookings  /t/<trip>/bookings  still to book / booked / not booking
@@ -73,6 +74,7 @@ people, invites. Reads are members-only.
 | POST | `/api/plan/note/add` · `/update` · `/remove` · `/address` | your own entries |
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
+| GET | `/api/trips` | signed in: `{ user, trips, examples }` — the trips you are on, with your role |
 | GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone |
 | POST | `/api/t/<trip>/invite` | owner: `{ email, role?, memberId? \| name?, lang? }` → mails an invite link |
 | GET | `/api/t/<trip>/invites` | owner: the open invites (also on `/api/sights` for owners) |

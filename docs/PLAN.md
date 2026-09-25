@@ -144,14 +144,14 @@ signed-out visitor met a private-trip notice — or, worse, the leftover
 "access code" prompt. The front page has to stand on its own: say what this
 is, show it, and offer the way in.
 
-- [ ] **Step 10 — `/` is the front page.** Signed out: a short statement of
-      what the app does (a group picks places, votes, books, lays out the
-      days), a three-step "how it works" (Sights → Bookings → Plan) with
-      real screenshots of the pages, the example trips (step 11), and Sign in.
-      Signed in: your trips, each with dates and your role, and "New trip".
-      The redirect from `/` to trip 1 goes; `/plan`, `/bookings`, `/details`
-      keep redirecting so the London links still work. The nav on the front
-      page has no trip tabs. `public/home.html`, served by the Worker.
+- [x] **Step 10 — `/` is the front page.** *(2026-09-25)* `public/home.html`.
+      Signed out: what the app does, a three-step "how it works" drawn as
+      miniatures of the real components (not screenshots — those would show
+      the group's names), the example trips once step 11 lands, and Sign in.
+      Signed in: your trips first, each with dates, your name and role. The
+      redirect from `/` to trip 1 is gone; the other old paths still redirect.
+      The shell has a trip-less home mode: no tabs, no private notice, no
+      path scoping. `GET /api/trips`. "New trip" comes with step 12.
 - [ ] **Step 11 — example trips.** `trips.visibility` = `private | public`.
       A public trip can be read by anyone, signed in or not, at its usual
       addresses; only members can change it. The front page lists public

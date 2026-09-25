@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Trips</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
+<style>
+/* ---- hero ---- */
+.hero{padding:64px 0 36px;display:grid;gap:14px;max-width:640px}
+.hero h1{font-size:44px;line-height:1.08;font-weight:700;letter-spacing:-.028em;text-wrap:balance}
+.hero p{font-size:18px;color:var(--text-2);line-height:1.5;max-width:52ch}
+.hero .cta{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.hero .cta .note{font-size:13px;color:var(--text-3)}
+
+/* ---- how it works: three illustrated steps ---- */
+.steps{display:grid;gap:16px;margin-top:28px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.step{display:flex;flex-direction:column}
+.step .pic{padding:18px 18px 0;background:var(--surface-2);min-height:210px;display:flex;align-items:flex-end;overflow:hidden}
+.step .pic > *{width:100%;border-radius:var(--r-md) var(--r-md) 0 0;box-shadow:0 0 0 1px var(--hair),0 8px 24px -14px rgba(0,0,0,.25);
+  background:var(--surface);transform:translateY(4px)}
+.step .txt{padding:16px 18px 18px}
+.step .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--tint);color:var(--on-tint);
+  font-size:12.5px;font-weight:700;margin-bottom:10px}
+.step h3{font-size:16px;font-weight:600;letter-spacing:-.01em;margin-bottom:4px}
+.step p{font-size:14px;color:var(--text-2);line-height:1.5}
+
+/* the miniatures reuse the real components at a smaller scale */
+.mini{font-size:12px;pointer-events:none;user-select:none}
+.mini .shot{height:64px;background:linear-gradient(135deg,#BBD6F5,#7FB0E8 55%,#5A94D8);position:relative}
+.mini .shot .tag{position:absolute;top:8px;right:8px}
+.mini .mb{padding:10px 12px 0}
+.mini .mb b{display:block;font-size:13.5px;font-weight:600;line-height:1.3}
+.mini .mb span{display:block;color:var(--text-3);font-size:11.5px;margin-top:1px}
+.mini .mf{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--hair);margin-top:10px}
+.mini .btn{height:26px;padding:0 10px;font-size:12px}
+.mini .btn svg{width:12px;height:12px}
+.mini .tally{margin-left:auto;color:var(--text-3);font-size:11.5px}
+.mini .tally b{color:var(--text)}
+.mini .row{padding:9px 12px;gap:9px}
+.mini .row .name{font-size:13px}
+.mini .row .meta{font-size:11px;margin-top:1px}
+.mini .tick{width:20px;height:20px;border-radius:50%;background:var(--green-soft);color:var(--green);display:grid;place-items:center;flex:none}
+.mini .tick svg{width:11px;height:11px}
+.mini .price{margin-left:auto;font-weight:600;color:var(--amber);font-size:12px}
+.mini .dayh{display:flex;align-items:baseline;gap:6px;padding:9px 12px;border-bottom:1px solid var(--hair)}
+.mini .dayh .wd{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tint)}
+.mini .dayh b{font-size:13px;font-weight:700}
+.mini .stop{display:grid;grid-template-columns:40px 1fr;gap:8px;padding:8px 12px;border-bottom:1px solid var(--hair)}
+.mini .stop:last-child{border-bottom:0}
+.mini .when{font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.mini .when em{display:block;font-style:normal;font-weight:500;color:var(--text-3);font-size:10.5px}
+.mini .sn{font-size:12.5px;font-weight:600;line-height:1.3}
+.mini .sm{font-size:11px;color:var(--text-3);margin-top:1px}
+
+/* ---- your trips / examples ---- */
+.section{margin-top:44px}
+#mine:not([hidden]) + #how{margin-top:44px}
+.section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.section-head h2{font-size:22px;font-weight:700;letter-spacing:-.015em}
+.section-head .count{font-size:12.5px;color:var(--text-3);font-weight:600}
+.trips{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr))}
+.trip{display:flex;flex-direction:column;gap:6px;padding:16px 18px;text-decoration:none;color:inherit;transition:transform .12s,box-shadow .12s}
+.trip:hover{text-decoration:none;transform:translateY(-1px);box-shadow:0 0 0 1px var(--hair-2),var(--shadow-2)}
+.trip .name{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.trip .when{font-size:13px;color:var(--text-2)}
+.trip .meta{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12px;color:var(--text-3)}
+.trip .meta .tag{margin-left:auto}
+.signin-card{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:18px 20px}
+.signin-card .ico{width:40px;height:40px;border-radius:50%;background:var(--tint-soft);color:var(--tint);display:grid;place-items:center;flex:none}
+.signin-card .ico svg{width:18px;height:18px}
+.signin-card .grow{flex:1;min-width:200px}
+.signin-card h3{font-size:16px;font-weight:600}
+.signin-card p{font-size:13.5px;color:var(--text-2)}
+.private{margin-top:44px;padding:16px 18px;display:flex;gap:12px;align-items:flex-start}
+.private .ico{width:28px;height:28px;border-radius:8px;background:var(--green-soft);color:var(--green);display:grid;place-items:center;flex:none}
+.private .ico svg{width:14px;height:14px}
+.private p{font-size:13.5px;color:var(--text-2);line-height:1.5}
+
+@media (max-width:760px){
+  .hero{padding:36px 0 24px}
+  .hero h1{font-size:34px}
+  .hero p{font-size:16px}
+}
+</style>
+</head>
+<body>
+
+<div id="shell" data-page="home"></div>
+
+<main class="page">
+
+<section class="hero">
+  <h1 id="h-title"></h1>
+  <p id="h-lede"></p>
+  <div class="cta" id="h-cta"></div>
+</section>
+
+<section id="how">
+  <p class="eyebrow" id="how-eyebrow"></p>
+  <div class="steps">
+    <div class="step card">
+      <div class="pic"><div class="mini">
+        <div class="shot"><span class="tag tag-sm tag-green" id="m1-free"></span></div>
+        <div class="mb"><b id="m1-name"></b><span id="m1-where"></span></div>
+        <div class="mf"><span class="btn btn-sm btn-primary" id="m1-like"></span>
+          <span class="tally"><b>3</b> <span id="m1-votes"></span></span></div>
+      </div></div>
+      <div class="txt"><span class="n">1</span><h3 id="s1-h"></h3><p id="s1-p"></p></div>
+    </div>
+    <div class="step card">
+      <div class="pic"><div class="mini rows">
+        <div class="row"><span class="tick" id="m2-tick"></span><div class="grow"><div class="name" id="m2-a"></div>
+          <div class="meta" id="m2-a-m"></div></div><span class="price">€18</span></div>
+        <div class="row"><span class="tick" style="background:var(--coral-soft);color:var(--coral)" id="m2-warn"></span><div class="grow"><div class="name" id="m2-b"></div>
+          <div class="meta" id="m2-b-m"></div></div><span class="price">€24</span></div>
+      </div></div>
+      <div class="txt"><span class="n">2</span><h3 id="s2-h"></h3><p id="s2-p"></p></div>
+    </div>
+    <div class="step card">
+      <div class="pic"><div class="mini">
+        <div class="dayh"><span class="wd" id="m3-wd"></span><b id="m3-day"></b></div>
+        <div class="stop"><div class="when">10:00<em>12:00</em></div><div><div class="sn" id="m3-a"></div><div class="sm" id="m3-a-m"></div></div></div>
+        <div class="stop"><div class="when">13:30<em>15:00</em></div><div><div class="sn" id="m3-b"></div><div class="sm" id="m3-b-m"></div></div></div>
+      </div></div>
+      <div class="txt"><span class="n">3</span><h3 id="s3-h"></h3><p id="s3-p"></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="mine" hidden>
+  <div class="section-head"><h2 id="mine-h"></h2><span class="count" id="mine-n"></span></div>
+  <div class="trips" id="mine-list"></div>
+</section>
+
+<section class="section" id="examples" hidden>
+  <div class="section-head"><h2 id="ex-h"></h2></div>
+  <div class="trips" id="ex-list"></div>
+</section>
+
+<section class="section" id="signin" hidden>
+  <div class="card signin-card">
+    <span class="ico" id="si-ico"></span>
+    <div class="grow"><h3 id="si-h"></h3><p id="si-p"></p></div>
+    <button type="button" class="btn btn-primary" id="si-btn"></button>
+  </div>
+</section>
+
+<div class="card private"><span class="ico" id="pv-ico"></span><p id="pv-p"></p></div>
+
+<footer class="page-foot"><span id="foot"></span></footer>
+</main>
+
+<script type="module">
+import { $, esc, api, ICONS, getLang, onLang, onUser, getUser, askName, setStatus, dayShort, roleLabel } from "/shell.js";
+
+const T = {
+  en: {
+    title: "Plan a trip together.",
+    lede: "Collect places, vote on what to see, keep track of what needs booking, and lay out the days — with the people who are coming.",
+    ctaIn: "Sign in", ctaNote: "By email link — no password to remember.",
+    how: "How it works",
+    s1h: "Sights", s1p: "Everyone adds places worth seeing and taps Like on the ones they want. The list sorts itself by what the group actually wants.",
+    s2h: "Bookings", s2p: "Everything that costs money or needs a slot, in one list. Mark it booked with the date and it lands on the plan by itself.",
+    s3h: "Plan", s3p: "A column per day. Put places on days, give them a rough time, and open any stop in Maps — or route the whole day.",
+    m1name: "Rijksmuseum", m1where: "Museumplein · tram 2", m1free: "Free", m1like: "Liked", m1votes: "votes",
+    m2a: "Canal cruise", m2am: "Booked · Sat, 14:00", m2b: "Anne Frank House", m2bm: "Book ahead · sells out",
+    m3wd: "Saturday", m3day: "14 March", m3a: "Rijksmuseum", m3am: "2 ♥ · added by Sam", m3b: "Canal cruise", m3bm: "booked",
+    mine: "Your trips", none: "You're not on a trip yet. Ask whoever runs one for an invitation.",
+    examples: "Example trips",
+    siH: "Already on a trip?", siP: "Sign in with the address you were invited with and it's right here.",
+    privacy: "Trips are private to the people on them. You sign in by a link sent to your email; there is no password and nothing to install.",
+    days: (n) => `${n} ${n === 1 ? "day" : "days"}`, as: (n) => `as ${n}`,
+    foot: "Built for a group of friends and their London trip. Now for any trip.",
+  },
+  de: {
+    title: "Eine Reise gemeinsam planen.",
+    lede: "Orte sammeln, abstimmen, was ihr sehen wollt, den Überblick über Buchungen behalten und die Tage planen – mit allen, die mitkommen.",
+    ctaIn: "Anmelden", ctaNote: "Per Link an deine E-Mail – kein Passwort nötig.",
+    how: "So funktioniert es",
+    s1h: "Orte", s1p: "Alle tragen Orte ein, die sich lohnen, und liken, was sie sehen wollen. Die Liste sortiert sich nach dem, was die Gruppe wirklich will.",
+    s2h: "Buchungen", s2p: "Alles, was Geld kostet oder einen Termin braucht, in einer Liste. Als gebucht markieren, Datum dazu – und es steht von selbst im Plan.",
+    s3h: "Plan", s3p: "Eine Spalte pro Tag. Orte auf Tage legen, ungefähre Zeiten dazu, und jeden Stopp in Maps öffnen – oder gleich den ganzen Tag.",
+    m1name: "Rijksmuseum", m1where: "Museumplein · Tram 2", m1free: "Kostenlos", m1like: "Liked", m1votes: "Stimmen",
+    m2a: "Grachtenfahrt", m2am: "Gebucht · Sa, 14:00", m2b: "Anne-Frank-Haus", m2bm: "Vorab buchen · schnell ausverkauft",
+    m3wd: "Samstag", m3day: "14. März", m3a: "Rijksmuseum", m3am: "2 ♥ · von Sam", m3b: "Grachtenfahrt", m3bm: "gebucht",
+    mine: "Deine Reisen", none: "Du bist noch auf keiner Reise. Bitte, wer eine verwaltet, um eine Einladung.",
+    examples: "Beispielreisen",
+    siH: "Schon auf einer Reise?", siP: "Melde dich mit der Adresse an, mit der du eingeladen wurdest – dann ist sie hier.",
+    privacy: "Reisen sind privat für die, die dabei sind. Du meldest dich mit einem Link an deine E-Mail an; kein Passwort, nichts zu installieren.",
+    days: (n) => `${n} ${n === 1 ? "Tag" : "Tage"}`, as: (n) => `als ${n}`,
+    foot: "Gebaut für eine Gruppe Freunde und ihre Londonreise. Jetzt für jede Reise.",
+  },
+};
+const t = () => T[getLang()];
+
+let TRIPS = null;   // null until loaded; [] when signed in with none
+let EXAMPLES = [];
+
+function paint() {
+  const L = t();
+  const user = getUser();
+  document.title = L.mine;
+  $("#h-title").textContent = L.title;
+  $("#h-lede").textContent = L.lede;
+  $("#h-cta").innerHTML = user ? "" :
+    `<button type="button" class="btn btn-primary btn-lg" id="cta-signin">${esc(L.ctaIn)}</button><span class="note">${esc(L.ctaNote)}</span>`;
+  $("#how-eyebrow").textContent = L.how;
+  for (const [id, key] of [["s1-h","s1h"],["s1-p","s1p"],["s2-h","s2h"],["s2-p","s2p"],["s3-h","s3h"],["s3-p","s3p"],
+    ["m1-name","m1name"],["m1-where","m1where"],["m1-free","m1free"],["m1-votes","m1votes"],
+    ["m2-a","m2a"],["m2-a-m","m2am"],["m2-b","m2b"],["m2-b-m","m2bm"],
+    ["m3-wd","m3wd"],["m3-day","m3day"],["m3-a","m3a"],["m3-a-m","m3am"],["m3-b","m3b"],["m3-b-m","m3bm"],
+    ["si-h","siH"],["si-p","siP"],["si-btn","ctaIn"],["pv-p","privacy"],["foot","foot"],["mine-h","mine"],["ex-h","examples"]])
+    $("#" + id).textContent = L[key];
+  $("#m1-like").innerHTML = `${ICONS.heartFill}${esc(L.m1like)}`;
+  $("#m2-tick").innerHTML = ICONS.check; $("#m2-warn").innerHTML = ICONS.ticket;
+  $("#si-ico").innerHTML = ICONS.person; $("#pv-ico").innerHTML = ICONS.check;
+
+  const card = (tr, role) => `<a class="trip card" href="/t/${tr.id}/">
+      <span class="name">${esc(tr.name || tr.destination || "Trip")}</span>
+      <span class="when">${tr.startDate ? `${esc(dayShort(tr.startDate))} – ${esc(dayShort(tr.endDate))}` : ""}${tr.destination && tr.destination !== tr.name ? ` · ${esc(tr.destination)}` : ""}</span>
+      <span class="meta">${tr.days ? `<span>${esc(L.days(tr.days))}</span>` : ""}${tr.memberName ? `<span>· ${esc(L.as(tr.memberName))}</span>` : ""}
+        ${role ? `<span class="tag tag-sm tag-neutral">${esc(roleLabel(role))}</span>` : ""}</span></a>`;
+
+  $("#mine").hidden = !user;
+  // Someone signed in knows how it works: their trips come first.
+  if (user) $("#how").before($("#mine")); else $("#how").after($("#mine"));
+  if (user) {
+    $("#mine-n").textContent = TRIPS?.length || "";
+    $("#mine-list").innerHTML = TRIPS === null ? "" : TRIPS.length
+      ? TRIPS.map((tr) => card(tr, tr.role)).join("")
+      : `<p class="note">${esc(L.none)}</p>`;
+  }
+  $("#examples").hidden = !EXAMPLES.length;
+  $("#ex-list").innerHTML = EXAMPLES.map((tr) => card(tr, null)).join("");
+  $("#signin").hidden = !!user;
+}
+
+async function load() {
+  if (!getUser()) { TRIPS = null; paint(); return; }
+  try {
+    const d = await api("/api/trips");
+    TRIPS = d.trips ?? []; EXAMPLES = d.examples ?? [];
+  } catch (err) { TRIPS = []; setStatus(err.message, "err"); }
+  paint();
+}
+
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#cta-signin, #si-btn")) askName();
+});
+
+onLang(paint);
+onUser(load);
+</script>
+</body>
+</html>

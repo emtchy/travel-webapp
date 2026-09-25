@@ -1118,8 +1118,8 @@ t5("and trip 1 does not see trip 2's rows",
 
   const r = (p) => call(p, { redirect: "manual" });
   const loc = async (p) => (await r(p)).headers.get("location");
-  t5("the old / redirects to trip 1", (await r("/")).status === 302 && (await loc("/")).endsWith("/t/1/"));
-  t5("and /plan, keeping any query", (await loc("/plan?x=1")).endsWith("/t/1/plan?x=1"));
+  t5("/ is the front page", await served("/") === "static /home.html");
+  t5("the old /plan redirects to trip 1, keeping any query", (await loc("/plan?x=1")).endsWith("/t/1/plan?x=1"));
   t5("/t/1 without a slash redirects to /t/1/", (await loc("/t/1")).endsWith("/t/1/"));
 
   t5("a trip that does not exist is a 404 page", (await call("/t/9/plan")).status === 404 &&
@@ -1358,6 +1358,19 @@ t5("and trip 1 does not see trip 2's rows",
   t5("null means back to the device's choice, and leaves the rest", d.user.maps === null && d.user.lang === "de");
   t5("a signed-out request is refused with the same cookie name but no session",
      (await raw("/api/auth/settings", { method: "POST", headers: { cookie: "trip_session=nope" }, body: JSON.stringify({ lang: "en" }) })).status === 401);
+}
+
+// --- Phase 3, step 10: the front page and the list of your trips
+{
+  t5("the trip list needs a sign-in", (await raw("/api/trips")).status === 401);
+  const mine = await (await call("/api/trips")).json();
+  const london = mine.trips.find(tr => tr.id === 1);
+  t5("a signed-in account gets its trips", Array.isArray(mine.trips) && london?.name === "London 2026");
+  t5("with its name and role on each", london.memberName === "Emily" && london.role === "owner" && london.days === 6);
+  t5("and not trips it is not on", !mine.trips.some(tr => tr.id === 2) || db.prepare("SELECT 1 FROM trip_members WHERE trip_id = 2 AND name_key = 'emily'").get());
+  const nobody = asUser("alone@example.org");
+  const empty = await (await raw("/api/trips", { headers: nobody })).json();
+  t5("an account on no trip gets an empty list, not an error", empty.trips.length === 0 && Array.isArray(empty.examples));
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

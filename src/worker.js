@@ -62,6 +62,32 @@ async function handleMemberRole(request, env, trip) {
   return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
+/**
+ * GET /api/trips — the trips this account is on, with its name and role on
+ * each. Signed-in only. `examples` will carry the public trips once they
+ * exist (Phase 3 step 11); the page is already written to show them.
+ */
+async function handleTripList(request, env) {
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+  const { results } = await env.DB.prepare(
+    `SELECT t.id, t.name, t.destination, t.start_date, t.end_date, m.name AS member_name, m.role
+       FROM trip_members m JOIN trips t ON t.id = m.trip_id
+      WHERE m.user_id = ?1
+      ORDER BY t.start_date DESC, t.id DESC`
+  ).bind(user.id).all();
+  return json({
+    user,
+    trips: (results ?? []).map((r) => ({
+      id: r.id, name: r.name, destination: r.destination,
+      startDate: r.start_date, endDate: r.end_date,
+      memberName: r.member_name, role: r.role,
+      days: daysBetween(r.start_date, r.end_date).length,
+    })),
+    examples: [],
+  });
+}
+
 /* ------------------------------------------------------------------ pages */
 
 /** The four pages, by the path they have inside a trip. */
@@ -104,6 +130,9 @@ async function servePage(request, env, url) {
     return asset(PAGES[sub]);
   }
 
+  // The front page. The other old page paths still redirect to trip 1, so
+  // the links the London group has keep working.
+  if (path === "/") return asset("/home.html");
   if (PAGES[path]) return Response.redirect(`${url.origin}/t/1${path}${url.search}`, 302);
   return env.ASSETS.fetch(request);
 }
@@ -1387,7 +1416,8 @@ export default {
 
     const { method } = request;
 
-    // Accounts are not part of any trip.
+    // Accounts, and the list of trips, are not part of any trip.
+    if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
     if (url.pathname === "/api/auth/request" && method === "POST") return handleAuthRequest(request, env);
     if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);
     if (url.pathname === "/api/auth/logout" && method === "POST") return handleAuthLogout(request, env, url);

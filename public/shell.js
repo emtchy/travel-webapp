@@ -157,6 +157,8 @@ const PAGES = [
 
 const mount = document.getElementById("shell");
 const current = mount?.dataset.page || "sights";
+/** The front page belongs to no trip: no tabs, no private notice, the brand goes home. */
+export const HOME = current === "home";
 
 function linksHTML(withIcons) {
   return PAGES.map(([key, href, icon]) =>
@@ -168,8 +170,8 @@ if (mount) {
   mount.outerHTML = `
   <nav class="nav">
     <div class="nav-inner">
-      <a class="brand" href="${pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">Trip</span></a>
-      <div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>
+      <a class="brand" href="${HOME ? "/" : pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">${HOME ? "Trips" : "Trip"}</span></a>
+      ${HOME ? "" : `<div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>`}
       <div class="nav-tools">
         <div class="seg" role="group" aria-label="${esc(NAV[lang].lang)}" id="langs">
           <button type="button" data-lang="en" aria-pressed="${lang === "en"}">EN</button>
@@ -179,7 +181,7 @@ if (mount) {
       </div>
     </div>
   </nav>
-  <nav class="tabbar" id="tabbar" aria-label="Pages">${linksHTML(true)}</nav>
+  ${HOME ? "" : `<nav class="tabbar" id="tabbar" aria-label="Pages">${linksHTML(true)}</nav>`}
   <div class="toast" id="status" role="status" aria-live="polite"></div>
   <div class="sheet-back" id="auth-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="auth-title">
     <div class="sheet" style="width:min(440px,100%)">
@@ -293,7 +295,7 @@ function paintPrivate() {
   const L = NAV[lang];
   let box = $("#private");
   const main = document.querySelector("main");
-  if (member || !main) { if (box) box.hidden = true; main?.removeAttribute("hidden"); document.body.dataset.locked = ""; return; }
+  if (HOME || member || !main) { if (box) box.hidden = true; main?.removeAttribute("hidden"); document.body.dataset.locked = ""; return; }
   document.body.dataset.locked = "1";
   main.hidden = true;
   if (!box) { box = document.createElement("section"); box.id = "private"; box.className = "page"; main.after(box); }
@@ -378,7 +380,7 @@ document.addEventListener("click", async (e) => {
 
 async function loadUser() {
   try {
-    const d = await api("/api/me");
+    const d = await api(HOME ? "/api/auth/me" : "/api/me");
     user = d.user ?? null; member = d.member ?? null;
     if (d.trip?.name) setTrip(d.trip);
   } catch { user = null; member = null; }
@@ -389,6 +391,7 @@ async function loadUser() {
 }
 
 document.documentElement.lang = lang;
+if (HOME) document.documentElement.style.setProperty("--tab-h", "0px");
 paintAccount();
 
 /* ------------------------------------------------------------- identity */
@@ -478,7 +481,7 @@ export const weekdayShort = (iso) => fmtDate(iso, { weekday: "short" });
  */
 export async function api(path, options) {
   // Accounts are not part of any trip, so /api/auth/… is left as it is.
-  const scoped = path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
+  const scoped = !HOME && path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
     ? `/api/t/${TRIP}${path.slice(4)}` : path;
   const res = await fetch(scoped, {
     ...options,
