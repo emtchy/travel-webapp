@@ -32,8 +32,9 @@ export async function limited(env, binding, key) {
 /**
  * Headers for every response. The pages carry their own inline styles and
  * module scripts, so those stay allowed; everything else is tightened —
- * nothing embeds this site, nothing on it loads from anywhere but itself and
- * Wikipedia (the photos), and forms only post here.
+ * nothing embeds this site, the browser talks to nothing but this site
+ * (photos are image loads, which img-src allows from any https origin), and
+ * forms only post here.
  */
 export const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
@@ -45,7 +46,7 @@ export const SECURITY_HEADERS = {
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' https: data:",
-    "connect-src 'self' https://en.wikipedia.org https://upload.wikimedia.org",
+    "connect-src 'self'",
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

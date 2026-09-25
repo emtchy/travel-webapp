@@ -77,7 +77,8 @@ outside it may change.
 | POST | `/api/plan/set` · `/remove` | put a place on a day, take it off |
 | POST | `/api/plan/note/add` · `/update` · `/remove` · `/address` | your own entries |
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
-| POST | `/api/geocode` | name, address, maps link or coordinates → places |
+| POST | `/api/geocode` | name, address, maps link or coordinates → places (Nominatim, cached a month in `geocode_cache`) |
+| GET | `/api/t/<trip>/photos` | `{ id: url }` — Wikipedia lead images for the trip's places, cached in `photo_cache`; readers only |
 | GET | `/api/trips?today=` | signed in: `{ user, trips, featured, examples }` — your trips with role, status, pinned; the featured one with today's stops or a countdown and to-dos |
 | POST | `/api/auth/pin` | `{ tripId \| null }` — the trip shown first on the front page |
 | GET | `/api/examples` | the public trips, for the front page; open to anyone |

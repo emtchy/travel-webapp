@@ -240,6 +240,19 @@ CREATE TABLE IF NOT EXISTS invites (
 
 CREATE INDEX IF NOT EXISTS idx_invites_trip ON invites (trip_id, created_at);
 
+-- What the Worker fetches from outside, kept: address lookups and photos.
+CREATE TABLE IF NOT EXISTS geocode_cache (
+  key        TEXT    PRIMARY KEY,
+  results    TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS photo_cache (
+  wiki       TEXT    PRIMARY KEY,
+  url        TEXT,
+  created_at INTEGER NOT NULL
+);
+
 -- Which migrations a database has had. A fresh database is already at the
 -- shape they produce, so every one of them is recorded here up front and
 -- `npm run migrate` has nothing to do.
@@ -262,7 +275,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-012-roles.sql', 0),
   ('migrate-013-settings.sql', 0),
   ('migrate-015-home.sql', 0),
-  ('migrate-016-tidy.sql', 0);
+  ('migrate-016-tidy.sql', 0),
+  ('migrate-017-caches.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

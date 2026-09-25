@@ -382,6 +382,12 @@ guard the whole site is gone: accounts replaced it, and a `401` now means
 
 ## Photos
 
+Each built-in place names its Wikipedia article, and the Worker fetches the
+article's lead image once, keeps the address in the database, and hands the
+Sights page the whole set in one answer. A visitor's browser never talks to
+Wikipedia. A place with no picture shows a lettered placeholder.
+
+
 By default the page asks Wikipedia for a lead photo for every built-in option in
 one batched request on first load, then caches the URLs in the visitor's browser
 for 30 days. Anything the batch misses is retried individually against the REST

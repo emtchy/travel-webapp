@@ -231,15 +231,18 @@ safe to leave running.
       from anywhere but itself and Wikipedia, forms post only here.
       `src/limits.js`. Where a binding is missing nothing is limited, so the
       tests and an old local config keep working.
-- [ ] **Step 16 — the geocoder cache.** Nominatim results kept in a
-      `geocode_cache` table for thirty days, keyed by query and bias, so
-      the same address asked twice costs one call. D1 rather than KV: no
-      new infrastructure, and the volume is tiny.
-- [ ] **Step 17 — photos through the Worker.** The Sights page asks Wikipedia
-      for 55 thumbnails per visitor, from the browser. One endpoint per trip
-      answers the whole map from a `photo_cache` table, filling gaps from
-      Wikipedia on the server; the browser talks only to this site and the CSP
-      can drop the Wikipedia origins.
+- [x] **Step 16 — the geocoder cache.** *(2026-09-25)* Nominatim results
+      kept in `geocode_cache` for thirty days, keyed by the query and the bias
+      it was asked with, so the same address asked twice costs one call. D1
+      rather than KV: no new infrastructure, and the volume is tiny.
+      Migration 017.
+- [x] **Step 17 — photos through the Worker.** *(2026-09-25)* `GET
+      /api/t/<trip>/photos` answers `{ id: url }` for every place that names
+      a Wikipedia article, from `photo_cache` (a hit kept a year, a miss a
+      week), filling gaps on the server in batches of fifty. Template copies
+      share the cache by title. The browser no longer talks to Wikipedia, and
+      `connect-src` is `'self'` alone. The Sights page keeps its two sources:
+      the local manifest first, then this.
 - [ ] **Step 18 — a privacy note and a way to write in.** `/privacy`: what
       is stored (address, display name, what you do on a trip), the cookie,
       Resend as the mail carrier, how to leave and delete. A contact address.
@@ -498,6 +501,13 @@ stays for those two directives. Everything else is closed: no embedding, no
 other origins to connect to but Wikipedia for photos, forms post only here,
 no plugins. Moving scripts to files for a nonce-based policy is a later
 tidy-up, not a blocker.
+
+**2026-09-25 — Caches in D1, not KV.**
+KV would be the textbook place for a geocoder cache and a photo cache, and it
+would mean creating a namespace, a binding, and a second store to reason
+about. The volume here is a few hundred rows; a table each in the database
+that already exists does the job and shows up in the same backups and the
+same migrations.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

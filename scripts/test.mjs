@@ -1559,5 +1559,52 @@ t5("and trip 1 does not see trip 2's rows",
   t5("five trips an hour, then a pause", last.status === 429 && db.prepare("SELECT COUNT(*) AS n FROM trip_members WHERE user_id = 'u-prolific@example.org'").get().n === 5);
 }
 
+// --- Phase 4, steps 16 and 17: the geocoder cache and photos through the Worker
+{
+  const em = { cookie: cookieFor("Emily", 1) };
+  const realFetch = globalThis.fetch;
+  let calls = [];
+  globalThis.fetch = async (u) => {
+    const url = String(u); calls.push(url);
+    if (url.includes("nominatim")) return new Response(JSON.stringify([{ display_name: "Harrods, Knightsbridge, London", lat: "51.4994", lon: "-0.1633" }]), { status: 200 });
+    if (url.includes("wikipedia")) {
+      const titles = decodeURIComponent(url.split("titles=")[1]).split("|");
+      return new Response(JSON.stringify({ query: { pages: titles.filter(t => t !== "Platform 9¾").map(t => ({ title: t, thumbnail: { source: `https://upload.wikimedia.org/${encodeURIComponent(t)}.jpg` } })) } }), { status: 200 });
+    }
+    return new Response("{}", { status: 200 });
+  };
+
+  const geo = (q) => raw("/api/t/1/geocode", { method: "POST", headers: em, body: JSON.stringify({ q }) });
+  let d = await (await geo("Harrods")).json();
+  t5("a lookup goes to Nominatim and answers", d.results[0]?.label.startsWith("Harrods") && calls.filter(c => c.includes("nominatim")).length === 1);
+  d = await (await geo("  harrods ")).json();
+  t5("the same query again is served from the cache, one call in total", d.cached === true && d.results[0]?.lat === 51.4994 && calls.filter(c => c.includes("nominatim")).length === 1);
+  t5("kept in the database", db.prepare("SELECT COUNT(*) AS n FROM geocode_cache").get().n >= 1);
+  db.prepare("UPDATE geocode_cache SET created_at = 0").run();
+  await geo("Harrods");
+  t5("after a month it is asked again", calls.filter(c => c.includes("nominatim")).length === 2);
+
+  calls = [];
+  t5("photos on a private trip need a member", (await raw("/api/t/1/photos")).status === 401);
+  let p = await (await raw("/api/t/1/photos", { headers: em })).json();
+  const n = Object.keys(p.photos).length;
+  t5("the Worker asks Wikipedia in batches and answers a map by place id", n >= 50 && p.photos["tower-of-london"]?.startsWith("https://upload.wikimedia.org/") && calls.filter(c => c.includes("wikipedia")).length === 2);
+  t5("a place without a picture is left out", !("platform-9-3-4" in p.photos));
+  calls = [];
+  p = await (await raw("/api/t/1/photos", { headers: em })).json();
+  t5("the second time nothing is fetched", Object.keys(p.photos).length === n && calls.length === 0);
+  t5("misses are remembered too", db.prepare("SELECT url FROM photo_cache WHERE wiki = 'Platform 9¾'").get()?.url === null);
+  t5("the example, being public, answers anyone — with no photos, since its places name no article",
+     (await raw("/api/t/2/photos")).status === 200 && Object.keys((await (await raw("/api/t/2/photos")).json()).photos).length === 0);
+  const copy = db.prepare("SELECT id FROM trips WHERE name = 'London 2028'").get();
+  const cp = await (await raw(`/api/t/${copy.id}/photos`, { headers: asUser("maker@example.org") })).json();
+  t5("a London-template copy shares the cached pictures by title, without a fetch",
+     cp.photos[`tower-of-london-t${copy.id}`] === p.photos["tower-of-london"] && calls.length === 0);
+  globalThis.fetch = realFetch;
+
+  t5("the browser is no longer allowed to talk to Wikipedia",
+     !/wikipedia/.test((await raw("/")).headers.get("content-security-policy")) && /img-src 'self' https:/.test((await raw("/")).headers.get("content-security-policy")));
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

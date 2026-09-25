@@ -165,7 +165,6 @@
 import { $, esc, api, ICONS, getLang, onLang, nameOf, onName, askName, fillMembers,
          setStatus, setTrip, tripKicker, dayShort, backToTop, nameKey } from "/shell.js";
 
-const IMG_KEY  = "trip-images-v1";
 const openThreads = new Set();   // which cards have their comments expanded
 
 let SIGHTS = [];
@@ -349,13 +348,13 @@ async function refresh() {
 /* Two sources, in order of reliability:
      1. /img/manifest.json  — files served from this origin. Run `npm run images`
         to create it. No API, no CORS, no cache: this always works.
-     2. Wikipedia at runtime — a fallback for when the manifest isn't there.
+     2. /api/photos — the Worker asks Wikipedia once per place and keeps the
+        answer, so a visitor's browser never talks to Wikipedia itself.
    Whatever happens, a missing photo just leaves the lettered placeholder. */
 
 const imageState = { source: "none", found: 0, missing: [], error: null };
 
 async function loadImages() {
-  // ---- 1. local manifest
   try {
     const res = await fetch("/img/manifest.json", { cache: "no-cache" });
     if (res.ok) {
@@ -370,61 +369,15 @@ async function loadImages() {
     }
   } catch { /* no manifest — fall through */ }
 
-  // ---- 2. Wikipedia
-  let cached = null;
-  try { cached = JSON.parse(localStorage.getItem(IMG_KEY) || "null"); } catch {}
-  if (cached?.map && Object.keys(cached.map).length >= SIGHTS.length &&
-      cached.at > Date.now() - 30 * 864e5) {
-    imageState.source = "cache";
-    imageState.found = Object.keys(cached.map).length;
-    applyImages(cached.map);
-    return;
+  try {
+    const { photos } = await api("/api/photos");
+    imageState.source = "server";
+    imageState.found = Object.keys(photos || {}).length;
+    imageState.missing = SIGHTS.filter((s) => !photos?.[s.id]).map((s) => s.id);
+    applyImages(photos || {});
+  } catch (e) {
+    imageState.error = String(e);
   }
-
-  const titles = [...new Set(SIGHTS.map((s) => s.wiki).filter(Boolean))];
-  const map = {};
-
-  for (let i = 0; i < titles.length; i += 45) {
-    const batch = titles.slice(i, i + 45);
-    const url =
-      "https://en.wikipedia.org/w/api.php" +
-      "?action=query&format=json&formatversion=2&origin=*" +
-      "&prop=pageimages&piprop=thumbnail&pithumbsize=640" +
-      `&pilimit=${batch.length}&redirects=1&titles=` +
-      encodeURIComponent(batch.join("|"));
-    try {
-      const data = await (await fetch(url)).json();
-      const byTitle = {};
-      for (const page of data?.query?.pages || []) {
-        if (page.thumbnail?.source) byTitle[page.title] = page.thumbnail.source;
-      }
-      for (const r of data?.query?.redirects  || []) if (byTitle[r.to]) byTitle[r.from] = byTitle[r.to];
-      for (const n of data?.query?.normalized || []) if (byTitle[n.to]) byTitle[n.from] = byTitle[n.to];
-      for (const s of SIGHTS) if (byTitle[s.wiki]) map[s.id] = byTitle[s.wiki];
-    } catch (e) {
-      imageState.error = String(e);
-    }
-  }
-
-  applyImages(map);
-
-  for (const s of SIGHTS.filter((x) => x.wiki && !map[x.id])) {
-    try {
-      const res = await fetch(
-        "https://en.wikipedia.org/api/rest_v1/page/summary/" +
-        encodeURIComponent(s.wiki.replace(/ /g, "_"))
-      );
-      if (!res.ok) continue;
-      const d = await res.json();
-      const src = d.thumbnail?.source || d.originalimage?.source;
-      if (src) { map[s.id] = src; applyImages({ [s.id]: src }); }
-    } catch (e) { imageState.error ||= String(e); }
-  }
-
-  imageState.source = "wikipedia";
-  imageState.found = Object.keys(map).length;
-  imageState.missing = SIGHTS.filter((s) => !map[s.id]).map((s) => s.id);
-  try { localStorage.setItem(IMG_KEY, JSON.stringify({ at: Date.now(), map })); } catch {}
 }
 
 function applyImages(map) {
@@ -455,7 +408,6 @@ window.imageDebug = () => {
     error: imageState.error || "none",
   });
   if (imageState.missing.length) console.log("missing:", imageState.missing);
-  console.log('Clear the cache with: localStorage.removeItem("' + IMG_KEY + '")');
   return imageState;
 };
 

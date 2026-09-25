@@ -875,6 +875,14 @@ async function handleGeocode(request, env, trip) {
   const near = (await getTrip(env, trip)).near;
   const d = 0.6; // roughly 60 km, wide enough for a day trip out of town
 
+  // The same address asked twice — by two people, or on two days — costs
+  // one call. Keyed by the query and the bias it was asked with, kept a month.
+  const cacheKey = `${term.trim().toLowerCase()}|${near ? `${near.lat.toFixed(1)},${near.lon.toFixed(1)}` : "-"}`;
+  const cached = await env.DB.prepare(
+    "SELECT results FROM geocode_cache WHERE key = ?1 AND created_at > ?2"
+  ).bind(cacheKey, Date.now() - 30 * 864e5).first();
+  if (cached) return json({ ok: true, results: JSON.parse(cached.results), cached: true });
+
   let results;
   try {
     const res = await fetch(
@@ -888,10 +896,86 @@ async function handleGeocode(request, env, trip) {
     return bad("Couldn't reach the lookup service. Try again shortly.", 502);
   }
 
-  return json({ ok: true, results: (Array.isArray(results) ? results : []).slice(0, 5)
+  const hits = (Array.isArray(results) ? results : []).slice(0, 5)
     .map((r) => ({ label: r.display_name,
                    lat: Math.round(Number(r.lat) * 10000) / 10000,
-                   lon: Math.round(Number(r.lon) * 10000) / 10000 })) });
+                   lon: Math.round(Number(r.lon) * 10000) / 10000 }));
+  await env.DB.prepare(
+    `INSERT INTO geocode_cache (key, results, created_at) VALUES (?1, ?2, ?3)
+     ON CONFLICT (key) DO UPDATE SET results = excluded.results, created_at = excluded.created_at`
+  ).bind(cacheKey, JSON.stringify(hits), Date.now()).run();
+  return json({ ok: true, results: hits });
+}
+
+/**
+ * GET /api/t/<trip>/photos — a picture per place, { id: url }.
+ *
+ * Wikipedia's lead image for every place that names its article. Kept in
+ * photo_cache: a hit is served for a year, a miss remembered for a week so
+ * a place with no picture is not asked about on every page view. Gaps are
+ * filled here, on the server, in batches of fifty — which is one call for a
+ * whole trip instead of one per visitor. The browser never talks to
+ * Wikipedia any more, so the content-security policy does not have to allow it.
+ */
+async function handlePhotos(request, env, trip) {
+  const { error } = await reader(request, env, trip);
+  if (error) return error;
+  const sights = await getSights(env, trip);
+  const titles = [...new Set(sights.map((s) => s.wiki).filter(Boolean))];
+  if (!titles.length) return json({ photos: {} });
+
+  const now = Date.now();
+  const urls = new Map();
+  const missing = [];
+  for (let i = 0; i < titles.length; i += 50) {
+    const batch = titles.slice(i, i + 50);
+    const { results } = await env.DB.prepare(
+      `SELECT wiki, url, created_at FROM photo_cache WHERE wiki IN (${batch.map((_, j) => `?${j + 1}`).join(", ")})`
+    ).bind(...batch).all();
+    const seen = new Map((results ?? []).map((r) => [r.wiki, r]));
+    for (const t of batch) {
+      const r = seen.get(t);
+      const fresh = r && (r.url ? r.created_at > now - 365 * 864e5 : r.created_at > now - 7 * 864e5);
+      if (fresh) { if (r.url) urls.set(t, r.url); } else missing.push(t);
+    }
+  }
+
+  for (let i = 0; i < missing.length; i += 50) {
+    const batch = missing.slice(i, i + 50);
+    const found = await wikipediaThumbnails(batch);
+    for (const t of batch) {
+      if (found.has(t)) urls.set(t, found.get(t));
+      await env.DB.prepare(
+        `INSERT INTO photo_cache (wiki, url, created_at) VALUES (?1, ?2, ?3)
+         ON CONFLICT (wiki) DO UPDATE SET url = excluded.url, created_at = excluded.created_at`
+      ).bind(t, found.get(t) ?? null, now).run();
+    }
+  }
+
+  const photos = {};
+  for (const s of sights) if (s.wiki && urls.has(s.wiki)) photos[s.id] = urls.get(s.wiki);
+  return json({ photos });
+}
+
+/** Lead-image thumbnails for a batch of article titles. Titles that failed are simply absent. */
+async function wikipediaThumbnails(titles) {
+  const out = new Map();
+  if (!titles.length) return out;
+  try {
+    const res = await fetch(
+      "https://en.wikipedia.org/w/api.php?action=query&format=json&formatversion=2" +
+      "&prop=pageimages&piprop=thumbnail&pithumbsize=640&redirects=1" +
+      `&pilimit=${titles.length}&titles=${encodeURIComponent(titles.join("|"))}`,
+      { headers: { "user-agent": "travel-webapp/1.0 (group trip planner)" } });
+    if (!res.ok) return out;
+    const data = await res.json();
+    const byTitle = new Map();
+    for (const page of data?.query?.pages ?? []) if (page.thumbnail?.source) byTitle.set(page.title, page.thumbnail.source);
+    for (const r of data?.query?.redirects ?? []) if (byTitle.has(r.to)) byTitle.set(r.from, byTitle.get(r.to));
+    for (const n of data?.query?.normalized ?? []) if (byTitle.has(n.to)) byTitle.set(n.from, byTitle.get(n.to));
+    for (const t of titles) if (byTitle.has(t)) out.set(t, byTitle.get(t));
+  } catch { /* a missing photo is a placeholder, not an error */ }
+  return out;
 }
 
 /**
@@ -1708,6 +1792,9 @@ async function route(request, env) {
       if (error) return error;
       return json(await snapshot(env, trip));
     }
+
+    if (pathname === "/api/photos" && method === "GET")
+      return handlePhotos(request, env, trip);
 
     if (pathname === "/api/invite" && method === "POST")
       return handleInviteCreate(request, env, trip, ctx);
