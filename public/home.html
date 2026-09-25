@@ -93,7 +93,8 @@ details.year{margin-top:8px}
 details.year > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 0;
   font-size:14px;font-weight:600;color:var(--text-2);user-select:none}
 details.year > summary::-webkit-details-marker{display:none}
-details.year > summary .chev{width:14px;height:14px;transition:transform .15s}
+details.year > summary .chev{display:inline-flex;width:14px;height:14px;transition:transform .15s}
+details.year > summary .chev svg{width:14px;height:14px}
 details.year[open] > summary .chev{transform:rotate(90deg)}
 details.year > .trips{padding:4px 0 8px}
 .trip.cancelled .name{color:var(--text-3);text-decoration:line-through}
@@ -330,7 +331,6 @@ function paint() {
   $("#examples").hidden = !EXAMPLES.length || (!!user && TRIPS !== null && TRIPS.length > 0);
   $("#ex-link").hidden = !(user && EXAMPLES.length && (TRIPS?.length ?? 0) > 0);
   if (EXAMPLES.length) { $("#ex-link-a").textContent = L.seeExample; $("#ex-link-a").href = `/t/${EXAMPLES[0].id}/`; }
-  $("#examples").hidden = !EXAMPLES.length;
   $("#ex-list").innerHTML = EXAMPLES.map((tr) => card(tr, null)).join("");
   $("#signin").hidden = !!user;
 }
@@ -353,7 +353,7 @@ function paintMine(L, card) {
   const years = new Map();
   for (const tr of past) { const y = (tr.endDate ?? tr.startDate ?? "—").slice(0, 4); (years.get(y) ?? years.set(y, []).get(y)).push(tr); }
   $("#past").innerHTML = past.length ? `<div class="group"><p class="eyebrow">${esc(L.past)} <span class="count">${past.length}</span></p>
-      ${[...years].map(([y, list], i) => `<details class="year"${i === 0 ? " open" : ""}><summary>${ICONS.chevron}${esc(y)} <span class="count">· ${list.length}</span></summary>
+      ${[...years].map(([y, list], i) => `<details class="year"${i === 0 ? " open" : ""}><summary><span class="chev">${ICONS.chevron}</span>${esc(y)} <span class="count">· ${list.length}</span></summary>
         <div class="trips">${list.map((tr) => card(tr, tr.role)).join("")}</div></details>`).join("")}</div>` : "";
 }
 
