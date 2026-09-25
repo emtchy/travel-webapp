@@ -27,7 +27,9 @@ const DB = {
     };
   },
 };
-const env = { DB, ASSETS: { fetch: () => new Response("static", { status: 200 }) } };
+// The assets mock answers with the path it was asked for, so a test can see
+// which file the Worker chose to serve.
+const env = { DB, ASSETS: { fetch: (req) => new Response("static " + new URL(req.url).pathname, { status: 200 }) } };
 const call = (path, init) => worker.fetch(new Request("https://x" + path, init), env);
 const post = (body) => call("/api/vote", { method: "POST", body: JSON.stringify(body) });
 
@@ -71,7 +73,7 @@ res = await call("/api/nope");
 t("unknown api route 404s", res.status === 404);
 
 res = await call("/index.html");
-t("non-api path falls through to ASSETS", (await res.text()) === "static");
+t("non-api path falls through to ASSETS", (await res.text()).startsWith("static"));
 
 // access code
 const guarded = { ...env, ACCESS_CODE: "s3cret" };
@@ -1050,6 +1052,29 @@ t5("and trip 1 does not see trip 2's rows",
   t5("trip 1 cannot put trip 2's place on its plan",
      (await call("/api/plan/set", { method: "POST",
         body: JSON.stringify({ voter: "Emily", sightId: col.id, day: "2026-09-12" }) })).status === 400);
+}
+
+// --- Phase 1, step 4: the pages live under a trip
+{
+  const served = async (p) => (await call(p)).text();
+  t5("/t/1/ serves the Sights page", await served("/t/1/") === "static /index.html");
+  t5("/t/1/plan serves the Plan page", await served("/t/1/plan") === "static /plan.html");
+  t5("/t/2/bookings serves Bookings for trip 2", await served("/t/2/bookings") === "static /bookings.html");
+  t5("/t/1/details/ tolerates a trailing slash", await served("/t/1/details/") === "static /details.html");
+
+  const r = (p) => call(p, { redirect: "manual" });
+  const loc = async (p) => (await r(p)).headers.get("location");
+  t5("the old / redirects to trip 1", (await r("/")).status === 302 && (await loc("/")).endsWith("/t/1/"));
+  t5("and /plan, keeping any query", (await loc("/plan?x=1")).endsWith("/t/1/plan?x=1"));
+  t5("/t/1 without a slash redirects to /t/1/", (await loc("/t/1")).endsWith("/t/1/"));
+
+  t5("a trip that does not exist is a 404 page", (await call("/t/9/plan")).status === 404 &&
+     /No such trip/.test(await served("/t/9/plan")));
+  t5("so is a trip that is not a number", (await call("/t/rome/")).status === 404);
+  t5("and a page that does not exist inside a trip", (await call("/t/1/nothing")).status === 404);
+  t5("shared files are served as they are", await served("/app.css") === "static /app.css" &&
+     await served("/img/manifest.json") === "static /img/manifest.json");
+  t5("the page files themselves are still reachable", await served("/plan.html") === "static /plan.html");
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

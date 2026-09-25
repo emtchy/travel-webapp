@@ -2,10 +2,19 @@ name = "travel-webapp"
 main = "src/worker.js"
 compatibility_date = "2026-08-01"
 
-# Serves everything in public/ ; /api/* is handled by the Worker.
+# Everything in public/ is served through the Worker: pages live under
+# /t/<trip>/, the old page addresses redirect there, and /api/* is the API.
+# run_worker_first makes the Worker see every request rather than only the
+# ones no asset matches — without it /plan would be served as a file before
+# the redirect could happen.
 [assets]
 directory = "./public"
 binding = "ASSETS"
+run_worker_first = true
+# The Worker names the exact file it wants (/plan.html); the default handling
+# would answer that with a redirect to /plan, which the Worker then sends to
+# /t/1/plan, which asks for /plan.html again — a loop.
+html_handling = "none"
 
 [[d1_databases]]
 binding = "DB"

@@ -6,12 +6,26 @@
  * `<div id="shell" data-page="sights"></div>` where the bar goes and imports
  * this module; the bar is drawn before the page's own script runs.
  *
- * Nothing in here knows what trip this is. The brand shows whatever the trip
- * is called once the page has loaded it — `setTrip()` — and says "Trip" until
- * then.
+ * Which trip this is comes from the address: /t/<id>/plan is trip <id>. Every
+ * API call the pages make goes through `api()` here, which puts the trip into
+ * the path, so a page never needs to know its own trip. The brand shows
+ * whatever the trip is called once the page has loaded it — `setTrip()` — and
+ * says "Trip" until then.
  */
 
 export const $ = (s, r = document) => r.querySelector(s);
+
+/* ------------------------------------------------------------- the trip */
+
+/** Trip id from the address, or 1 for the old un-prefixed pages. */
+export const TRIP = (() => {
+  const m = location.pathname.match(/^\/t\/(\d+)(?:\/|$)/);
+  return m ? Number(m[1]) : 1;
+})();
+
+/** A page's address inside this trip: pageHref("/plan") → "/t/3/plan". */
+export const pageHref = (page) => `/t/${TRIP}${page}`;
+
 export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
@@ -112,7 +126,7 @@ const current = mount?.dataset.page || "sights";
 
 function linksHTML(withIcons) {
   return PAGES.map(([key, href, icon]) =>
-    `<a href="${href}" data-nav="${key}"${key === current ? ' aria-current="page"' : ""}>${
+    `<a href="${pageHref(href)}" data-nav="${key}"${key === current ? ' aria-current="page"' : ""}>${
       withIcons ? ICONS[icon] : ""}<span>${esc(NAV[lang][key])}</span></a>`).join("");
 }
 
@@ -120,7 +134,7 @@ if (mount) {
   mount.outerHTML = `
   <nav class="nav">
     <div class="nav-inner">
-      <a class="brand" href="/"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">Trip</span></a>
+      <a class="brand" href="${pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">Trip</span></a>
       <div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>
       <div class="nav-tools">
         <label class="who" id="who">
@@ -250,9 +264,15 @@ export const weekdayShort = (iso) => fmtDate(iso, { weekday: "short" });
 
 let accessCode = store("code") || "";
 
-/** fetch() with the JSON headers, the access code, and one retry after a 401. */
+/**
+ * fetch() with the JSON headers, the access code, and one retry after a 401.
+ * A path like "/api/plan/set" is sent as "/api/t/<trip>/plan/set", so pages
+ * keep writing the endpoint and the shell supplies the trip.
+ */
 export async function api(path, options, retried = false) {
-  const res = await fetch(path, {
+  const scoped = path.startsWith("/api/") && !path.startsWith("/api/t/")
+    ? `/api/t/${TRIP}${path.slice(4)}` : path;
+  const res = await fetch(scoped, {
     ...options,
     headers: {
       "content-type": "application/json",

@@ -30,6 +30,52 @@ function tripOf(url) {
   return { trip, path: `/api${m[2] ?? ""}` };
 }
 
+/* ------------------------------------------------------------------ pages */
+
+/** The four pages, by the path they have inside a trip. */
+const PAGES = {
+  "/": "/index.html",
+  "/plan": "/plan.html",
+  "/bookings": "/bookings.html",
+  "/details": "/details.html",
+};
+
+const NOT_FOUND_PAGE = `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>No such trip</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+background:#F5F5F7;color:#1D1D1F;display:grid;place-items:center;min-height:100dvh;margin:0}
+main{text-align:center;padding:24px}h1{font-size:22px;margin:0 0 8px}p{color:#5C5C63;margin:0}</style>
+<main><h1>No such trip</h1><p>There is nothing at this address. Check the link you were sent.</p></main>`;
+
+/**
+ * Pages live under a trip: /t/<id>/, /t/<id>/plan, /t/<id>/bookings,
+ * /t/<id>/details. The page files themselves are the same four HTML files
+ * whatever the trip — the shell reads the trip out of the address and the
+ * API answers for that trip — so serving a page is a matter of handing the
+ * assets binding the right file.
+ *
+ * The old addresses (/, /plan, …) redirect to trip 1: they are the links the
+ * London group has, and a link that stops working is worse than a redirect.
+ * Everything else — stylesheets, scripts, photos — is served as it is.
+ */
+async function servePage(request, env, url) {
+  const path = url.pathname;
+  const asset = (file) => env.ASSETS.fetch(new Request(new URL(file, url), request));
+
+  const m = path.match(/^\/t\/([^/]+)(\/.*)?$/);
+  if (m) {
+    const trip = /^[1-9]\d{0,8}$/.test(m[1]) ? Number(m[1]) : null;
+    const sub = (m[2] ?? "").replace(/\/+$/, "") || "/";
+    if (m[2] == null) return Response.redirect(`${url.origin}/t/${m[1]}/${url.search}`, 302);
+    if (!(trip && await tripExists(env, trip)) || !PAGES[sub])
+      return new Response(NOT_FOUND_PAGE, { status: 404,
+        headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+    return asset(PAGES[sub]);
+  }
+
+  if (PAGES[path]) return Response.redirect(`${url.origin}/t/1${path}${url.search}`, 302);
+  return env.ASSETS.fetch(request);
+}
+
 async function tripExists(env, trip) {
   if (trip == null) return false;
   const row = await env.DB.prepare("SELECT 1 FROM trips WHERE id = ?1").bind(trip).first();
@@ -1244,7 +1290,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith("/api/")) return servePage(request, env, url);
 
     if (!checkAccess(request, env)) return json({ error: "Wrong access code." }, 401);
 

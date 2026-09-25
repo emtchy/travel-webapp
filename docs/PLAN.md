@@ -3,7 +3,7 @@
 Living document. Tick the status boxes as work lands, and **append** to the
 decision log rather than rewriting it.
 
-Last updated: 2026-09-18
+Last updated: 2026-09-25
 
 ---
 
@@ -65,8 +65,8 @@ Identity is still a typed name. That is the thing Phase 2 replaces.
 | --- | --- | --- |
 | 0 | The London trip on the current stack: vote, book, plan by hand | ✅ done, trip travelled |
 | 0.5 | Redesign on a shared design system; nothing London-specific in the pages | ✅ done 2026-09-11 |
-| **1** | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ⬜ next |
-| 2 | **Accounts** — email-link sign-in, members linked to accounts, invites, roles, settings (maps app, language) | ⬜ |
+| 1 | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ✅ done 2026-09-25 |
+| **2** | **Accounts** — email-link sign-in, members linked to accounts, invites, roles, settings (maps app, language) | ⬜ next |
 | 3 | Create your own trip: trip list, new-trip flow, the London 55 as an optional template | ⬜ |
 | 4 | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ |
 
@@ -92,8 +92,12 @@ the live database, each with a migration and a test.
       the trip from the URL: `/api/t/<trip>/…`. The old paths are aliases for
       trip 1 until the pages move. A trip that does not exist, or is not a
       number, is a 404. No migration.
-- [ ] **Step 4 — the pages are trip-scoped.** `/t/<trip>/plan` and friends; the
-      old URLs redirect to trip 1 so the London link keeps working.
+- [x] **Step 4 — the pages are trip-scoped.** *(2026-09-25)* `/t/<trip>/`,
+      `/t/<trip>/plan`, `/bookings`, `/details`. The old addresses redirect to
+      trip 1, so the London links keep working. The shell reads the trip from
+      the address and puts it into every API call, so no page changed. The
+      Worker sees every request now (`run_worker_first`) and serves the four
+      HTML files itself; an unknown trip gets a small 404 page. No migration.
 
 ### Phase 2 — accounts
 
@@ -248,6 +252,20 @@ number rather than a name so nothing has to be unique or URL-safe. The
 un-prefixed paths stay as aliases for trip 1 while the London links are in use.
 A trip that does not exist is a 404 that says so, never an empty trip.
 
+**2026-09-25 — `/` redirects to trip 1; the trip list will take it over.**
+Supersedes "the vote page keeps `/`" (2026-08-25). The London group's links
+still work because every old address redirects to its `/t/1/…` twin, which is
+all that decision was protecting. When Phase 3 puts a trip list at `/`, the
+redirect goes and the list takes its place; the London links are already on
+their permanent addresses.
+
+**2026-09-25 — The Worker serves the pages; the same four files serve every trip.**
+Rather than one copy of the pages per trip, the Worker maps `/t/<id>/plan` to
+`plan.html` and the shell reads the id from the address. That kept step 4 to a
+routing change: the pages did not need to know they had moved. It also means
+the Worker now runs for every request, which was the price of being able to
+redirect the old addresses at all.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -282,5 +300,3 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - Should a `viewer` be able to vote? (Leaning: yes — voting is the point of
   inviting someone; `editor` adds places, bookings and plan changes; `owner`
   edits the trip itself and members.)
-- Does the London trip stay reachable at its old links after Phase 1 Step 4?
-  (Yes, by redirect, until the four accounts exist and have claimed it.)

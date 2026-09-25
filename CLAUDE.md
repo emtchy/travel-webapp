@@ -17,10 +17,11 @@ itineraries for cities. The London list is content, not the app's spine.
 Cloudflare Worker + D1. No build step, no runtime dependencies, no framework.
 
 ```
-public/details.html   Details   /details   the trip itself
-public/index.html     Sights    /          vote, comment, add places, put one on a day
-public/bookings.html  Bookings  /bookings  still to book / booked / not booking
-public/plan.html      Plan      /plan      a column per day, maps routes, a detail sheet
+public/details.html   Details   /t/<trip>/details   the trip itself
+public/index.html     Sights    /t/<trip>/          vote, comment, add places, put one on a day
+public/bookings.html  Bookings  /t/<trip>/bookings  still to book / booked / not booking
+public/plan.html      Plan      /t/<trip>/plan      a column per day, maps routes, a detail sheet
+                      (the Worker maps these to the files; /, /plan… redirect to trip 1)
 public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, name, language, toast, api(), maps preference
 public/route.js       Google / Apple Maps links for a day or a stop
@@ -45,10 +46,10 @@ npm run deploy          # only when asked — a push to main does NOT deploy
 
 ## API
 
-All JSON. Every path below also exists as `/api/t/<trip>/…` for a given
-trip; the bare path is trip 1 (the London links) until the pages move to
-`/t/<trip>/…` in Phase 1 step 4. Writes take `voter` (the typed name) until
-accounts exist. An unknown trip is a 404.
+All JSON, under `/api/t/<trip>/…`; the pages call the bare paths below and
+`api()` in `shell.js` puts the trip in. The bare `/api/…` paths still answer
+for trip 1. Writes take `voter` (the typed name) until accounts exist. An
+unknown trip is a 404.
 
 | Method | Path | Does |
 | --- | --- | --- |
@@ -92,6 +93,6 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
 
 ## Current phase
 
-Phase 0 and the redesign are done. **Next is Phase 1** — trips and items in the
-database — followed by accounts, invites and roles. Steps and status live in
-`docs/PLAN.md` §3.
+Phase 0, the redesign and Phase 1 (trips and items in the database, pages and
+API under `/t/<trip>/`) are done. **Next is Phase 2** — accounts, invites and
+roles. Steps and status live in `docs/PLAN.md` §3.

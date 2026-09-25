@@ -30,6 +30,18 @@ scripts/migrate.mjs        applies each migration below once, recording it in sc
 scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
 
+## Addresses
+
+Every page lives under its trip: `/t/1/` is the London trip's Sights page,
+`/t/1/plan` its plan, `/t/1/bookings` and `/t/1/details` the rest. The old
+addresses — `/`, `/plan`, `/bookings`, `/details` — redirect to trip 1, so a
+link that was sent around before still works. A trip that does not exist gets
+a plain "No such trip" page.
+
+The same four HTML files serve every trip: the Worker maps the address to the
+file, and the shared shell reads the trip number out of the address and puts it
+into every API call.
+
 ## The design
 
 One stylesheet, `public/app.css`, and one small module, `public/shell.js`, are
@@ -55,7 +67,7 @@ dates and destination come from the same place.
 
 ## The Bookings page
 
-`/bookings`, linked from the bar at the top of every page. It shows everything
+`/t/<trip>/bookings`, linked from the bar at the top of every page. It shows everything
 that **costs money or has to be booked ahead** — not simply everything paid,
 because Sky Garden, Horizon 22 and the Barbican Conservatory are free and still
 need a slot reserved.
@@ -87,7 +99,7 @@ behind a vote filter would just make people wonder whether it really got booked.
 
 ## The Plan page
 
-`/plan`, a column per day of the trip. It has no scheduler in it — no routes, no
+`/t/<trip>/plan`, a column per day of the trip. It has no scheduler in it — no routes, no
 travel times, nothing worked out for you. It shows what happens when, and the
 times are the ones you type.
 
