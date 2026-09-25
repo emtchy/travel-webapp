@@ -67,8 +67,8 @@ Identity is still a typed name. That is the thing Phase 2 replaces.
 | 0.5 | Redesign on a shared design system; nothing London-specific in the pages | ✅ done 2026-09-11 |
 | 1 | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ✅ done 2026-09-25 |
 | 2 | **Accounts** — email-link sign-in, invites, roles, settings | ✅ done 2026-09-25 (password optional, step 9, open) |
-| **3** | **The front door** — a real `/`: what this is, how it works, example trips, sign in; then your trips and a new-trip flow | ⬜ next |
-| 4 | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ |
+| 3 | **The front door** — a real `/`, example trips, your trips organised, new trip, leave/delete/cancel | ✅ done 2026-09-25 |
+| **4** | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ next |
 
 Phases 1 and 2 are cut into steps small enough to ship one at a time against
 the live database, each with a migration and a test.
@@ -209,10 +209,13 @@ is, show it, and offer the way in.
       on a phone); the private notice links there too. Before this the brand
       only led to the trip's own Sights page, so someone on the example had
       no way to the page where they could sign in.
-- [ ] **Step 14 — leave, delete, cancel.** A member can leave a trip; the
-      owner can delete one (everything under it goes; asks twice) or mark it
-      cancelled. Drops the two unread tables `trip_settings` and
-      `custom_sights` in the same migration.
+- [x] **Step 14 — leave, delete, cancel.** *(2026-09-25)* A "This trip"
+      panel on Details. Anyone can leave (votes and the rest stay under the
+      name; the last owner cannot). The owner can mark a trip cancelled —
+      it files under Past and is never featured — and can delete it, which
+      asks twice, the second time for the trip's name typed, and removes
+      everything under it including any pin. Migration 016 drops
+      `trip_settings` and `custom_sights`, unread since Phase 1.
 
 ### Phase 4 — public hardening
 
@@ -449,6 +452,13 @@ The server does not know what time zone a person is in, and a trip's day
 boundary is a local matter — at 23:30 in Vienna it is still the same day of
 the trip. So the page sends its local date with `?today=`, and the server
 decides current/next from that. The server's own clock is only the fallback.
+
+**2026-09-25 — Delete asks for the name; leave and remove keep the history.**
+Deleting a trip is the one action with no way back, so it asks twice and the
+second time wants the trip's name typed, on the server as well as in the
+page. Leaving, like being removed, only takes the seat: what a person voted,
+wrote and booked stays under their name, because a plan is a shared record
+and one person leaving should not rewrite it.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

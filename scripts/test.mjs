@@ -998,7 +998,7 @@ t5("the journey out is recorded", tvOut.travel.find(x => x.direction === "out")?
 t5("every vote is on London or the example",
    db.prepare("SELECT COUNT(*) AS n FROM votes WHERE trip_id NOT IN (1, 2)").get().n === 0);
 t5("so is every added sight, comment, booking, plan entry, note, member and journey",
-   ["custom_sights", "comments", "booking_status", "plan_entries", "plan_notes",
+   ["comments", "booking_status", "plan_entries", "plan_notes",
     "trip_members", "trip_travel"].every(tb =>
      db.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE trip_id NOT IN (1, 2)`).get().n === 0));
 
@@ -1026,8 +1026,6 @@ t5("and trip 1 does not see trip 2's rows",
   t5("the built-ins are rows in items, not a file", rows("builtin") === 55);
   t5("and the API serves them from there", snap.sights.length === rows("builtin"));
   t5("every added place is a row in the same table", rows("added") === snap.custom.length);
-  t5("nothing is read from custom_sights any more",
-     db.prepare("SELECT COUNT(*) AS n FROM custom_sights").get().n === 0);
 
   const globe = snap.sights.find(x => x.id === "shakespeares-globe");
   t5("a summary with a semicolon in it survived the import", /;/.test(globe?.summary ?? ""));
@@ -1482,6 +1480,51 @@ t5("and trip 1 does not see trip 2's rows",
   d = await (await list("2026-09-13")).json();
   t5("a cancelled trip is never featured", d.featured?.id !== 1 && d.trips.find(tr => tr.id === 1).status === "cancelled");
   db.prepare("UPDATE trips SET status = 'planned' WHERE id = 1").run();
+}
+
+// --- Phase 3, step 14: leave, delete, cancel; the old tables are gone
+{
+  t5("the two superseded tables are gone",
+     !db.prepare("SELECT name FROM sqlite_master WHERE name IN ('trip_settings','custom_sights')").get());
+
+  // a trip to play with: Mia owns it, Nils is an editor on it
+  const mia = asUser("mia@example.org");
+  const made = await (await raw("/api/trips", { method: "POST", headers: mia, body: JSON.stringify({ name: "Lisbon", destination: "Lisbon", template: null }) })).json();
+  const T = made.id;
+  const inv = await (await raw(`/api/t/${T}/invite`, { method: "POST", headers: mia, body: JSON.stringify({ email: "nils@example.org", role: "editor" }) })).json();
+  const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+  const nils = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+  await raw(`/api/t/${T}/sights/add`, { method: "POST", headers: nils, body: JSON.stringify({ name: "Belém Tower" }) });
+
+  // cancel
+  const set = (b, h = mia) => raw(`/api/t/${T}/trip/settings`, { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("an owner can cancel a trip", (await (await set({ status: "cancelled" })).json()).trip.status === "cancelled");
+  t5("and it says so in the list", (await (await raw("/api/trips", { headers: mia })).json()).trips.find(tr => tr.id === T).status === "cancelled");
+  t5("an editor cannot", (await set({ status: "planned" }, nils)).status === 403);
+  t5("a nonsense status is refused", (await set({ status: "maybe" })).status === 400);
+  t5("and back on again", (await (await set({ status: "planned" })).json()).trip.status === "planned");
+
+  // leave
+  t5("leaving needs a sign-in", (await raw(`/api/t/${T}/leave`, { method: "POST" })).status === 401);
+  t5("the only owner cannot leave", (await raw(`/api/t/${T}/leave`, { method: "POST", headers: mia })).status === 400);
+  await raw("/api/auth/pin", { method: "POST", headers: nils, body: JSON.stringify({ tripId: T }) });
+  t5("an editor can leave", (await raw(`/api/t/${T}/leave`, { method: "POST", headers: nils })).status === 200);
+  t5("and is then out", (await raw(`/api/t/${T}/sights`, { headers: nils })).status === 403);
+  t5("their place stays, under their name", db.prepare("SELECT added_by FROM items WHERE trip_id = ? AND name = 'Belém Tower'").get(T)?.added_by === "Nils");
+  t5("and their pin on it is cleared", (await (await raw("/api/auth/me", { headers: nils })).json()).user.pinnedTripId === null);
+
+  // delete
+  const del = (b, h = mia) => raw(`/api/t/${T}/trip/delete`, { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("deleting needs the owner", (await del({ confirm: "Lisbon" }, nils)).status === 403 || (await del({ confirm: "Lisbon" }, nils)).status === 401);
+  t5("and the trip's name typed", (await del({ confirm: "Lisbn" })).status === 400 && (await del({})).status === 400);
+  await raw("/api/auth/pin", { method: "POST", headers: mia, body: JSON.stringify({ tripId: T }) });
+  const rows = (tb) => db.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE trip_id = ?`).get(T).n;
+  t5("with the name, it goes", (await del({ confirm: " lisbon " })).status === 200);
+  t5("and everything under it", ["items", "votes", "comments", "booking_status", "plan_entries", "plan_notes", "trip_members", "trip_travel", "invites"].every(tb => rows(tb) === 0)
+     && !db.prepare("SELECT 1 FROM trips WHERE id = ?").get(T));
+  t5("the pin pointing at it is cleared", (await (await raw("/api/auth/me", { headers: mia })).json()).user.pinnedTripId === null);
+  t5("and its address is a 404 now", (await raw(`/api/t/${T}/me`, { headers: mia })).status === 404 && (await raw(`/t/${T}/plan`)).status === 404);
+  t5("London is untouched", db.prepare("SELECT COUNT(*) AS n FROM items WHERE trip_id = 1").get().n > 55);
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

@@ -129,6 +129,11 @@
   </div>
 </section>
 
+<section class="card panel" id="manage">
+  <div class="card-head"><span class="ico" data-ico="trash"></span><h2 id="h-manage">This trip</h2></div>
+  <div class="card-body" id="manage-body"></div>
+</section>
+
 <section class="card panel">
   <div class="card-head"><span class="ico" data-ico="info"></span><h2 id="h-notes">Good to know</h2></div>
   <div class="card-body">
@@ -159,6 +164,15 @@ const T = {
     save: "Save", add: "Add",
     tripHint: "The dates decide which days the plan and the booking dates offer.",
     fPublic: "Anyone with the link can look at this trip", fPublicHint: "Only members can change it. Public trips appear as examples on the front page.",
+    hManage: "This trip", cancelled: "Cancelled", cancelHint: "A cancelled trip stays as it is, but is filed under past trips and never shown first.",
+    markCancelled: "Mark as cancelled", unCancel: "It's on again",
+    leave: "Leave this trip", leaveHint: "Your votes, comments and bookings stay under your name; only your seat goes.",
+    leaveConfirm: (n) => `Leave "${n}"? You'll need a new invitation to come back.`,
+    lastOwner: "You're the only owner. Make someone else an owner first, or delete the trip.",
+    del: "Delete this trip", delHint: "Everything under it goes: places, votes, comments, bookings, the plan, the people. There is no undo.",
+    delConfirm: (n) => `Delete "${n}" for everyone? This cannot be undone.`,
+    delType: (n) => `To confirm, type the trip's name: ${n}`, delNo: "That's not the name. Nothing was deleted.",
+    left: "You've left the trip.", deleted: "The trip is gone.",
     stayNone: "No address set yet.", stayPh: "Address, place name, maps link or coordinates",
     find: "Find", clear: "Remove", cancel: "Cancel", pick: "Pick one:",
     noHits: "Nothing found. Open it in Maps, copy the link, and paste that here.",
@@ -195,6 +209,15 @@ const T = {
     save: "Speichern", add: "Hinzufügen",
     tripHint: "Die Daten bestimmen, welche Tage Plan und Buchungen anbieten.",
     fPublic: "Jeder mit dem Link kann diese Reise anschauen", fPublicHint: "Ändern können sie nur die, die dabei sind. Öffentliche Reisen erscheinen als Beispiele auf der Startseite.",
+    hManage: "Diese Reise", cancelled: "Abgesagt", cancelHint: "Eine abgesagte Reise bleibt, wie sie ist, wird aber bei den früheren Reisen abgelegt und nie zuerst gezeigt.",
+    markCancelled: "Als abgesagt markieren", unCancel: "Findet doch statt",
+    leave: "Diese Reise verlassen", leaveHint: "Deine Stimmen, Kommentare und Buchungen bleiben unter deinem Namen; nur dein Platz geht.",
+    leaveConfirm: (n) => `„${n}“ verlassen? Um zurückzukommen, brauchst du eine neue Einladung.`,
+    lastOwner: "Du bist die einzige Verwaltung. Mach zuerst jemand anderen dazu, oder lösche die Reise.",
+    del: "Diese Reise löschen", delHint: "Alles darunter geht: Orte, Stimmen, Kommentare, Buchungen, der Plan, die Leute. Das lässt sich nicht rückgängig machen.",
+    delConfirm: (n) => `„${n}“ für alle löschen? Das lässt sich nicht rückgängig machen.`,
+    delType: (n) => `Zur Bestätigung den Namen der Reise eintippen: ${n}`, delNo: "Das ist nicht der Name. Nichts wurde gelöscht.",
+    left: "Du hast die Reise verlassen.", deleted: "Die Reise ist weg.",
     stayNone: "Noch keine Adresse hinterlegt.", stayPh: "Adresse, Ortsname, Maps-Link oder Koordinaten",
     find: "Suchen", clear: "Entfernen", cancel: "Abbrechen", pick: "Auswählen:",
     noHits: "Nichts gefunden. In Maps öffnen, Link kopieren und hier einfügen.",
@@ -347,7 +370,7 @@ function renderInvites() {
 function render() {
   const L = t();
   for (const [id, key] of [["headline","headline"],["lede","lede"],["foot","foot"],
-    ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"],
+    ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"],["h-manage","hManage"],
     ["l-name","fName"],["l-dest","fDest"],["l-start","fStart"],["l-end","fLast"],
     ["l-in","fIn"],["l-out","fOut"],["l-ref","fRef"],["l-phone","fPhone"],
     ["l-newname","fPerson"],["l-newnote","fPersonNote"]])
@@ -384,6 +407,25 @@ function render() {
   renderStay();
   renderTravel();
   renderPeople();
+  renderManage();
+}
+
+/** Cancel (owner), leave (anyone but the last owner), delete (owner). */
+function renderManage() {
+  const L = t();
+  const owner = roleOf() === "owner";
+  const cancelled = TRIP.status === "cancelled";
+  $("#manage-body").innerHTML = `
+    ${owner ? `<div class="spread" style="margin-bottom:16px">
+      <button class="btn ${cancelled ? "btn-quiet" : "btn-outline"}" type="button" id="m-cancel">${cancelled ? esc(L.unCancel) : esc(L.markCancelled)}</button>
+      ${cancelled ? `<span class="tag tag-neutral">${esc(L.cancelled)}</span>` : ""}
+      <span class="hint">${esc(L.cancelHint)}</span></div>` : ""}
+    <div class="spread" style="margin-bottom:${owner ? "16px" : "0"}">
+      <button class="btn btn-outline" type="button" id="m-leave">${esc(L.leave)}</button>
+      <span class="hint">${esc(L.leaveHint)}</span></div>
+    ${owner ? `<div class="spread">
+      <button class="btn btn-danger" type="button" id="m-delete">${esc(L.del)}</button>
+      <span class="hint">${esc(L.delHint)}</span></div>` : ""}`;
 }
 
 /* ----------------------------------------------------------------- actions */
@@ -411,6 +453,26 @@ $("#stay-save").addEventListener("click", () => mutate("/api/trip/settings", {
   checkIn: $("#t-in").value || null, checkOut: $("#t-out").value || null,
   reference: $("#t-ref").value || null, phone: $("#t-phone").value || null,
 }));
+
+document.addEventListener("click", async (ev) => {
+  const L = t();
+  if (ev.target.closest("#m-cancel"))
+    return void mutate("/api/trip/settings", { status: TRIP.status === "cancelled" ? "planned" : "cancelled" });
+  if (ev.target.closest("#m-leave")) {
+    if (!window.confirm(L.leaveConfirm(TRIP.name))) return;
+    try { await api("/api/leave", { method: "POST", body: "{}" }); location.href = "/"; }
+    catch (err) { setStatus(err.message, "err"); }
+    return;
+  }
+  if (ev.target.closest("#m-delete")) {
+    if (!window.confirm(L.delConfirm(TRIP.name))) return;
+    const typed = window.prompt(L.delType(TRIP.name));
+    if (typed == null) return;
+    if (typed.trim().toLowerCase() !== String(TRIP.name).trim().toLowerCase()) { setStatus(L.delNo, "err"); return; }
+    try { await api("/api/trip/delete", { method: "POST", body: JSON.stringify({ confirm: typed }) }); location.href = "/"; }
+    catch (err) { setStatus(err.message, "err"); }
+  }
+});
 
 $("#notes-save").addEventListener("click", () =>
   mutate("/api/trip/settings", { notes: $("#t-notes").value || null }));

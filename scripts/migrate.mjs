@@ -41,9 +41,9 @@ const ALREADY = /duplicate column name|already exists/i;
 const PROOF = {
   "migrate-001-bookings.sql":       "SELECT 1 FROM booking_status LIMIT 0",
   "migrate-002-plan-notes.sql":     "SELECT 1 FROM plan_notes LIMIT 0",
-  "migrate-003-custom-address.sql": "SELECT address FROM custom_sights LIMIT 0",
+  "migrate-003-custom-address.sql": "SELECT address FROM items LIMIT 0",
   "migrate-004-note-address.sql":   "SELECT address FROM plan_notes LIMIT 0",
-  "migrate-005-trip-base.sql":      "SELECT base_lat FROM trip_settings LIMIT 0",
+  "migrate-005-trip-base.sql":      "SELECT base_lat FROM trips LIMIT 0",
   "migrate-006-trip.sql":           "SELECT 1 FROM trip_travel LIMIT 0",
   "migrate-007-trips.sql":          "SELECT trip_id FROM trip_travel LIMIT 0",
   // 008 onwards only ever meet a database that already tracks itself.

@@ -81,33 +81,6 @@ CREATE TABLE IF NOT EXISTS items (
 
 CREATE INDEX IF NOT EXISTS idx_items_trip ON items (trip_id, source, rank, created_at);
 
--- Superseded by `items` (migration 008 copied it across). Kept so a database
--- built from this file matches one brought forward by the migrations; a later
--- migration drops it from both.
-CREATE TABLE IF NOT EXISTS custom_sights (
-  id           TEXT    PRIMARY KEY,   -- "custom-<uuid>"
-  name         TEXT    NOT NULL,
-  summary      TEXT,
-  url          TEXT,
-  added_by     TEXT    NOT NULL,      -- as typed
-  added_by_key TEXT    NOT NULL,      -- lowercased; only they can remove it
-  created_at   INTEGER NOT NULL,
-  -- Whether it belongs on the Bookings page. Built-in sights answer this from
-  -- their `cost` and `bookingRequired` fields; added ones have to be asked.
-  costs            INTEGER NOT NULL DEFAULT 0,
-  price_label      TEXT,
-  booking_required INTEGER NOT NULL DEFAULT 0,
-  -- Filled in later, from the plan page. Without lat and lon an added sight is
-  -- simply left out of a day's route.
-  address          TEXT,
-  lat              REAL,
-  lon              REAL,
-  trip_id          INTEGER NOT NULL DEFAULT 1
-);
-
-CREATE INDEX IF NOT EXISTS idx_custom_created ON custom_sights (created_at);
-CREATE INDEX IF NOT EXISTS idx_custom_trip    ON custom_sights (trip_id, created_at);
-
 -- Comments on an option. Anyone can write, only the author can delete.
 CREATE TABLE IF NOT EXISTS comments (
   id         TEXT    PRIMARY KEY,   -- "c-<uuid>"
@@ -288,7 +261,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-011-claim.sql', 0),
   ('migrate-012-roles.sql', 0),
   ('migrate-013-settings.sql', 0),
-  ('migrate-015-home.sql', 0);
+  ('migrate-015-home.sql', 0),
+  ('migrate-016-tidy.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

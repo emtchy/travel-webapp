@@ -38,6 +38,56 @@ async function handleWhoAmI(request, env, trip) {
                                       visibility: row?.visibility === "public" ? "public" : "private" } });
 }
 
+/**
+ * POST /api/t/<trip>/leave — take yourself off a trip. Your votes, comments
+ * and bookings stay under your name, as they do when the owner removes
+ * someone; only the seat goes. The last owner cannot leave: hand the trip to
+ * someone first.
+ */
+async function handleLeave(request, env, trip) {
+  const { member, error } = await actor(request, env, trip);
+  if (error) return error;
+  if (member.role === "owner") {
+    const { count } = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM trip_members WHERE trip_id = ?1 AND role = 'owner'"
+    ).bind(trip).first();
+    if (count <= 1) return bad("You're the only owner. Make someone else an owner first, or delete the trip.");
+  }
+  await env.DB.prepare("DELETE FROM trip_members WHERE id = ?1").bind(member.id).run();
+  await env.DB.prepare("UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1 AND id = ?2")
+    .bind(trip, member.userId ?? "").run();
+  return json({ ok: true });
+}
+
+/**
+ * POST /api/t/<trip>/trip/delete  { confirm } — owner only, and `confirm` must
+ * be the trip's name, typed. Everything under the trip goes: places, votes,
+ * comments, bookings, plan, entries, journeys, members, invites, and any
+ * pin pointing at it. There is no undo, which is why it asks for the name.
+ */
+async function handleTripDelete(request, env, trip) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const { error } = await actor(request, env, trip, "own");
+  if (error) return error;
+  const info = await getTrip(env, trip);
+  const typed = typeof body?.confirm === "string" ? body.confirm.trim() : "";
+  if (!typed || typed.toLowerCase() !== String(info.name ?? "").trim().toLowerCase())
+    return bad("Type the trip's name to confirm.");
+
+  const gone = [
+    "DELETE FROM votes WHERE trip_id = ?1", "DELETE FROM comments WHERE trip_id = ?1",
+    "DELETE FROM booking_status WHERE trip_id = ?1", "DELETE FROM plan_entries WHERE trip_id = ?1",
+    "DELETE FROM plan_notes WHERE trip_id = ?1", "DELETE FROM items WHERE trip_id = ?1",
+    "DELETE FROM trip_travel WHERE trip_id = ?1", "DELETE FROM invites WHERE trip_id = ?1",
+    "DELETE FROM trip_members WHERE trip_id = ?1",
+    "UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1",
+    "DELETE FROM trips WHERE id = ?1",
+  ];
+  for (const sql of gone) await env.DB.prepare(sql).bind(trip).run();
+  return json({ ok: true, deleted: trip });
+}
+
 /** POST /api/t/<trip>/member/role  { id, role } — owner only. */
 async function handleMemberRole(request, env, trip) {
   let body;
@@ -339,7 +389,7 @@ async function getTrip(env, trip) {
   const row = await env.DB.prepare(
     `SELECT name, destination, start_date, end_date,
             base_name, base_lat, base_lon, base_checkin, base_checkout,
-            base_ref, base_phone, near_lat, near_lon, notes, set_by, visibility
+            base_ref, base_phone, near_lat, near_lon, notes, set_by, visibility, status
        FROM trips WHERE id = ?1`
   ).bind(trip).first();
 
@@ -348,6 +398,7 @@ async function getTrip(env, trip) {
   return {
     id: trip,
     visibility: row?.visibility === "public" ? "public" : "private",
+    status: row?.status === "cancelled" ? "cancelled" : "planned",
     name: row?.name ?? FALLBACK_TRIP.name,
     destination: row?.destination ?? FALLBACK_TRIP.destination,
     startDate: row?.start_date ?? null,
@@ -436,7 +487,7 @@ async function whoIs(request, env, trip) {
   const m = await env.DB.prepare(
     "SELECT id, name, name_key, role FROM trip_members WHERE trip_id = ?1 AND user_id = ?2"
   ).bind(trip, user.id).first();
-  return { user, member: m ? { id: m.id, name: m.name, key: m.name_key, role: m.role } : null };
+  return { user, member: m ? { id: m.id, name: m.name, key: m.name_key, role: m.role, userId: user.id } : null };
 }
 
 /**
@@ -1149,9 +1200,11 @@ async function handleTripSettings(request, env, trip) {
   const notes = cleanText(body?.notes, 2000);
   if (notes === undefined) return bad("Keep the notes under 2000 characters.");
 
-  const { visibility } = body ?? {};
+  const { visibility, status } = body ?? {};
   if (visibility != null && visibility !== "public" && visibility !== "private")
     return bad("Visibility must be public or private.");
+  if (status != null && status !== "planned" && status !== "cancelled")
+    return bad("Status must be planned or cancelled.");
 
   // Only what was sent changes; COALESCE keeps the rest.
   await env.DB.prepare(
@@ -1170,11 +1223,12 @@ async function handleTripSettings(request, env, trip) {
        base_phone    = COALESCE(excluded.base_phone, trips.base_phone),
        notes         = COALESCE(excluded.notes, trips.notes),
        visibility    = COALESCE(?15, trips.visibility),
+       status        = COALESCE(?16, trips.status),
        set_by = excluded.set_by, updated_at = excluded.updated_at`
   )
     .bind(trip, name, destination, startDate || null, endDate || null,
           checkIn, checkOut, reference, phone, notes, who, Date.now(), Date.now(),
-          visibility ?? null, visibility ?? null)
+          visibility ?? null, visibility ?? null, status ?? null)
     .run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -1642,6 +1696,10 @@ export default {
       return handleInviteRevoke(request, env, trip, ctx);
     if (pathname === "/api/trip/member/role" && method === "POST")
       return handleMemberRole(request, env, trip);
+    if (pathname === "/api/leave" && method === "POST")
+      return handleLeave(request, env, trip);
+    if (pathname === "/api/trip/delete" && method === "POST")
+      return handleTripDelete(request, env, trip);
 
     if (pathname === "/api/vote" && method === "POST")
       return handleVote(request, env, trip);

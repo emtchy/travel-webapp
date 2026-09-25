@@ -34,7 +34,7 @@ src/sights.js         the London template; scripts/build-items-seed.mjs turns it
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
-schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql
+schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (016 so far)
 scripts/migrate.mjs   applies every migration, skipping done ones
 scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 ```
@@ -88,6 +88,8 @@ outside it may change.
 | POST | `/api/t/<trip>/invite/revoke` | owner: `{ id }` |
 | GET | `/invite?token=…` | the link: signs in, joins the trip with the role, lands on it |
 | POST | `/api/t/<trip>/trip/member/role` | owner: `{ id, role }` |
+| POST | `/api/t/<trip>/leave` | take yourself off the trip (not the last owner) |
+| POST | `/api/t/<trip>/trip/delete` | owner: `{ confirm: <trip name> }` — everything under it goes |
 | POST | `/api/auth/request` | `{ email, next?, lang? }` → a sign-in link by mail (not trip-scoped) |
 | GET | `/auth?token=…` | the link: starts a session, sets the cookie, redirects to `next` |
 | GET | `/api/auth/me` | `{ user }` or `{ user: null }` |
@@ -123,6 +125,8 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
 
 ## Current phase
 
-Phase 0, the redesign and Phase 1 (trips and items in the database, pages and
-API under `/t/<trip>/`) are done. **Next is Phase 2** — accounts, invites and
-roles. Steps and status live in `docs/PLAN.md` §3.
+Phases 0–3 are done: the redesign; trips and items in the database under
+`/t/<trip>/`; accounts, invites, roles and settings; the front page with
+examples, your trips organised, new trip, leave/delete/cancel. **Next is
+Phase 4**, public hardening, plus the optional password (Phase 2 step 9).
+Steps and status live in `docs/PLAN.md` §3.

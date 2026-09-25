@@ -89,6 +89,12 @@ can start with the London list of 55 places instead of an empty one; the copy
 is the trip's own, so what your group does with it never touches anyone
 else's. Other destinations start empty for now.
 
+**Leaving, cancelling, deleting.** At the bottom of Details, anyone can
+leave a trip — what they voted, wrote and booked stays under their name. The
+owner can mark a trip cancelled, which files it under past trips, or delete
+it outright; deleting asks twice, the second time for the trip's name, and
+removes everything under it.
+
 ## Your account
 
 The button with your name opens your account: your display name, your
