@@ -131,7 +131,12 @@ const NAV = {
         save: "Save", saved: "Saved", privacy: "Privacy",
         delAcct: "Delete account", delAcctHint: "Ends your sessions and removes your address and settings. Trips you are the only owner of must be handed over or deleted first.",
         delAcctConfirm: "Delete your account? This cannot be undone.", delAcctType: (e) => `To confirm, type your email address: ${e}`,
-        delAcctNo: "That's not your address. Nothing was deleted." },
+        delAcctNo: "That's not your address. Nothing was deleted.",
+        usePw: "Use a password instead", useLink: "Email me a link instead", pw: "Password", pwSignIn: "Sign in",
+        pwSection: "Password", pwNone: "None set. You sign in by email link.", pwSet: "Set. You can sign in with it or with a link.",
+        pwNew: "New password", pwCurrent: "Current password", pwHint: "At least 10 characters. The email link always works too, and is how you get back in if you forget it.",
+        pwSave: "Set password", pwChange: "Change password", pwRemove: "Remove password", pwSaved: "Password set", pwRemoved: "Password removed",
+        pwRemoveConfirm: "Remove your password? You'll sign in by email link only." },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
         name: "Dein Name", lang: "Sprache", home: "Reisen", front: "Zur Startseite",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
@@ -155,7 +160,12 @@ const NAV = {
         save: "Speichern", saved: "Gespeichert", privacy: "Datenschutz",
         delAcct: "Konto löschen", delAcctHint: "Beendet deine Sitzungen und entfernt Adresse und Einstellungen. Reisen, die du allein verwaltest, musst du zuerst übergeben oder löschen.",
         delAcctConfirm: "Dein Konto löschen? Das lässt sich nicht rückgängig machen.", delAcctType: (e) => `Zur Bestätigung deine E-Mail-Adresse eintippen: ${e}`,
-        delAcctNo: "Das ist nicht deine Adresse. Nichts wurde gelöscht." },
+        delAcctNo: "Das ist nicht deine Adresse. Nichts wurde gelöscht.",
+        usePw: "Lieber mit Passwort", useLink: "Lieber per E-Mail-Link", pw: "Passwort", pwSignIn: "Anmelden",
+        pwSection: "Passwort", pwNone: "Keins gesetzt. Du meldest dich per E-Mail-Link an.", pwSet: "Gesetzt. Du kannst dich damit oder per Link anmelden.",
+        pwNew: "Neues Passwort", pwCurrent: "Aktuelles Passwort", pwHint: "Mindestens 10 Zeichen. Der E-Mail-Link funktioniert immer – auch, falls du es vergisst.",
+        pwSave: "Passwort setzen", pwChange: "Passwort ändern", pwRemove: "Passwort entfernen", pwSaved: "Passwort gesetzt", pwRemoved: "Passwort entfernt",
+        pwRemoveConfirm: "Passwort entfernen? Dann meldest du dich nur noch per E-Mail-Link an." },
 };
 
 const PAGES = [
@@ -235,6 +245,7 @@ export function onUser(cb) { userListeners.add(cb); cb(user); }
 const announce = () => { for (const cb of userListeners) cb(user); for (const cb of nameListeners) cb(nameOf()); };
 
 let authView = "form";   // form | sent
+let authMode = "link";   // link | password
 let sentTo = "";
 let devLink = null;
 
@@ -277,6 +288,19 @@ function paintAuthSheet() {
           <span class="saved" id="s-saved" hidden>${esc(L.saved)}</span>
           <button class="btn btn-ghost right" type="button" id="auth-logout">${esc(L.signOut)}</button></div>
       </form>
+      <form id="pw-form" class="stack" style="gap:10px;padding-top:14px;border-top:1px solid var(--hair);margin-top:4px">
+        <div class="srow" style="gap:4px"><span class="slabel">${esc(L.pwSection)}</span>
+          <span class="sval muted">${esc(user.hasPassword ? L.pwSet : L.pwNone)}</span></div>
+        ${user.hasPassword ? `<label class="field"><span>${esc(L.pwCurrent)}</span>
+          <input class="input" id="pw-current" type="password" autocomplete="current-password"></label>` : ""}
+        <label class="field"><span>${esc(L.pwNew)}</span>
+          <input class="input" id="pw-new" type="password" minlength="10" autocomplete="new-password">
+          <span class="hint">${esc(L.pwHint)}</span></label>
+        <p class="err" id="pw-err" hidden></p>
+        <div class="spread"><button class="btn btn-sm btn-quiet" type="submit" id="pw-save">${esc(user.hasPassword ? L.pwChange : L.pwSave)}</button>
+          ${user.hasPassword ? `<button class="btn btn-sm btn-ghost danger" type="button" id="pw-remove">${esc(L.pwRemove)}</button>` : ""}
+          <span class="saved" id="pw-saved" hidden></span></div>
+      </form>
       <div class="spread" style="padding-top:14px;border-top:1px solid var(--hair);margin-top:4px">
         <button class="btn btn-sm btn-ghost danger" type="button" id="acct-delete">${esc(L.delAcct)}</button>
         <a class="footnote right" href="/privacy">${esc(L.privacy)}</a></div>
@@ -290,12 +314,16 @@ function paintAuthSheet() {
     return;
   }
   title.textContent = L.signInTitle;
+  const pw = authMode === "password";
   body.innerHTML = `<p class="sval muted">${esc(L.signInLede)}</p>
     <form id="auth-form" class="stack">
       <label class="field"><span>${esc(L.email)}</span>
-        <input class="input" id="auth-email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com"></label>
+        <input class="input" id="auth-email" type="email" required autocomplete="username" inputmode="email" placeholder="you@example.com"></label>
+      ${pw ? `<label class="field"><span>${esc(L.pw)}</span>
+        <input class="input" id="auth-pw" type="password" required autocomplete="current-password"></label>` : ""}
       <p class="err" id="auth-err" hidden></p>
-      <div class="spread"><button class="btn btn-primary" type="submit" id="auth-send">${esc(L.sendLink)}</button>
+      <div class="spread"><button class="btn btn-primary" type="submit" id="auth-send">${esc(pw ? L.pwSignIn : L.sendLink)}</button>
+        <button class="btn btn-ghost btn-sm" type="button" id="auth-mode">${esc(pw ? L.useLink : L.usePw)}</button>
         <a class="footnote right" href="/privacy">${esc(L.privacy)}</a></div>
     </form>`;
 }
@@ -390,6 +418,15 @@ function applyUserPrefs() {
   for (const cb of prefsListeners) cb();
 }
 
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#auth-mode")) return;
+  const email = $("#auth-email")?.value ?? "";
+  authMode = authMode === "password" ? "link" : "password";
+  paintAuthSheet();
+  $("#auth-email").value = email;
+  ($("#auth-pw") ?? $("#auth-email")).focus();
+});
+
 document.addEventListener("submit", async (e) => {
   const form = e.target.closest("#auth-form");
   if (!form) return;
@@ -397,16 +434,54 @@ document.addEventListener("submit", async (e) => {
   const L = NAV[lang];
   const email = $("#auth-email").value.trim();
   const send = $("#auth-send"), err = $("#auth-err");
+  const label = send.textContent;
   send.disabled = true; send.textContent = L.sending; err.hidden = true;
   try {
+    if (authMode === "password") {
+      await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password: $("#auth-pw").value }) });
+      closeAuth();
+      await loadUser();
+      if (HOME) location.reload();
+      return;
+    }
     const d = await api("/api/auth/request", { method: "POST",
       body: JSON.stringify({ email, next: location.pathname + location.search, lang }) });
     sentTo = email; devLink = d.devLink ?? null; authView = "sent";
     paintAuthSheet();
   } catch (ex) {
     err.textContent = ex.message || L.sendFail; err.hidden = false;
-    send.disabled = false; send.textContent = L.sendLink;
+    send.disabled = false; send.textContent = label;
   }
+});
+
+document.addEventListener("submit", async (e) => {
+  const form = e.target.closest("#pw-form");
+  if (!form) return;
+  e.preventDefault();
+  const L = NAV[lang];
+  const err = $("#pw-err"), btn = $("#pw-save");
+  btn.disabled = true; err.hidden = true;
+  try {
+    const d = await api("/api/auth/password", { method: "POST",
+      body: JSON.stringify({ password: $("#pw-new").value, current: $("#pw-current")?.value ?? "" }) });
+    user = d.user ?? user;
+    paintAuthSheet();
+    const s = $("#pw-saved"); if (s) { s.textContent = L.pwSaved; s.hidden = false; }
+  } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+  finally { btn.disabled = false; }
+});
+
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#pw-remove") || !user) return;
+  const L = NAV[lang];
+  if (!window.confirm(L.pwRemoveConfirm)) return;
+  const err = $("#pw-err");
+  try {
+    const d = await api("/api/auth/password/clear", { method: "POST", body: JSON.stringify({ current: $("#pw-current")?.value ?? "" }) });
+    user = d.user ?? user;
+    paintAuthSheet();
+    const s = $("#pw-saved"); if (s) { s.textContent = L.pwRemoved; s.hidden = false; }
+  } catch (ex) { if (err) { err.textContent = ex.message; err.hidden = false; } }
 });
 
 document.addEventListener("click", async (e) => {

@@ -66,7 +66,7 @@ Identity is still a typed name. That is the thing Phase 2 replaces.
 | 0 | The London trip on the current stack: vote, book, plan by hand | ✅ done, trip travelled |
 | 0.5 | Redesign on a shared design system; nothing London-specific in the pages | ✅ done 2026-09-11 |
 | 1 | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ✅ done 2026-09-25 |
-| 2 | **Accounts** — email-link sign-in, invites, roles, settings | ✅ done 2026-09-25 (password optional, step 9, open) |
+| 2 | **Accounts** — email-link sign-in, invites, roles, settings, optional password | ✅ done 2026-09-25 |
 | 3 | **The front door** — a real `/`, example trips, your trips organised, new trip, leave/delete/cancel | ✅ done 2026-09-25 |
 | 4 | Public hardening: rate limits and headers, caches, a privacy note, delete my account | ✅ done 2026-09-25 |
 
@@ -130,12 +130,16 @@ the live database, each with a migration and a test.
       devices; "Automatic" keeps the per-device guess. `POST /api/auth/settings`.
       A sheet rather than a page: it is three fields, and it should be one tap
       away from anywhere.
-- [ ] **Step 9 — a password, optionally.** Asked for on 2026-09-25. An
-      account may set a password on the settings page; the sign-in sheet then
-      offers "email me a link" *and* "password". The link stays the way in
-      for anyone without one, and is the reset path. Stored with a slow hash
-      (PBKDF2 through Web Crypto — no dependency), never the password itself.
-      Adds one column to `users`; `sessions` and everything else unchanged.
+- [x] **Step 9 — a password, optionally.** *(2026-09-25; asked for the same
+      day.)* Set, changed or removed from the account sheet — changing or
+      removing asks for the current one. The sign-in sheet offers the link
+      and, one tap away, a password; the link stays the way in for anyone
+      without one and the way back for anyone who forgets. PBKDF2-SHA256
+      through Web Crypto, 100 000 iterations, a salt per password, the
+      iteration count kept in the stored string; at least ten characters.
+      Every failure to sign in answers the same way, and takes the same time,
+      so nothing about who has an account leaks; attempts share the sign-in
+      rate limit. Migration 018 adds `users.password_hash`.
 
 ### Phase 3 — the front door
 
@@ -257,7 +261,8 @@ safe to leave running.
       stays under your name — and removes sessions, open sign-in links,
       pending invitations to the address, and the account.
 
-Phase 4 is done. What is left on the plan is the optional password (step 9).
+Phase 4 is done, and with step 9 the plan as written is complete. What
+comes next is whatever the next real trip asks for.
 
 ### Polish
 
@@ -532,6 +537,12 @@ seats go; votes, comments and bookings stay under the name. Anyone who wants
 their contributions gone as well can remove them first, while signed in.
 The only owner of a trip cannot delete their account, so no trip is ever
 left with nobody running it.
+
+**2026-09-25 — A password never becomes required.**
+Setting one is a convenience for a device you use every day. Removing it is
+always possible, the link always works, and nothing — not an invitation, not
+a trip — ever asks for a password. That keeps the promise the privacy note
+makes and means a forgotten password is never a locked-out account.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

@@ -88,7 +88,8 @@ export async function currentUser(request, env) {
   const hash = await sha256(sid);
   const now = Date.now();
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name, u.lang, u.maps, u.pinned_trip_id
+    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name, u.lang, u.maps, u.pinned_trip_id,
+            u.password_hash IS NOT NULL AS has_password
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id_hash = ?1 AND s.expires_at > ?2`
   ).bind(hash, now).first();
@@ -102,7 +103,8 @@ export async function currentUser(request, env) {
     await env.DB.prepare("UPDATE users SET last_seen = ?1 WHERE id = ?2").bind(now, row.id).run();
   }
   return { id: row.id, email: row.email, displayName: row.display_name,
-           lang: row.lang ?? null, maps: row.maps ?? null, pinnedTripId: row.pinned_trip_id ?? null };
+           lang: row.lang ?? null, maps: row.maps ?? null, pinnedTripId: row.pinned_trip_id ?? null,
+           hasPassword: !!row.has_password };
 }
 
 /* ------------------------------------------------------------- mail */
@@ -271,6 +273,105 @@ export async function handleAuthSettings(request, env) {
     `UPDATE users SET ${sets.map((c, i) => c.replace("?", `?${i + 1}`)).join(", ")} WHERE id = ?${sets.length + 1}`
   ).bind(...args, user.id).run();
   return json({ ok: true, user: await currentUser(request, env) });
+}
+
+/* ------------------------------------------------------------- password */
+/*
+ * Optional. PBKDF2-SHA256 through Web Crypto — no dependency — with a fresh
+ * 16-byte salt per password and the iteration count kept in the string, so
+ * it can be raised later without invalidating anything. 100 000 is the most
+ * Workers allow, and plenty against an offline guess at a 10+ character
+ * password. The email link remains the way in for anyone without a password
+ * and the way back for anyone who forgets one.
+ */
+const PBKDF2_ITERATIONS = 100000;
+const MIN_PASSWORD = 10;
+
+const b64 = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+async function pbkdf2(password, salt, iterations) {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256));
+}
+
+export async function hashPassword(password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const hash = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
+  return `pbkdf2-sha256$${PBKDF2_ITERATIONS}$${b64(salt)}$${b64(hash)}`;
+}
+
+export async function verifyPassword(password, stored) {
+  if (typeof stored !== "string") return false;
+  const [algo, iters, salt, hash] = stored.split("$");
+  if (algo !== "pbkdf2-sha256" || !iters || !salt || !hash) return false;
+  const got = await pbkdf2(password, unb64(salt), Number(iters));
+  const want = unb64(hash);
+  if (got.length !== want.length) return false;
+  let diff = 0;
+  for (let i = 0; i < got.length; i++) diff |= got[i] ^ want[i];   // constant time
+  return diff === 0;
+}
+
+const cleanPassword = (raw) => typeof raw === "string" && raw.length >= MIN_PASSWORD && raw.length <= 200 ? raw : null;
+
+/**
+ * POST /api/auth/password  { password, current? }  — set or change.
+ * POST /api/auth/password/clear  { current }        — back to the link alone.
+ * Changing or clearing one that exists asks for the current one, so a
+ * session left open on a shared device cannot quietly take the account.
+ */
+export async function handlePasswordSet(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+  const password = cleanPassword(body?.password);
+  if (!password) return bad(`A password of at least ${MIN_PASSWORD} characters.`);
+  if (user.hasPassword) {
+    const row = await env.DB.prepare("SELECT password_hash FROM users WHERE id = ?1").bind(user.id).first();
+    if (!(await verifyPassword(String(body?.current ?? ""), row?.password_hash))) return bad("The current password isn't right.", 403);
+  }
+  await env.DB.prepare("UPDATE users SET password_hash = ?1 WHERE id = ?2").bind(await hashPassword(password), user.id).run();
+  return json({ ok: true, user: await currentUser(request, env) });
+}
+
+export async function handlePasswordClear(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+  if (user.hasPassword) {
+    const row = await env.DB.prepare("SELECT password_hash FROM users WHERE id = ?1").bind(user.id).first();
+    if (!(await verifyPassword(String(body?.current ?? ""), row?.password_hash))) return bad("The current password isn't right.", 403);
+  }
+  await env.DB.prepare("UPDATE users SET password_hash = NULL WHERE id = ?1").bind(user.id).run();
+  return json({ ok: true, user: await currentUser(request, env) });
+}
+
+/**
+ * POST /api/auth/login  { email, password }
+ * One answer for every failure — no such account, no password set, wrong
+ * password — so nothing about who has an account leaks. Rate-limited per
+ * address by the Worker before it gets here.
+ */
+export async function handlePasswordLogin(request, env, url) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const email = cleanEmail(body?.email);
+  const password = typeof body?.password === "string" ? body.password : "";
+  const fail = () => bad("That email and password don't match.", 401);
+  if (!email || !password) return fail();
+  const row = await env.DB.prepare("SELECT id, password_hash FROM users WHERE email = ?1").bind(email).first();
+  // Verify against something even when there is nothing to verify, so a
+  // missing account takes as long as a wrong password.
+  const ok = await verifyPassword(password, row?.password_hash ?? await hashPassword("no-such-account"));
+  if (!row?.password_hash || !ok) return fail();
+  return new Response(JSON.stringify({ ok: true }), {
+    status: 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store",
+      "set-cookie": await startSession(env, row.id, url) },
+  });
 }
 
 export async function handleAuthLogout(request, env, url) {

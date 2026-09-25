@@ -98,6 +98,8 @@ outside it may change.
 | GET | `/api/auth/me` | `{ user }` or `{ user: null }` |
 | POST | `/api/auth/logout` | ends the session |
 | POST | `/api/auth/settings` | `{ displayName?, lang?, maps? }` — null = follow the device |
+| POST | `/api/auth/password` · `/password/clear` | `{ password, current? }` / `{ current }` — an optional password (PBKDF2) |
+| POST | `/api/auth/login` | `{ email, password }` → a session; one generic failure message; shares `RL_AUTH` |
 | POST | `/api/auth/delete` | `{ confirm: <your address> }` — the account goes; refused while sole owner of a trip |
 | GET | `/api/meta` | `{ contact }` from `CONTACT_EMAIL`, for the privacy page |
 
@@ -133,8 +135,8 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
 ## Current phase
 
 Phases 0–4 are done: the redesign; trips and items in the database under
-`/t/<trip>/`; accounts, invites, roles and settings; the front page with
-examples, your trips organised, new trip, leave/delete/cancel; rate limits,
-headers, caches, a privacy note, delete my account. What remains on the plan
-is the optional password (Phase 2 step 9). Steps and status live in
-`docs/PLAN.md` §3.
+`/t/<trip>/`; accounts, invites, roles, settings and an optional password;
+the front page with examples, your trips organised, new trip,
+leave/delete/cancel; rate limits, headers, caches, a privacy note, delete my
+account. The plan as written is complete; steps and the decision log live in
+`docs/PLAN.md`.

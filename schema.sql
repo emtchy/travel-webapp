@@ -198,7 +198,8 @@ CREATE TABLE IF NOT EXISTS users (
   last_seen    INTEGER,
   lang         TEXT,                -- 'en' | 'de' | NULL = follow the device
   maps         TEXT,                -- 'apple' | 'google' | NULL = follow the device
-  pinned_trip_id INTEGER            -- the trip shown first on the front page, if chosen
+  pinned_trip_id INTEGER,           -- the trip shown first on the front page, if chosen
+  password_hash TEXT                -- optional; "pbkdf2-sha256$iterations$salt$hash"
 );
 
 CREATE TABLE IF NOT EXISTS login_tokens (
@@ -276,7 +277,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-013-settings.sql', 0),
   ('migrate-015-home.sql', 0),
   ('migrate-016-tidy.sql', 0),
-  ('migrate-017-caches.sql', 0);
+  ('migrate-017-caches.sql', 0),
+  ('migrate-018-password.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

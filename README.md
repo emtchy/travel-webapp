@@ -33,9 +33,14 @@ scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ## Signing in
 
 **Sign in** in the bar asks for an email address and sends a link. Opening the
-link signs you in for thirty days on that device; there is no password. The
-link works once and expires after fifteen minutes, and asking for more than
-five in an hour sends nothing further.
+link signs you in for thirty days on that device. The link works once and
+expires after fifteen minutes, and asking for more than five in an hour sends
+nothing further.
+
+**A password, if you want one.** From your account you can set a password;
+the sign-in sheet then offers it one tap away from the link. It is never
+required: the link always works too, and is how you get back in if you
+forget the password. Changing or removing it asks for the current one.
 
 Mail goes through [Resend](https://resend.com). Set the API key once:
 

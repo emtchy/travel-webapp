@@ -1,6 +1,7 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
-import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser } from "./auth.js";
+import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser,
+         handlePasswordSet, handlePasswordClear, handlePasswordLogin } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
 import { TEMPLATES, ITEM_COLUMNS as TEMPLATE_COLUMNS, templatesFor } from "./templates.js";
 import { limited, ip, withHeaders } from "./limits.js";
@@ -1796,7 +1797,7 @@ async function route(request, env) {
     // address lookups more tightly; sign-in mail most tightly of all.
     if (method === "POST") {
       const who = (await currentUser(request, env))?.id || ip(request);
-      const over = url.pathname === "/api/auth/request" ? await limited(env, "RL_AUTH", ip(request))
+      const over = (url.pathname === "/api/auth/request" || url.pathname === "/api/auth/login") ? await limited(env, "RL_AUTH", ip(request))
         : /\/api\/t\/[^/]+\/geocode$/.test(url.pathname) ? await limited(env, "RL_GEO", who)
         : await limited(env, "RL_WRITE", who);
       if (over) return over;
@@ -1815,6 +1816,9 @@ async function route(request, env) {
     if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);
     if (url.pathname === "/api/auth/logout" && method === "POST") return handleAuthLogout(request, env, url);
     if (url.pathname === "/api/auth/settings" && method === "POST") return handleAuthSettings(request, env);
+    if (url.pathname === "/api/auth/password" && method === "POST") return handlePasswordSet(request, env);
+    if (url.pathname === "/api/auth/password/clear" && method === "POST") return handlePasswordClear(request, env);
+    if (url.pathname === "/api/auth/login" && method === "POST") return handlePasswordLogin(request, env, url);
 
     const { trip, path: pathname } = tripOf(url);
     if (!(await tripExists(env, trip))) return bad("No such trip.", 404);

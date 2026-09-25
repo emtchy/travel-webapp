@@ -1643,5 +1643,50 @@ t5("and trip 1 does not see trip 2's rows",
   t5("and the old cookie no longer signs anyone in", (await (await raw("/api/auth/me", { headers: soloNow })).json()).user === null);
 }
 
+// --- Phase 2, step 9: a password, optionally
+{
+  const acct = asUser("pw@example.org");
+  const setPw = (b, h = acct) => raw("/api/auth/password", { method: "POST", headers: h, body: JSON.stringify(b) });
+  const login = (b) => raw("/api/auth/login", { method: "POST", body: JSON.stringify(b) });
+  t5("setting a password needs a sign-in", (await setPw({ password: "correct horse battery" }, {})).status === 401);
+  t5("too short is refused", (await setPw({ password: "short" })).status === 400);
+  t5("nobody has a password to start with", (await (await raw("/api/auth/me", { headers: acct })).json()).user.hasPassword === false);
+  t5("logging in with a password before one is set fails, with the generic message",
+     (await login({ email: "pw@example.org", password: "correct horse battery" })).status === 401 &&
+     /don't match/.test((await (await login({ email: "pw@example.org", password: "x" })).json()).error));
+
+  let d = await (await setPw({ password: "correct horse battery" })).json();
+  t5("a password can be set", d.ok && d.user.hasPassword === true);
+  const stored = db.prepare("SELECT password_hash FROM users WHERE id = 'u-pw@example.org'").get().password_hash;
+  t5("stored as a salted PBKDF2 hash, never the password", stored.startsWith("pbkdf2-sha256$100000$") && !stored.includes("correct horse"));
+
+  const ok = await login({ email: " PW@Example.org ", password: "correct horse battery" });
+  const cookie = (ok.headers.get("set-cookie") || "").split(";")[0];
+  t5("and used to sign in, starting a session", ok.status === 200 && cookie.startsWith("trip_session=") &&
+     (await (await raw("/api/auth/me", { headers: { cookie } })).json()).user?.email === "pw@example.org");
+  t5("the wrong password is refused with the same message as no account",
+     (await login({ email: "pw@example.org", password: "correct horse batter" })).status === 401 &&
+     (await login({ email: "nobody@example.org", password: "correct horse battery" })).status === 401);
+
+  t5("changing it asks for the current one", (await setPw({ password: "another fine password" })).status === 403 &&
+     (await setPw({ password: "another fine password", current: "wrong" })).status === 403);
+  t5("and works with it", (await setPw({ password: "another fine password", current: "correct horse battery" })).status === 200 &&
+     (await login({ email: "pw@example.org", password: "another fine password" })).status === 200 &&
+     (await login({ email: "pw@example.org", password: "correct horse battery" })).status === 401);
+
+  const clear = (b) => raw("/api/auth/password/clear", { method: "POST", headers: acct, body: JSON.stringify(b) });
+  t5("removing it asks for the current one too", (await clear({ current: "nope" })).status === 403);
+  d = await (await clear({ current: "another fine password" })).json();
+  t5("and then the link is the only way in", d.user.hasPassword === false &&
+     (await login({ email: "pw@example.org", password: "another fine password" })).status === 401 &&
+     db.prepare("SELECT password_hash FROM users WHERE id = 'u-pw@example.org'").get().password_hash === null);
+
+  // the password login shares the sign-in limiter
+  const counter = (limit) => { let n = 0; return { limit: async () => ({ success: ++n <= limit }) }; };
+  const lim = { ...env, RL_AUTH: counter(2) };
+  const tryLogin = () => worker.fetch(new Request("https://x/api/auth/login", { method: "POST", headers: { "cf-connecting-ip": "198.51.100.2" }, body: JSON.stringify({ email: "pw@example.org", password: "guess" }) }), lim);
+  t5("guesses are rate-limited per address", (await tryLogin()).status === 401 && (await tryLogin()).status === 401 && (await tryLogin()).status === 429);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);
