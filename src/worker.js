@@ -73,21 +73,111 @@ async function handleTripList(request, env) {
   const user = await currentUser(request, env);
   if (!user) return bad("Sign in first.", 401);
   const { results } = await env.DB.prepare(
-    `SELECT t.id, t.name, t.destination, t.start_date, t.end_date, m.name AS member_name, m.role
+    `SELECT t.id, t.name, t.destination, t.start_date, t.end_date, t.status, m.name AS member_name, m.role
        FROM trip_members m JOIN trips t ON t.id = m.trip_id
       WHERE m.user_id = ?1
       ORDER BY t.start_date DESC, t.id DESC`
   ).bind(user.id).all();
-  return json({
-    user,
-    trips: (results ?? []).map((r) => ({
-      id: r.id, name: r.name, destination: r.destination,
-      startDate: r.start_date, endDate: r.end_date,
-      memberName: r.member_name, role: r.role,
-      days: daysBetween(r.start_date, r.end_date).length,
-    })),
-    examples: await publicTrips(env),
-  });
+  const trips = (results ?? []).map((r) => ({
+    id: r.id, name: r.name, destination: r.destination,
+    startDate: r.start_date, endDate: r.end_date,
+    memberName: r.member_name, role: r.role,
+    days: daysBetween(r.start_date, r.end_date).length,
+    status: r.status === "cancelled" ? "cancelled" : "planned",
+    pinned: r.id === user.pinnedTripId,
+  }));
+
+  // The one trip that matters today, and what to say about it. "Today" is
+  // the browser's date, sent along, because the server has no idea what
+  // time zone the person is in.
+  const today = new URL(request.url).searchParams.get("today");
+  const featured = await featuredTrip(env, trips, isDate(today) ? today : new Date().toISOString().slice(0, 10));
+
+  return json({ user, trips, featured, examples: await publicTrips(env) });
+}
+
+/**
+ * Which trip comes first, and its summary. Pinned beats everything; else a
+ * trip whose dates include today ("current"); else the nearest one still to
+ * come ("next"). Cancelled trips and trips without dates are never featured.
+ */
+async function featuredTrip(env, trips, today) {
+  const live = trips.filter((t) => t.status !== "cancelled");
+  const pinned = live.find((t) => t.pinned);
+  const current = live.find((t) => t.startDate && t.endDate && t.startDate <= today && today <= t.endDate);
+  const next = live.filter((t) => t.startDate && t.startDate > today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  const trip = pinned ?? current ?? next;
+  if (!trip) return null;
+
+  const phase = trip.startDate && trip.endDate && trip.startDate <= today && today <= trip.endDate ? "current"
+    : trip.startDate && trip.startDate > today ? "next"
+    : trip.endDate && trip.endDate < today ? "past" : "undated";
+  const out = { id: trip.id, phase, pinned: !!pinned };
+
+  if (phase === "current") {
+    const days = daysBetween(trip.startDate, trip.endDate);
+    out.dayIndex = days.indexOf(today) + 1;
+    out.totalDays = days.length;
+    out.today = today;
+    out.stops = await stopsOn(env, trip.id, today);
+  } else if (phase === "next") {
+    out.daysUntil = Math.round((Date.parse(trip.startDate) - Date.parse(today)) / 864e5);
+    Object.assign(out, await stillToDo(env, trip.id, trip.role));
+  }
+  return out;
+}
+
+/** The plan for one day, as the Plan page would show it, with places to route to. */
+async function stopsOn(env, trip, day) {
+  const [entries, bookings, notes, custom, sights] = await Promise.all([
+    getPlanEntries(env, trip), getBookingStatus(env, trip), getPlanNotes(env, trip),
+    getCustom(env, trip), getSights(env, trip),
+  ]);
+  const byId = new Map([...sights, ...custom].map((s) => [s.id, s]));
+  const stops = [];
+  for (const b of bookings) if (b.status === "booked" && b.date === day && byId.has(b.id))
+    stops.push({ id: b.id, label: byId.get(b.id).name, start: b.time, end: b.endTime, source: "booked",
+                 lat: byId.get(b.id).lat ?? null, lon: byId.get(b.id).lon ?? null });
+  for (const e of entries) if (e.day === day && byId.has(e.id))
+    stops.push({ id: e.id, label: byId.get(e.id).name, start: e.start, end: e.end, source: "hand",
+                 lat: byId.get(e.id).lat ?? null, lon: byId.get(e.id).lon ?? null });
+  for (const n of notes) if (n.day === day)
+    stops.push({ id: n.id, label: n.label, start: n.start, end: n.end, source: "own", lat: n.lat, lon: n.lon });
+  return stops.sort((a, b) => (a.start ?? "99:99").localeCompare(b.start ?? "99:99"));
+}
+
+/** What a trip still needs before it starts. */
+async function stillToDo(env, trip, role) {
+  const [bookings, entries, votes, custom, sights] = await Promise.all([
+    getBookingStatus(env, trip), getPlanEntries(env, trip), getVotes(env, trip),
+    getCustom(env, trip), getSights(env, trip),
+  ]);
+  const state = new Map(bookings.map((b) => [b.id, b]));
+  const placed = new Set([...entries.map((e) => e.id), ...bookings.filter((b) => b.status === "booked" && b.date).map((b) => b.id)]);
+  const all = [...sights, ...custom];
+  const bookable = (s) => (s.custom ? !!s.costs : s.cost !== "free") || !!s.bookingRequired;
+  const toBook = all.filter((s) => bookable(s) && !state.has(s.id)).length;
+  const unplaced = all.filter((s) => (votes[s.id]?.length ?? 0) > 0 && !placed.has(s.id)).length;
+  const out = { toBook, unplaced, places: all.length };
+  if (role === "owner") out.invitesOpen = (await listInvites(env, trip)).length;
+  return out;
+}
+
+/** POST /api/auth/pin  { tripId | null } — the trip to show first, or none. */
+async function handlePin(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+  const { tripId } = body ?? {};
+  if (tripId !== null && !(Number.isInteger(tripId) && tripId > 0)) return bad("tripId must be a number or null.");
+  if (tripId !== null) {
+    const on = await env.DB.prepare("SELECT 1 FROM trip_members WHERE trip_id = ?1 AND user_id = ?2").bind(tripId, user.id).first();
+    if (!on) return bad("You're not on that trip.", 403);
+  }
+  await env.DB.prepare("UPDATE users SET pinned_trip_id = ?1 WHERE id = ?2").bind(tripId, user.id).run();
+  return json({ ok: true, pinnedTripId: tripId });
 }
 
 /**
@@ -1513,6 +1603,7 @@ export default {
     // Accounts, and the list of trips, are not part of any trip.
     if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
     if (url.pathname === "/api/trips" && method === "POST") return handleTripCreate(request, env);
+    if (url.pathname === "/api/auth/pin" && method === "POST") return handlePin(request, env);
     if (url.pathname === "/api/templates" && method === "GET")
       return json({ templates: templatesFor(url.searchParams.get("destination")) });
     if (url.pathname === "/api/examples" && method === "GET") return json({ examples: await publicTrips(env) });

@@ -71,6 +71,15 @@ not on the trip sees only "This trip is private" and a Sign in button.
 There is no typed name any more: everything you do is recorded under your
 name on the trip, which the server takes from your session.
 
+## Your trips
+
+Signed in, the front page puts the trip that matters today at the top: during
+a trip, today's stops with their times and maps links and a route for the day;
+before one, a countdown and what still needs doing — places to book, places
+with votes that are not on a day yet, invitations waiting. **Show first** pins
+a trip there regardless of the dates. Below it, upcoming trips (ones without
+dates first), then past trips by year, folded away but still yours to open.
+
 ## Your own trip
 
 **New trip** on the front page asks for a name, a destination and, if you

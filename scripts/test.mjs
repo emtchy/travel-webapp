@@ -1447,5 +1447,42 @@ t5("and trip 1 does not see trip 2's rows",
      (await raw(`/api/t/${ldn.id}/vote`, { method: "POST", headers: maker, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 400);
 }
 
+// --- Phase 3, step 13: your trips, organised
+{
+  const emily = { cookie: cookieFor("Emily", 1) };
+  const list = (today) => raw(`/api/trips?today=${today}`, { headers: emily });
+
+  let d = await (await list("2026-09-13")).json();
+  t5("during the trip it is current, with the day counted", d.featured?.id === 1 && d.featured.phase === "current" && d.featured.dayIndex === 3 && d.featured.totalDays === 6);
+  t5("with that day's stops in clock order", Array.isArray(d.featured.stops) && d.featured.stops.every((x, i, a) => i === 0 || (a[i-1].start ?? "99:99") <= (x.start ?? "99:99")));
+  t5("each stop has a label and, where known, a place", d.featured.stops.every(x => x.label && "lat" in x));
+
+  d = await (await list("2026-08-01")).json();
+  t5("before the trip it is next, with a countdown", d.featured?.id === 1 && d.featured.phase === "next" && d.featured.daysUntil === 41);
+  t5("and the to-dos", Number.isInteger(d.featured.toBook) && Number.isInteger(d.featured.unplaced) && Number.isInteger(d.featured.invitesOpen));
+
+  d = await (await list("2030-01-01")).json();
+  t5("after every trip, nothing is featured", d.featured === null || d.featured.phase !== "current" && d.featured.phase !== "next" || d.featured === null);
+  t5("every trip carries its status and whether it is pinned", d.trips.every(tr => tr.status === "planned" && tr.pinned === false));
+
+  // the pin
+  const pin = (tripId, h = emily) => raw("/api/auth/pin", { method: "POST", headers: h, body: JSON.stringify({ tripId }) });
+  t5("pinning needs a sign-in", (await raw("/api/auth/pin", { method: "POST", body: JSON.stringify({ tripId: 1 }) })).status === 401);
+  t5("you can only pin a trip you are on", (await pin(2)).status === 403);
+  t5("nonsense is refused", (await pin("one")).status === 400);
+  const mine = (await (await list("2030-01-01")).json()).trips.filter(tr => tr.role === "owner");
+  const other = mine.find(tr => tr.id !== 1) ?? null;
+  t5("pinning works", (await pin(1)).status === 200 && (await (await list("2030-01-01")).json()).trips.find(tr => tr.id === 1).pinned === true);
+  d = await (await list("2030-01-01")).json();
+  t5("a pinned trip is featured even when it is past", d.featured?.id === 1 && d.featured.pinned === true && d.featured.phase === "past");
+  t5("unpinning works", (await pin(null)).status === 200 && (await (await list("2030-01-01")).json()).trips.every(tr => !tr.pinned));
+
+  // cancelled trips are never featured
+  db.prepare("UPDATE trips SET status = 'cancelled' WHERE id = 1").run();
+  d = await (await list("2026-09-13")).json();
+  t5("a cancelled trip is never featured", d.featured?.id !== 1 && d.trips.find(tr => tr.id === 1).status === "cancelled");
+  db.prepare("UPDATE trips SET status = 'planned' WHERE id = 1").run();
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

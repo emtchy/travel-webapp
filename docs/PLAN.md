@@ -172,7 +172,15 @@ is, show it, and offer the way in.
       places are not a template — they are Amsterdam-specific. A new trip
       biases address lookups nowhere until it has a hotel; the London
       fallback is gone. `POST /api/trips`, `GET /api/templates`.
-- [ ] **Step 13 — your trips, organised.** *Settled 2026-09-25; see §7.* Once a person has more than one trip, "Your trips"
+- [x] **Step 13 — your trips, organised.** *(2026-09-25; settled in §7.)*
+      Done as proposed. `GET /api/trips?today=` answers `featured`: the pinned
+      trip, else the current one with that day's stops, else the next one with
+      a countdown and what is still to do (to book, voted but not on a day,
+      open invitations for the owner). `POST /api/auth/pin`. Migration 015
+      adds `users.pinned_trip_id` and `trips.status`. The front page draws the
+      featured card, then Upcoming (undated first), then Past by year,
+      collapsed; the examples give way to a small link once you have trips.
+      The cancelled *control* is step 14; the grouping already honours it. Once a person has more than one trip, "Your trips"
       stops being a list and becomes a home:
 
       - **Now, or next.** One trip at the top, large. If a trip's dates
@@ -435,6 +443,12 @@ own: the group edits, removes and votes on them, and none of that may leak
 across trips. Ids get the trip's number appended, which keeps the vote key
 unique without a composite key anywhere. `sights.js` is exactly the file for
 this: it is the template, and nothing reads it at runtime except templating.
+
+**2026-09-25 — "Today" is the browser's day.**
+The server does not know what time zone a person is in, and a trip's day
+boundary is a local matter — at 23:30 in Vienna it is still the same day of
+the trip. So the page sends its local date with `?today=`, and the server
+decides current/next from that. The server's own clock is only the fallback.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

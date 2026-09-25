@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS trips (
   set_by        TEXT,
   updated_at    INTEGER,
   created_at    INTEGER NOT NULL DEFAULT 0,
-  visibility    TEXT    NOT NULL DEFAULT 'private'  -- 'public' = anyone may read
+  visibility    TEXT    NOT NULL DEFAULT 'private', -- 'public' = anyone may read
+  status        TEXT    NOT NULL DEFAULT 'planned'  -- 'cancelled' = never happened
 );
 
 -- One row per (sight, voter). Toggling a vote off deletes the row.
@@ -223,7 +224,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at   INTEGER NOT NULL,
   last_seen    INTEGER,
   lang         TEXT,                -- 'en' | 'de' | NULL = follow the device
-  maps         TEXT                 -- 'apple' | 'google' | NULL = follow the device
+  maps         TEXT,                -- 'apple' | 'google' | NULL = follow the device
+  pinned_trip_id INTEGER            -- the trip shown first on the front page, if chosen
 );
 
 CREATE TABLE IF NOT EXISTS login_tokens (
@@ -285,7 +287,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-010-accounts.sql', 0),
   ('migrate-011-claim.sql', 0),
   ('migrate-012-roles.sql', 0),
-  ('migrate-013-settings.sql', 0);
+  ('migrate-013-settings.sql', 0),
+  ('migrate-015-home.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

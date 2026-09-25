@@ -58,6 +58,45 @@
 
 /* ---- your trips / examples ---- */
 .section{margin-top:44px}
+/* the one trip that matters today */
+.feat{display:grid;gap:0;overflow:hidden;margin-bottom:16px}
+.feat .top{padding:18px 20px 14px;display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.feat .top .grow{flex:1;min-width:200px}
+.feat .phase{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tint);margin-bottom:4px}
+.feat .phase.past{color:var(--text-3)}
+.feat h3{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.feat .sub{font-size:14px;color:var(--text-2);margin-top:3px}
+.feat .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.feat .stops{border-top:1px solid var(--hair)}
+.feat .stop{display:grid;grid-template-columns:56px 1fr auto;gap:12px;align-items:center;padding:10px 20px;border-bottom:1px solid var(--hair)}
+.feat .stop:last-child{border-bottom:0}
+.feat .when{font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.feat .when em{display:block;font-style:normal;font-weight:500;color:var(--text-3);font-size:12px}
+.feat .when.open{color:var(--text-3);font-weight:500;font-size:12px}
+.feat .sn{font-weight:600;font-size:14.5px}
+.feat .empty-day{padding:16px 20px;color:var(--text-3);font-size:14px;border-top:1px solid var(--hair)}
+.feat .todo{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 18px}
+.feat .todo a{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:var(--r-pill);
+  background:var(--surface-2);color:var(--text);font-size:13.5px;font-weight:600;text-decoration:none}
+.feat .todo a:hover{background:var(--surface-3);text-decoration:none}
+.feat .todo a b{display:inline-grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:var(--r-pill);
+  background:var(--coral-soft);color:var(--coral);font-size:12px}
+.feat .todo a.ok b{background:var(--green-soft);color:var(--green)}
+.feat .todo .note{align-self:center;font-size:13.5px;color:var(--text-3)}
+.feat .foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--hair);background:var(--surface-2)}
+.pinbtn{margin-left:auto}
+.trip .pinbtn{margin-left:0}
+.group{margin-top:22px}
+.group .eyebrow{margin-bottom:10px;display:flex;align-items:baseline;gap:8px}
+.group .eyebrow .count{font-weight:600;color:var(--text-3)}
+details.year{margin-top:8px}
+details.year > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 0;
+  font-size:14px;font-weight:600;color:var(--text-2);user-select:none}
+details.year > summary::-webkit-details-marker{display:none}
+details.year > summary .chev{width:14px;height:14px;transition:transform .15s}
+details.year[open] > summary .chev{transform:rotate(90deg)}
+details.year > .trips{padding:4px 0 8px}
+.trip.cancelled .name{color:var(--text-3);text-decoration:line-through}
 #mine:not([hidden]) + #how{margin-top:44px}
 .section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
 .section-head h2{font-size:22px;font-weight:700;letter-spacing:-.015em}
@@ -134,7 +173,10 @@
 <section class="section" id="mine" hidden>
   <div class="section-head"><h2 id="mine-h"></h2><span class="count" id="mine-n"></span>
     <button type="button" class="btn btn-primary btn-sm right" id="new-trip"></button></div>
-  <div class="trips" id="mine-list"></div>
+  <div id="featured"></div>
+  <div id="upcoming"></div>
+  <div id="past"></div>
+  <p id="ex-link" hidden style="margin-top:18px"><a href="#" class="footnote" id="ex-link-a"></a></p>
 </section>
 
 <section class="section" id="examples" hidden>
@@ -175,7 +217,8 @@
 </div>
 
 <script type="module">
-import { $, esc, api, ICONS, getLang, onLang, onUser, getUser, askName, setStatus, dayShort, roleLabel } from "/shell.js";
+import { $, esc, api, ICONS, getLang, onLang, onUser, getUser, askName, setStatus, dayShort, dayLong, weekday, roleLabel, mapLink, onPrefs } from "/shell.js";
+import { routeLinks } from "/route.js";
 
 const T = {
   en: {
@@ -198,6 +241,14 @@ const T = {
     siH: "Already on a trip?", siP: "Sign in with the address you were invited with and it's right here.",
     privacy: "Trips are private to the people on them. You sign in by a link sent to your email; there is no password and nothing to install.",
     days: (n) => `${n} ${n === 1 ? "day" : "days"}`, as: (n) => `as ${n}`,
+    now: "Now", next: "Next", pinnedLbl: "Pinned", pin: "Show first", unpin: "Unpin",
+    dayOf: (i, n, d) => `Day ${i} of ${n} · ${d}`,
+    inDays: (n) => n === 0 ? "Starts today" : n === 1 ? "Tomorrow" : `In ${n} days`,
+    todayNothing: "Nothing on the plan for today.", openPlan: "Open the plan", openTrip: "Open the trip",
+    routeToday: "Route the day", toBook: (n) => `${n} still to book`, unplaced: (n) => `${n} voted, not on a day`,
+    invites: (n) => `${n} ${n === 1 ? "invitation" : "invitations"} open`, allSet: "Nothing left to do before it starts.",
+    upcoming: "Upcoming", noDates: "no dates yet", past: "Past trips", cancelled: "cancelled",
+    seeExample: "See an example trip",
     foot: "Built for a group of friends and their London trip. Now for any trip.",
   },
   de: {
@@ -220,6 +271,14 @@ const T = {
     siH: "Schon auf einer Reise?", siP: "Melde dich mit der Adresse an, mit der du eingeladen wurdest – dann ist sie hier.",
     privacy: "Reisen sind privat für die, die dabei sind. Du meldest dich mit einem Link an deine E-Mail an; kein Passwort, nichts zu installieren.",
     days: (n) => `${n} ${n === 1 ? "Tag" : "Tage"}`, as: (n) => `als ${n}`,
+    now: "Jetzt", next: "Als Nächstes", pinnedLbl: "Angeheftet", pin: "Zuerst zeigen", unpin: "Lösen",
+    dayOf: (i, n, d) => `Tag ${i} von ${n} · ${d}`,
+    inDays: (n) => n === 0 ? "Geht heute los" : n === 1 ? "Morgen" : `In ${n} Tagen`,
+    todayNothing: "Heute steht nichts im Plan.", openPlan: "Plan öffnen", openTrip: "Reise öffnen",
+    routeToday: "Route für den Tag", toBook: (n) => `${n} noch zu buchen`, unplaced: (n) => `${n} mit Stimmen, noch ohne Tag`,
+    invites: (n) => `${n} ${n === 1 ? "Einladung" : "Einladungen"} offen`, allSet: "Vor dem Start ist nichts mehr zu tun.",
+    upcoming: "Demnächst", noDates: "noch ohne Datum", past: "Frühere Reisen", cancelled: "abgesagt",
+    seeExample: "Eine Beispielreise ansehen",
     foot: "Gebaut für eine Gruppe Freunde und ihre Londonreise. Jetzt für jede Reise.",
   },
 };
@@ -227,6 +286,7 @@ const t = () => T[getLang()];
 
 let TRIPS = null;   // null until loaded; [] when signed in with none
 let EXAMPLES = [];
+let FEATURED = null;
 
 function paint() {
   const L = t();
@@ -255,30 +315,98 @@ function paint() {
   $("#m2-tick").innerHTML = ICONS.check; $("#m2-warn").innerHTML = ICONS.ticket;
   $("#si-ico").innerHTML = ICONS.person; $("#pv-ico").innerHTML = ICONS.check;
 
-  const card = (tr, role) => `<a class="trip card" href="/t/${tr.id}/">
+  const when = (tr) => tr.startDate ? `${esc(dayShort(tr.startDate))} – ${esc(dayShort(tr.endDate))}` : "";
+  const card = (tr, role, opts = {}) => `<a class="trip card${tr.status === "cancelled" ? " cancelled" : ""}" href="/t/${tr.id}/">
       <span class="name">${esc(tr.name || tr.destination || "Trip")}</span>
-      <span class="when">${tr.startDate ? `${esc(dayShort(tr.startDate))} – ${esc(dayShort(tr.endDate))}` : ""}${tr.destination && tr.destination !== tr.name ? ` · ${esc(tr.destination)}` : ""}</span>
+      <span class="when">${when(tr) || (opts.undated ? `<span class="tag tag-sm tag-coral">${esc(L.noDates)}</span>` : "")}${tr.destination && tr.destination !== tr.name ? `${when(tr) ? " · " : ""}${esc(tr.destination)}` : ""}</span>
       <span class="meta">${tr.days ? `<span>${esc(L.days(tr.days))}</span>` : ""}${tr.memberName ? `<span>· ${esc(L.as(tr.memberName))}</span>` : ""}
+        ${tr.status === "cancelled" ? `<span class="tag tag-sm tag-neutral">${esc(L.cancelled)}</span>` : ""}
         ${role ? `<span class="tag tag-sm tag-neutral">${esc(roleLabel(role))}</span>` : ""}</span></a>`;
 
   $("#mine").hidden = !user;
   // Someone signed in knows how it works: their trips come first.
   if (user) $("#how").before($("#mine")); else $("#how").after($("#mine"));
-  if (user) {
-    $("#mine-n").textContent = TRIPS?.length || "";
-    $("#mine-list").innerHTML = TRIPS === null ? "" : TRIPS.length
-      ? TRIPS.map((tr) => card(tr, tr.role)).join("")
-      : `<p class="note">${esc(L.none)}</p>`;
-  }
+  if (user && TRIPS !== null) paintMine(L, card);
+  $("#examples").hidden = !EXAMPLES.length || (!!user && TRIPS !== null && TRIPS.length > 0);
+  $("#ex-link").hidden = !(user && EXAMPLES.length && (TRIPS?.length ?? 0) > 0);
+  if (EXAMPLES.length) { $("#ex-link-a").textContent = L.seeExample; $("#ex-link-a").href = `/t/${EXAMPLES[0].id}/`; }
   $("#examples").hidden = !EXAMPLES.length;
   $("#ex-list").innerHTML = EXAMPLES.map((tr) => card(tr, null)).join("");
   $("#signin").hidden = !!user;
 }
 
+/** The featured trip, then the rest grouped: upcoming (undated first), past by year. */
+function paintMine(L, card) {
+  const today = localToday();
+  $("#mine-n").textContent = TRIPS.length || "";
+  const byId = new Map(TRIPS.map((tr) => [tr.id, tr]));
+  const f = FEATURED && byId.get(FEATURED.id);
+  const rest = TRIPS.filter((tr) => tr !== f);
+  const isPast = (tr) => tr.status === "cancelled" || (tr.endDate && tr.endDate < today);
+  const upcoming = rest.filter((tr) => !isPast(tr)).sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
+  const past = rest.filter(isPast).sort((a, b) => (b.endDate ?? "").localeCompare(a.endDate ?? ""));
+
+  $("#featured").innerHTML = f ? featuredHTML(L, f, FEATURED) : (TRIPS.length ? "" : `<p class="note">${esc(L.none)}</p>`);
+  $("#upcoming").innerHTML = upcoming.length ? `<div class="group"><p class="eyebrow">${esc(L.upcoming)} <span class="count">${upcoming.length}</span></p>
+      <div class="trips">${upcoming.map((tr) => card(tr, tr.role, { undated: !tr.startDate })).join("")}</div></div>` : "";
+
+  const years = new Map();
+  for (const tr of past) { const y = (tr.endDate ?? tr.startDate ?? "—").slice(0, 4); (years.get(y) ?? years.set(y, []).get(y)).push(tr); }
+  $("#past").innerHTML = past.length ? `<div class="group"><p class="eyebrow">${esc(L.past)} <span class="count">${past.length}</span></p>
+      ${[...years].map(([y, list], i) => `<details class="year"${i === 0 ? " open" : ""}><summary>${ICONS.chevron}${esc(y)} <span class="count">· ${list.length}</span></summary>
+        <div class="trips">${list.map((tr) => card(tr, tr.role)).join("")}</div></details>`).join("")}</div>` : "";
+}
+
+function featuredHTML(L, tr, f) {
+  const phase = f.phase === "current" ? L.now : f.phase === "next" ? L.next : f.pinned ? L.pinnedLbl : "";
+  const sub = f.phase === "current" ? L.dayOf(f.dayIndex, f.totalDays, weekday(f.today) + " " + dayLong(f.today))
+    : f.phase === "next" ? `${L.inDays(f.daysUntil)} · ${dayShort(tr.startDate)} – ${dayShort(tr.endDate)}${tr.destination ? ` · ${tr.destination}` : ""}`
+    : `${tr.startDate ? `${dayShort(tr.startDate)} – ${dayShort(tr.endDate)}` : L.noDates}${tr.destination ? ` · ${tr.destination}` : ""}`;
+  let body = "";
+  if (f.phase === "current") {
+    const r = routeLinks(f.stops.map((x) => ({ lat: x.lat, lon: x.lon })), "transit", null);
+    body = (f.stops.length ? `<div class="stops">${f.stops.map((x) => {
+        const one = x.lat != null ? routeLinks([{ lat: x.lat, lon: x.lon }], "transit", null) : null;
+        return `<div class="stop"><div class="when${x.start ? "" : " open"}">${x.start ? esc(x.start) : "—"}${x.end ? `<em>${esc(x.end)}</em>` : ""}</div>
+          <div class="sn">${esc(x.label)}</div>
+          ${one ? `<a class="btn btn-sm btn-tint" href="${esc(mapLink(one))}" target="_blank" rel="noopener">${ICONS.pin}</a>` : "<span></span>"}</div>`;
+      }).join("")}</div>` : `<p class="empty-day">${esc(L.todayNothing)}</p>`) +
+      `<div class="foot"><a class="btn btn-sm btn-primary" href="/t/${tr.id}/plan">${esc(L.openPlan)}</a>
+        ${r ? `<a class="btn btn-sm btn-tint" href="${esc(mapLink(r))}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeToday)}</a>` : ""}</div>`;
+  } else if (f.phase === "next") {
+    const items = [
+      [f.toBook, L.toBook(f.toBook), `/t/${tr.id}/bookings`],
+      [f.unplaced, L.unplaced(f.unplaced), `/t/${tr.id}/plan`],
+      ...(f.invitesOpen != null ? [[f.invitesOpen, L.invites(f.invitesOpen), `/t/${tr.id}/details`]] : []),
+    ];
+    const open = items.filter(([n]) => n > 0);
+    body = `<div class="todo">${open.length ? open.map(([n, label, href]) => `<a href="${href}"><b>${n}</b>${esc(label)}</a>`).join("")
+      : `<span class="note">${ICONS.check} ${esc(L.allSet)}</span>`}</div>
+      <div class="foot"><a class="btn btn-sm btn-primary" href="/t/${tr.id}/">${esc(L.openTrip)}</a></div>`;
+  } else {
+    body = `<div class="foot"><a class="btn btn-sm btn-primary" href="/t/${tr.id}/">${esc(L.openTrip)}</a></div>`;
+  }
+  return `<div class="feat card">
+    <div class="top"><div class="grow">${phase ? `<div class="phase${f.phase === "past" ? " past" : ""}">${esc(phase)}</div>` : ""}
+      <h3><a href="/t/${tr.id}/" style="color:inherit">${esc(tr.name || tr.destination || "Trip")}</a></h3><div class="sub">${esc(sub)}</div></div>
+      <div class="acts"><span class="tag tag-sm tag-neutral">${esc(roleLabel(tr.role))}</span>
+        <button type="button" class="btn btn-sm ${f.pinned ? "btn-quiet" : "btn-ghost"} pinbtn" data-pin="${f.pinned ? "" : tr.id}">${esc(f.pinned ? L.unpin : L.pin)}</button></div></div>
+    ${body}</div>`;
+}
+
+const localToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-pin]");
+  if (!b) return;
+  try { await api("/api/auth/pin", { method: "POST", body: JSON.stringify({ tripId: b.dataset.pin ? Number(b.dataset.pin) : null }) }); load(); }
+  catch (err) { setStatus(err.message, "err"); }
+});
+
 async function load() {
   try {
-    const d = await api(getUser() ? "/api/trips" : "/api/examples");
-    TRIPS = getUser() ? (d.trips ?? []) : null; EXAMPLES = d.examples ?? [];
+    const d = await api(getUser() ? `/api/trips?today=${localToday()}` : "/api/examples");
+    TRIPS = getUser() ? (d.trips ?? []) : null; EXAMPLES = d.examples ?? []; FEATURED = d.featured ?? null;
   } catch (err) { TRIPS = getUser() ? [] : null; setStatus(err.message, "err"); }
   paint();
 }
@@ -330,6 +458,7 @@ $("#nt-form").addEventListener("submit", async (e) => {
 });
 
 onLang(paint);
+onPrefs(paint);
 onUser(load);
 </script>
 </body>

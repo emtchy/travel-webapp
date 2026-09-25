@@ -88,7 +88,7 @@ export async function currentUser(request, env) {
   const hash = await sha256(sid);
   const now = Date.now();
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name, u.lang, u.maps
+    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name, u.lang, u.maps, u.pinned_trip_id
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id_hash = ?1 AND s.expires_at > ?2`
   ).bind(hash, now).first();
@@ -102,7 +102,7 @@ export async function currentUser(request, env) {
     await env.DB.prepare("UPDATE users SET last_seen = ?1 WHERE id = ?2").bind(now, row.id).run();
   }
   return { id: row.id, email: row.email, displayName: row.display_name,
-           lang: row.lang ?? null, maps: row.maps ?? null };
+           lang: row.lang ?? null, maps: row.maps ?? null, pinnedTripId: row.pinned_trip_id ?? null };
 }
 
 /* ------------------------------------------------------------- mail */
