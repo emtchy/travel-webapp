@@ -67,6 +67,14 @@ not on the trip sees only "This trip is private" and a Sign in button.
 There is no typed name any more: everything you do is recorded under your
 name on the trip, which the server takes from your session.
 
+## Your account
+
+The button with your name opens your account: your display name, your
+language, and which maps app **Open in Maps** should use — Apple Maps, Google
+Maps, or Automatic, which picks Apple on Apple devices and Google elsewhere.
+These are stored on the account, so they are the same on every device you
+sign in on.
+
 ## Addresses
 
 Every page lives under its trip: `/t/1/` is the London trip's Sights page,

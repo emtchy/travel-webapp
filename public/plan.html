@@ -182,7 +182,7 @@ li.stop:hover .chev{opacity:1}
 <script type="module">
 import { routeLinks, routeFrom, hasPlace } from "/route.js";
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink } from "/shell.js";
+         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink, onPrefs } from "/shell.js";
 
 const T = {
   en: {
@@ -1051,6 +1051,7 @@ onLang(() => {
   if (SIGHTS.length || TRIP.days.length) { render(); renderSheet(); }
   else paintChrome();
 });
+onPrefs(() => { if (SIGHTS.length || TRIP.days.length) { render(); renderSheet(); } });   // the maps app changed
 
 (async () => {
   try {

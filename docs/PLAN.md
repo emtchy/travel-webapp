@@ -124,10 +124,12 @@ the live database, each with a migration and a test.
       stranger sees "This trip is private". Self-claiming a name is gone —
       membership is the owner's decision. Owners cannot be removed and the
       last owner cannot step down. `src/invites.js`.
-- [ ] **Step 8 — settings.** An account page: display name, language, and
-      **which maps app "Open in Maps" means** (Apple or Google). The setting
-      replaces the per-device guess in `shell.js`, which stays as the default
-      for anyone who has not chosen.
+- [x] **Step 8 — settings.** *(2026-09-25)* The account sheet, on every page:
+      display name, language, and **which maps app "Open in Maps" means**.
+      Stored on the account (migration 013), so it follows the person between
+      devices; "Automatic" keeps the per-device guess. `POST /api/auth/settings`.
+      A sheet rather than a page: it is three fields, and it should be one tap
+      away from anywhere.
 - [ ] **Step 9 — a password, optionally.** Asked for on 2026-09-25. An
       account may set a password on the settings page; the sign-in sheet then
       offers "email me a link" *and* "password". The link stays the way in
@@ -333,6 +335,13 @@ Voting is the point of inviting someone, so `viewer` votes and comments.
 `editor` changes places, bookings, addresses and the plan. `owner` changes the
 trip itself and its people. Roles include everything below them. A trip must
 always have an owner: the last one cannot be demoted or removed.
+
+**2026-09-25 — Preferences live on the account, with "Automatic" as the default.**
+Language and the maps app were per-browser guesses. On the account they are
+the same on the phone and the laptop, and an explicit choice beats the guess
+— but nobody is forced to choose, so an account with nothing set behaves as
+before. The account's language is applied on load; the maps choice is read
+whenever a link is built.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

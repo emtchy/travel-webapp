@@ -220,7 +220,9 @@ CREATE TABLE IF NOT EXISTS users (
   email        TEXT    NOT NULL UNIQUE,  -- lowercased
   display_name TEXT    NOT NULL,
   created_at   INTEGER NOT NULL,
-  last_seen    INTEGER
+  last_seen    INTEGER,
+  lang         TEXT,                -- 'en' | 'de' | NULL = follow the device
+  maps         TEXT                 -- 'apple' | 'google' | NULL = follow the device
 );
 
 CREATE TABLE IF NOT EXISTS login_tokens (
@@ -281,7 +283,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-008-items.sql', 0),
   ('migrate-010-accounts.sql', 0),
   ('migrate-011-claim.sql', 0),
-  ('migrate-012-roles.sql', 0);
+  ('migrate-012-roles.sql', 0),
+  ('migrate-013-settings.sql', 0);
 -- 009, the London places, is deliberately not recorded: `npm run migrate` on
 -- a fresh database imports them, so trip 1 is the London trip there too.
 

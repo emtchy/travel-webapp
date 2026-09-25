@@ -83,6 +83,7 @@ people, invites. Reads are members-only.
 | GET | `/auth?token=…` | the link: starts a session, sets the cookie, redirects to `next` |
 | GET | `/api/auth/me` | `{ user }` or `{ user: null }` |
 | POST | `/api/auth/logout` | ends the session |
+| POST | `/api/auth/settings` | `{ displayName?, lang?, maps? }` — null = follow the device |
 
 Every write returns the full snapshot, so a page never re-fetches after a click.
 

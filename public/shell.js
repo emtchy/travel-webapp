@@ -122,7 +122,11 @@ const NAV = {
         privateTitle: "This trip is private",
         privateSignIn: "Sign in with the address you were invited with to see it.",
         privateNotMember: (e) => `You're signed in as ${e}, but that address isn't on this trip. Ask whoever runs it for an invitation, or sign in with a different address.`,
-        roleOwner: "owner", roleEditor: "editor", roleViewer: "viewer" },
+        roleOwner: "owner", roleEditor: "editor", roleViewer: "viewer",
+        sDisplay: "Display name", sDisplayHint: "What a trip calls you when you join without a name of your own there.",
+        sLang: "Language", sMaps: "Open in Maps means", sAuto: "Automatic",
+        sMapsHint: "Automatic picks Apple Maps on Apple devices and Google Maps elsewhere.",
+        save: "Save", saved: "Saved" },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
         name: "Dein Name", lang: "Sprache",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
@@ -137,7 +141,11 @@ const NAV = {
         privateTitle: "Diese Reise ist privat",
         privateSignIn: "Melde dich mit der Adresse an, mit der du eingeladen wurdest.",
         privateNotMember: (e) => `Du bist als ${e} angemeldet, aber diese Adresse ist nicht auf der Reise. Bitte wen, der sie verwaltet, um eine Einladung – oder melde dich mit einer anderen Adresse an.`,
-        roleOwner: "Verwaltung", roleEditor: "Bearbeiten", roleViewer: "Ansehen" },
+        roleOwner: "Verwaltung", roleEditor: "Bearbeiten", roleViewer: "Ansehen",
+        sDisplay: "Anzeigename", sDisplayHint: "So heißt du auf einer Reise, wenn du dort ohne eigenen Namen dazukommst.",
+        sLang: "Sprache", sMaps: "„In Maps öffnen“ bedeutet", sAuto: "Automatisch",
+        sMapsHint: "Automatisch wählt Apple Maps auf Apple-Geräten und sonst Google Maps.",
+        save: "Speichern", saved: "Gespeichert" },
 };
 
 const PAGES = [
@@ -233,11 +241,26 @@ function paintAuthSheet() {
   $("#auth-close").setAttribute("aria-label", L.close);
   if (user) {
     title.textContent = L.account;
+    const seg = (id, options, current) => `<div class="seg" role="group" id="${id}">${options.map(([v, label]) =>
+      `<button type="button" data-v="${esc(v)}" aria-pressed="${String(current === v)}">${esc(label)}</button>`).join("")}</div>`;
     body.innerHTML = `<div class="srow"><span class="slabel">${esc(L.email)}</span>
         <span class="sval">${esc(user.email)}</span></div>
       <div class="srow"><span class="slabel">${esc(L.whoName)}</span>
         <span class="sval">${member ? `${esc(member.name)} <span class="tag tag-sm tag-neutral">${esc(roleLabel(member.role))}</span>` : `<span class="muted">${esc(L.notOnTrip)}</span>`}</span></div>
-      <div class="sfoot"><button class="btn btn-quiet" type="button" id="auth-logout">${esc(L.signOut)}</button></div>`;
+      <form id="settings-form" class="stack" style="gap:16px;padding-top:14px;border-top:1px solid var(--hair)">
+        <label class="field"><span>${esc(L.sDisplay)}</span>
+          <input class="input" id="s-display" type="text" maxlength="32" value="${esc(user.displayName)}">
+          <span class="hint">${esc(L.sDisplayHint)}</span></label>
+        <div class="field"><span>${esc(L.sLang)}</span>
+          ${seg("s-lang", [["", L.sAuto], ["en", "English"], ["de", "Deutsch"]], user.lang ?? "")}</div>
+        <div class="field"><span>${esc(L.sMaps)}</span>
+          ${seg("s-maps", [["", L.sAuto], ["apple", "Apple Maps"], ["google", "Google Maps"]], user.maps ?? "")}
+          <span class="hint">${esc(L.sMapsHint)}</span></div>
+        <p class="err" id="s-err" hidden></p>
+        <div class="sfoot"><button class="btn btn-primary" type="submit" id="s-save">${esc(L.save)}</button>
+          <span class="saved" id="s-saved" hidden>${esc(L.saved)}</span>
+          <button class="btn btn-ghost right" type="button" id="auth-logout">${esc(L.signOut)}</button></div>
+      </form>`;
     return;
   }
   if (authView === "sent") {
@@ -294,6 +317,40 @@ $("#auth-close")?.addEventListener("click", closeAuth);
 $("#auth-sheet")?.addEventListener("click", (e) => { if (e.target.id === "auth-sheet") closeAuth(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#auth-sheet")?.hidden) closeAuth(); });
 
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("#s-lang button, #s-maps button");
+  if (!b) return;
+  for (const o of b.parentElement.querySelectorAll("button")) o.setAttribute("aria-pressed", String(o === b));
+});
+
+document.addEventListener("submit", async (e) => {
+  const form = e.target.closest("#settings-form");
+  if (!form) return;
+  e.preventDefault();
+  const L = NAV[lang];
+  const pick = (id) => $(`#${id} button[aria-pressed="true"]`)?.dataset.v || null;
+  const body = { displayName: $("#s-display").value, lang: pick("s-lang"), maps: pick("s-maps") };
+  const save = $("#s-save"), err = $("#s-err");
+  save.disabled = true; err.hidden = true;
+  try {
+    const d = await api("/api/auth/settings", { method: "POST", body: JSON.stringify(body) });
+    user = d.user ?? user;
+    applyUserPrefs();
+    paintAccount();
+    $("#s-saved").hidden = false; setTimeout(() => { const el = $("#s-saved"); if (el) el.hidden = true; }, 1800);
+  } catch (ex) { err.textContent = ex.message; err.hidden = false; }
+  finally { save.disabled = false; }
+});
+
+/** The account's language beats the device's; the maps choice is read live. */
+const prefsListeners = new Set();
+/** Run `cb()` after the account's settings change, so links built from them can be rebuilt. */
+export function onPrefs(cb) { prefsListeners.add(cb); }
+function applyUserPrefs() {
+  if (user?.lang && user.lang !== lang) setLang(user.lang);
+  for (const cb of prefsListeners) cb();
+}
+
 document.addEventListener("submit", async (e) => {
   const form = e.target.closest("#auth-form");
   if (!form) return;
@@ -325,6 +382,7 @@ async function loadUser() {
     user = d.user ?? null; member = d.member ?? null;
     if (d.trip?.name) setTrip(d.trip);
   } catch { user = null; member = null; }
+  applyUserPrefs();
   paintAccount();
   paintPrivate();
   announce();
@@ -451,6 +509,7 @@ export async function api(path, options, retried = false) {
  * will replace the storage lookup once accounts exist; the call stays the same.
  */
 export function mapsApp() {
+  if (user?.maps === "apple" || user?.maps === "google") return user.maps;
   try {
     const pref = localStorage.getItem("trip-maps");
     if (pref === "apple" || pref === "google") return pref;

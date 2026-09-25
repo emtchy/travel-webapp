@@ -1,6 +1,6 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
-import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, currentUser } from "./auth.js";
+import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
 
 /* ------------------------------------------------------------------ utils */
@@ -1403,6 +1403,7 @@ export default {
     if (url.pathname === "/api/auth/request" && method === "POST") return handleAuthRequest(request, env);
     if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);
     if (url.pathname === "/api/auth/logout" && method === "POST") return handleAuthLogout(request, env, url);
+    if (url.pathname === "/api/auth/settings" && method === "POST") return handleAuthSettings(request, env);
 
     const { trip, path: pathname } = tripOf(url);
     if (!(await tripExists(env, trip))) return bad("No such trip.", 404);

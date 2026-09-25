@@ -1344,5 +1344,23 @@ t5("and trip 1 does not see trip 2's rows",
   globalThis.fetch = realFetch;
 }
 
+// --- Phase 2, step 8: account settings
+{
+  const acct = asUser("settings@example.org");
+  const set = (b, h = acct) => raw("/api/auth/settings", { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("settings need a sign-in", (await raw("/api/auth/settings", { method: "POST", body: JSON.stringify({ lang: "de" }) })).status === 401);
+  t5("an empty change is refused", (await set({})).status === 400);
+  t5("a bad language is refused", (await set({ lang: "fr" })).status === 400);
+  t5("a bad maps app is refused", (await set({ maps: "here" })).status === 400);
+  t5("a blank display name is refused", (await set({ displayName: "   " })).status === 400);
+  let d = await (await set({ displayName: "  Sam  Settings ", lang: "de", maps: "google" })).json();
+  t5("settings are saved and echoed", d.user.displayName === "Sam Settings" && d.user.lang === "de" && d.user.maps === "google");
+  t5("and /me carries them", (await (await raw("/api/auth/me", { headers: acct })).json()).user.maps === "google");
+  d = await (await set({ maps: null })).json();
+  t5("null means back to the device's choice, and leaves the rest", d.user.maps === null && d.user.lang === "de");
+  t5("a signed-out request is refused with the same cookie name but no session",
+     (await raw("/api/auth/settings", { method: "POST", headers: { cookie: "trip_session=nope" }, body: JSON.stringify({ lang: "en" }) })).status === 401);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

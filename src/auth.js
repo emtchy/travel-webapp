@@ -88,7 +88,7 @@ export async function currentUser(request, env) {
   const hash = await sha256(sid);
   const now = Date.now();
   const row = await env.DB.prepare(
-    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name
+    `SELECT s.id_hash, s.expires_at, u.id, u.email, u.display_name, u.lang, u.maps
        FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.id_hash = ?1 AND s.expires_at > ?2`
   ).bind(hash, now).first();
@@ -101,7 +101,8 @@ export async function currentUser(request, env) {
     ).bind(now + SESSION_TTL, now, hash).run();
     await env.DB.prepare("UPDATE users SET last_seen = ?1 WHERE id = ?2").bind(now, row.id).run();
   }
-  return { id: row.id, email: row.email, displayName: row.display_name };
+  return { id: row.id, email: row.email, displayName: row.display_name,
+           lang: row.lang ?? null, maps: row.maps ?? null };
 }
 
 /* ------------------------------------------------------------- mail */
@@ -236,6 +237,40 @@ export async function handleAuthCallback(request, env, url) {
 
 export async function handleAuthMe(request, env) {
   return json({ user: await currentUser(request, env) });
+}
+
+/**
+ * POST /api/auth/settings  { displayName?, lang?, maps? }
+ * Only the fields sent change. lang and maps take null to mean "follow the
+ * device again". Answers with the user as /me would.
+ */
+export async function handleAuthSettings(request, env) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+
+  const sets = [], args = [];
+  if (body?.displayName !== undefined) {
+    const name = typeof body.displayName === "string" ? body.displayName.trim().replace(/\s+/g, " ") : "";
+    if (name.length < 1 || name.length > 32 || /[\u0000-\u001f\u007f]/.test(name))
+      return bad("A name between 1 and 32 characters.");
+    sets.push("display_name = ?"); args.push(name);
+  }
+  if (body?.lang !== undefined) {
+    if (body.lang !== null && !["en", "de"].includes(body.lang)) return bad("Language must be en or de.");
+    sets.push("lang = ?"); args.push(body.lang);
+  }
+  if (body?.maps !== undefined) {
+    if (body.maps !== null && !["apple", "google"].includes(body.maps)) return bad("Maps must be apple or google.");
+    sets.push("maps = ?"); args.push(body.maps);
+  }
+  if (!sets.length) return bad("Nothing to change.");
+
+  await env.DB.prepare(
+    `UPDATE users SET ${sets.map((c, i) => c.replace("?", `?${i + 1}`)).join(", ")} WHERE id = ?${sets.length + 1}`
+  ).bind(...args, user.id).run();
+  return json({ ok: true, user: await currentUser(request, env) });
 }
 
 export async function handleAuthLogout(request, env, url) {
