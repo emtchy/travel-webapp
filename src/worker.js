@@ -13,11 +13,28 @@ const json = (data, status = 200) =>
 const bad = (message, status = 400) => json({ error: message }, status);
 
 /**
- * Which trip a request is about. One trip for now — Phase 1 step 3 reads it
- * from the URL — but every query already asks, so that step changes this one
- * line and nothing else.
+ * Which trip a request is about, and the path with the trip taken out.
+ *
+ *   /api/t/7/plan/set   →  trip 7, path /api/plan/set
+ *   /api/plan/set       →  trip 1, path /api/plan/set   (the old links)
+ *
+ * The un-prefixed paths stay as aliases for trip 1 for as long as the pages
+ * use them (Phase 1 step 4 moves the pages). Anything else — a trip that is
+ * not a number, or a number for a trip that does not exist — is a 404 that
+ * says so, rather than an empty page that looks like a trip with nothing in it.
  */
-const tripOf = (url) => 1;
+function tripOf(url) {
+  const m = url.pathname.match(/^\/api\/t\/([^/]+)(\/.*)?$/);
+  if (!m) return { trip: 1, path: url.pathname };
+  const trip = /^[1-9]\d{0,8}$/.test(m[1]) ? Number(m[1]) : null;
+  return { trip, path: `/api${m[2] ?? ""}` };
+}
+
+async function tripExists(env, trip) {
+  if (trip == null) return false;
+  const row = await env.DB.prepare("SELECT 1 FROM trips WHERE id = ?1").bind(trip).first();
+  return !!row;
+}
 
 /**
  * What the trip is, read from the database rather than written here.
@@ -1231,9 +1248,9 @@ export default {
 
     if (!checkAccess(request, env)) return json({ error: "Wrong access code." }, 401);
 
-    const { pathname } = url;
     const { method } = request;
-    const trip = tripOf(url);
+    const { trip, path: pathname } = tripOf(url);
+    if (!(await tripExists(env, trip))) return bad("No such trip.", 404);
 
     if (pathname === "/api/sights" && method === "GET")
       return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)) });

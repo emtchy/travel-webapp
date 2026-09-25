@@ -45,7 +45,10 @@ npm run deploy          # only when asked — a push to main does NOT deploy
 
 ## API
 
-All JSON. Writes take `voter` (the typed name) until accounts exist.
+All JSON. Every path below also exists as `/api/t/<trip>/…` for a given
+trip; the bare path is trip 1 (the London links) until the pages move to
+`/t/<trip>/…` in Phase 1 step 4. Writes take `voter` (the typed name) until
+accounts exist. An unknown trip is a 404.
 
 | Method | Path | Does |
 | --- | --- | --- |

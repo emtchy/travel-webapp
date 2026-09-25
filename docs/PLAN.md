@@ -88,9 +88,10 @@ the live database, each with a migration and a test.
       keeping their ids, so **no vote was lost**. The worker no longer imports
       `sights.js`; the API's shape is unchanged, so no page changed.
       `custom_sights` stays in place, unread, like `trip_settings`.
-- [ ] **Step 3 — the API is trip-scoped.** Every endpoint takes the trip from
-      the URL (`/api/t/<trip>/…`), with the old paths kept as aliases for
-      trip 1 until the pages move. `snapshot()` returns one trip.
+- [x] **Step 3 — the API is trip-scoped.** *(2026-09-25)* Every endpoint takes
+      the trip from the URL: `/api/t/<trip>/…`. The old paths are aliases for
+      trip 1 until the pages move. A trip that does not exist, or is not a
+      number, is a 404. No migration.
 - [ ] **Step 4 — the pages are trip-scoped.** `/t/<trip>/plan` and friends; the
       old URLs redirect to trip 1 so the London link keeps working.
 
@@ -240,6 +241,13 @@ which would have cut a place's summary in half. `scripts/sql-split.mjs` walks
 the text and honours string literals and comments; the runner and the test
 harness both use it.
 
+**2026-09-25 — Trips live under a path, not a subdomain.**
+`/api/t/<id>/…` now, `/t/<id>/plan` for the pages in step 4. A path needs no
+DNS, no wildcard certificate and no per-trip configuration, and the id is a
+number rather than a name so nothing has to be unique or URL-safe. The
+un-prefixed paths stay as aliases for trip 1 while the London links are in use.
+A trip that does not exist is a 404 that says so, never an empty trip.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -269,8 +277,6 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 
 ## 7. Open questions
 
-- URL scheme for many trips: `/t/<id>/plan` with the old paths redirecting to
-  trip 1, or a subdomain per trip? (Leaning: path. Nothing to configure.)
 - Which sender for magic-link mail: Cloudflare Email Service from the Worker,
   or a third party? (Leaning: Cloudflare, no extra account.)
 - Should a `viewer` be able to vote? (Leaning: yes — voting is the point of

@@ -1003,5 +1003,54 @@ t5("and trip 1 does not see trip 2's rows",
      db.prepare("SELECT COUNT(*) AS n FROM items WHERE source = 'builtin'").get().n === 55);
 }
 
+// --- Phase 1, step 3: the trip comes from the URL
+{
+  const one = await (await call("/api/t/1/sights")).json();
+  const alias = await (await call("/api/sights")).json();
+  t5("/api/t/1/… is the same trip as the old path",
+     one.trip.id === 1 && one.sights.length === alias.sights.length &&
+     JSON.stringify(one.votes) === JSON.stringify(alias.votes));
+  t5("a trip that does not exist is a 404", (await call("/api/t/9/sights")).status === 404);
+  t5("and so is a trip that is not a number", (await call("/api/t/london/sights")).status === 404);
+  t5("and a negative or zero one", (await call("/api/t/0/sights")).status === 404 &&
+     (await call("/api/t/-1/sights")).status === 404);
+  t5("a path under a trip that is not an endpoint is a 404, not a 500",
+     (await call("/api/t/1/nothing")).status === 404);
+
+  // trip 2 was created by the step 1 checks above, with no places of its own
+  const two = await (await call("/api/t/2/sights")).json();
+  t5("a second trip answers as itself", two.trip.id === 2 && two.trip.name === "Rome");
+  t5("with none of trip 1's places", two.sights.length === 0 && two.custom.length === 0);
+  t5("or votes, comments, bookings, plan, notes",
+     Object.keys(two.votes).length === 0 && Object.keys(two.comments).length === 0 &&
+     two.bookings.length === 0 && two.plan.length === 0 && two.notes.length === 0);
+  t5("but its own member and journey", two.members.some(m => m.id === "m-rome") &&
+     two.travel.some(x => x.direction === "out"));
+
+  const p2 = (b) => call("/api/t/2/" + b.path, { method: "POST", body: JSON.stringify(b.body) });
+  t5("a trip-1 place cannot be voted on from trip 2",
+     (await p2({ path: "vote", body: { sightId: "tower-of-london", voter: "Emily", wanted: true } })).status === 400);
+
+  const named = await (await p2({ path: "trip/settings",
+    body: { voter: "Emily", name: "Roma", destination: "Rome", startDate: "2027-04-01", endDate: "2027-04-04" } })).json();
+  t5("trip 2's settings change trip 2", named.trip.id === 2 && named.trip.name === "Roma" && named.trip.days.length === 4);
+  t5("and not trip 1", (await (await call("/api/sights")).json()).trip.name === "London 2026");
+
+  const addedTwo = await (await p2({ path: "sights/add", body: { voter: "Emily", name: "Colosseum", costs: true } })).json();
+  const col = addedTwo.custom.find(c => c.name === "Colosseum");
+  t5("a place added on trip 2 belongs to trip 2", !!col &&
+     db.prepare("SELECT trip_id FROM items WHERE id = ?").get(col.id).trip_id === 2);
+  t5("trip 1 does not see it", !(await (await call("/api/sights")).json()).custom.some(c => c.id === col.id));
+  t5("the vote that came with it is on trip 2 too",
+     db.prepare("SELECT trip_id FROM votes WHERE sight_id = ?").get(col.id).trip_id === 2);
+  const planTwo = await (await p2({ path: "plan/set", body: { voter: "Emily", sightId: col.id, day: "2027-04-02" } })).json();
+  t5("a day of trip 2 is a valid plan day there", planTwo.plan.some(e => e.id === col.id));
+  t5("a day of trip 1 is not", (await p2({ path: "plan/set",
+     body: { voter: "Emily", sightId: col.id, day: "2026-09-12" } })).status === 400);
+  t5("trip 1 cannot put trip 2's place on its plan",
+     (await call("/api/plan/set", { method: "POST",
+        body: JSON.stringify({ voter: "Emily", sightId: col.id, day: "2026-09-12" }) })).status === 400);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

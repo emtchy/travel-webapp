@@ -392,6 +392,11 @@ does it, keyed on `id`. Ids are the vote key: never change one.
 
 ## The API
 
+Every path below is for trip 1, the London trip. The same paths exist under
+`/api/t/<trip>/…` for any trip in the database — `/api/t/2/plan/set` — and an
+unknown trip answers 404. The bare paths stay as aliases for trip 1 while the
+group's links are in use.
+
 | Method | Path           | Does                                                |
 | ------ | -------------- | --------------------------------------------------- |
 | GET    | `/api/sights`  | The list plus all current votes, in one round trip   |
