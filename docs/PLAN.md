@@ -192,6 +192,11 @@ is, show it, and offer the way in.
       settled in §7: a per-person pin (`users.pinned_trip_id`) that puts one
       trip first regardless of dates, and `trips.status` for a cancelled
       trip so one that never happened does not sit in Past as if it did.
+- [x] **A way home.** *(2026-09-25, asked for by Emily.)* The bar on every
+      trip page has a "‹ Trips" link to the front page (a chevron and a house
+      on a phone); the private notice links there too. Before this the brand
+      only led to the trip's own Sights page, so someone on the example had
+      no way to the page where they could sign in.
 - [ ] **Step 14 — leave, delete, cancel.** A member can leave a trip; the
       owner can delete one (everything under it goes; asks twice) or mark it
       cancelled. Drops the two unread tables `trip_settings` and

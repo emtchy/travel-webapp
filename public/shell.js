@@ -109,7 +109,7 @@ export const ICONS = {
 
 const NAV = {
   en: { details: "Details", sights: "Sights", bookings: "Bookings", plan: "Plan",
-        name: "Your name", lang: "Language",
+        name: "Your name", lang: "Language", home: "Trips", front: "Back to the front page",
         signIn: "Sign in", signOut: "Sign out", account: "Account",
         signInTitle: "Sign in", signInLede: "Enter your email and we'll send you a link. No password to remember.",
         email: "Email", sendLink: "Send me a link", sending: "Sending…",
@@ -130,7 +130,7 @@ const NAV = {
         sMapsHint: "Automatic picks Apple Maps on Apple devices and Google Maps elsewhere.",
         save: "Save", saved: "Saved" },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
-        name: "Dein Name", lang: "Sprache",
+        name: "Dein Name", lang: "Sprache", home: "Reisen", front: "Zur Startseite",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
         signInTitle: "Anmelden", signInLede: "E-Mail-Adresse eingeben, wir schicken dir einen Link. Kein Passwort nötig.",
         email: "E-Mail", sendLink: "Link schicken", sending: "Wird gesendet…",
@@ -174,6 +174,7 @@ if (mount) {
   mount.outerHTML = `
   <nav class="nav">
     <div class="nav-inner">
+      ${HOME ? "" : `<a class="home" href="/" id="home-link" title="${esc(NAV[lang].home)}"><span class="chev">${ICONS.chevron}</span>${ICONS.home}<span>${esc(NAV[lang].home)}</span></a>`}
       <a class="brand" href="${HOME ? "/" : pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">${HOME ? "Trips" : "Trip"}</span></a>
       ${HOME ? "" : `<div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>`}
       <div class="nav-tools">
@@ -198,6 +199,8 @@ if (mount) {
 
 function paintNav() {
   const L = NAV[lang];
+  const home = $("#home-link");
+  if (home) { home.querySelector("span:last-child").textContent = L.home; home.title = L.home; }
   paintAccount();
   if (!$("#auth-sheet")?.hidden) paintAuthSheet();
   for (const a of document.querySelectorAll("[data-nav]"))
@@ -311,6 +314,7 @@ function paintPrivate() {
       <h1 class="title-2" style="margin-bottom:8px">${esc(L.privateTitle)}</h1>
       <p class="footnote" style="margin-bottom:18px">${esc(user ? L.privateNotMember(user.email) : L.privateSignIn)}</p>
       <button type="button" class="btn btn-primary" id="private-cta">${esc(user ? L.signOut : L.signIn)}</button>
+      <div style="margin-top:14px"><a href="/" class="footnote">${esc(L.front)}</a></div>
     </div></div>`;
 }
 /** On a public trip you are not on: a thin banner under the bar, and a way in. */
