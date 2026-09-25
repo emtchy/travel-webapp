@@ -168,8 +168,7 @@ is, show it, and offer the way in.
       destination is London, the example's places otherwise. `POST
       /api/trips`, `GET /api/trips` (mine). Small, and it is what makes step
       13 testable: until it exists nobody has two trips.
-- [ ] **Step 13 — your trips, organised.** *Proposed 2026-09-25, under
-      discussion — see §7.* Once a person has more than one trip, "Your trips"
+- [ ] **Step 13 — your trips, organised.** *Settled 2026-09-25; see §7.* Once a person has more than one trip, "Your trips"
       stops being a list and becomes a home:
 
       - **Now, or next.** One trip at the top, large. If a trip's dates
@@ -189,9 +188,10 @@ is, show it, and offer the way in.
       - **New trip** as a button beside the heading, and the examples only
         for someone with no trips of their own (otherwise a small link).
 
-      Derived entirely from dates and the existing tables; no new state
-      unless a trip can be *cancelled* (a trip that never happened should
-      not sit in Past as if it did) — that would be one `status` column.
+      Derived from dates and the existing tables, plus two small fields
+      settled in §7: a per-person pin (`users.pinned_trip_id`) that puts one
+      trip first regardless of dates, and `trips.status` for a cancelled
+      trip so one that never happened does not sit in Past as if it did.
 - [ ] **Step 14 — leave, delete, cancel.** A member can leave a trip; the
       owner can delete one (everything under it goes; asks twice) or mark it
       cancelled. Drops the two unread tables `trip_settings` and
@@ -449,26 +449,18 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 
 ## 7. Open questions
 
-**Step 13 — your trips, organised** *(2026-09-25, to settle before building)*
+**Step 13 — your trips, organised** *(settled 2026-09-25)*
 
-- **What is "current" and "next"?** Proposed: by dates, automatically — a
-  trip that includes today is current; else the nearest future one is next.
-  Alternative: a manual pin ("show this one first"). Dates need no tending
-  and are right almost always; a pin could come later if a case turns up.
-- **What does the top card show?** Proposed: for a current trip, today's
-  plan; for a next trip, a countdown and three "still to do" numbers with
-  links. Alternative: just name, dates and a button, and let the trip's own
-  pages do the talking.
-- **Past trips: derived or explicit?** Proposed: derived from the end date,
-  grouped by year, collapsed, fully usable. Alternative: an explicit
-  "archive" action. Derived means nothing to forget; explicit means a trip
-  can be put away early or kept out on purpose.
-- **Cancelled trips.** A trip that was planned and never happened: hide it
-  (a `status` column, set by the owner) or let it fall into Past? Proposed:
-  a cancelled status, set from Details, shown under Past with a label.
-- **Trips without dates.** Where do they go? Proposed: top of Upcoming,
-  marked "no dates yet".
-- **Switching between trips from inside one.** Proposed: nothing new — the
-  brand goes home and home has the list. A switcher in the bar can wait for
-  someone who actually has five trips.
+- Which trip comes first: **by dates, plus a manual pin.** A trip that
+  includes today is current; otherwise the nearest future one is next; a
+  pinned trip beats both. The pin is per person, one at most: a small
+  `pinned_trip_id` on `users`.
+- The top card: **today's plan for a current trip; countdown and to-dos for
+  a next one.**
+- Past trips: **derived from the end date**, grouped by year, collapsed,
+  fully usable.
+- Cancelled: **yes**, a `status` on `trips` (`planned | cancelled`), set by
+  the owner from Details, shown under Past with a label.
+- Trips without dates: top of Upcoming, marked "no dates yet".
+- Switching from inside a trip: nothing new; the brand goes home.
 
