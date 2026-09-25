@@ -219,8 +219,33 @@ is, show it, and offer the way in.
 
 ### Phase 4 — public hardening
 
-- [ ] Rate limits on writes and on geocoding; geocoder results cached in KV;
-      photos cached server-side; abuse reporting; a privacy note.
+The app can now be reached by anyone with the link. These steps make that
+safe to leave running.
+
+- [x] **Step 15 — rate limits and headers.** *(2026-09-25)* Cloudflare's
+      rate-limiting bindings, three counters per minute: sign-in and invite
+      mail per address (5), address lookups per account (10), every other
+      write per account (60). Hourly caps in the database for trips made (5)
+      and invitations per trip (20). Every response carries security headers
+      and a content-security policy: nothing embeds the site, nothing loads
+      from anywhere but itself and Wikipedia, forms post only here.
+      `src/limits.js`. Where a binding is missing nothing is limited, so the
+      tests and an old local config keep working.
+- [ ] **Step 16 — the geocoder cache.** Nominatim results kept in a
+      `geocode_cache` table for thirty days, keyed by query and bias, so
+      the same address asked twice costs one call. D1 rather than KV: no
+      new infrastructure, and the volume is tiny.
+- [ ] **Step 17 — photos through the Worker.** The Sights page asks Wikipedia
+      for 55 thumbnails per visitor, from the browser. One endpoint per trip
+      answers the whole map from a `photo_cache` table, filling gaps from
+      Wikipedia on the server; the browser talks only to this site and the CSP
+      can drop the Wikipedia origins.
+- [ ] **Step 18 — a privacy note and a way to write in.** `/privacy`: what
+      is stored (address, display name, what you do on a trip), the cookie,
+      Resend as the mail carrier, how to leave and delete. A contact address.
+- [ ] **Step 19 — delete my account.** From the settings sheet: leaves every
+      trip (an owner must hand over or delete first), removes sessions and the
+      user row. Asks for the address typed.
 
 ---
 
@@ -459,6 +484,20 @@ second time wants the trip's name typed, on the server as well as in the
 page. Leaving, like being removed, only takes the seat: what a person voted,
 wrote and booked stays under their name, because a plan is a shared record
 and one person leaving should not rewrite it.
+
+**2026-09-25 — Limits at the edge, caps in the database.**
+Cloudflare's rate-limiting binding counts per key per minute without a
+database write, so it takes the per-minute limits — writes, lookups, mail.
+Its window is a minute at most, so anything hourly (trips made, invitations
+sent) is a count over `created_at`. A missing binding limits nothing: the
+app must never fail closed because its own infrastructure is not there.
+
+**2026-09-25 — A content-security policy that admits the inline scripts.**
+The pages carry their styles and module scripts inline, so `'unsafe-inline'`
+stays for those two directives. Everything else is closed: no embedding, no
+other origins to connect to but Wikipedia for photos, forms post only here,
+no plugins. Moving scripts to files for a nonce-based policy is a later
+tidy-up, not a blocker.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

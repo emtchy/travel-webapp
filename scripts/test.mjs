@@ -1527,5 +1527,37 @@ t5("and trip 1 does not see trip 2's rows",
   t5("London is untouched", db.prepare("SELECT COUNT(*) AS n FROM items WHERE trip_id = 1").get().n > 55);
 }
 
+// --- Phase 4, step 15: rate limits and security headers
+{
+  const res = await raw("/t/1/plan");
+  t5("every response carries the security headers",
+     res.headers.get("x-content-type-options") === "nosniff" && res.headers.get("x-frame-options") === "DENY" &&
+     /frame-ancestors 'none'/.test(res.headers.get("content-security-policy")) && !!res.headers.get("referrer-policy"));
+  t5("API answers too", (await raw("/api/examples")).headers.get("content-security-policy") !== null);
+
+  // a counting stand-in for the edge's rate limiter
+  const counter = (limit) => { const seen = new Map(); return { limit: async ({ key }) => { const n = (seen.get(key) ?? 0) + 1; seen.set(key, n); return { success: n <= limit }; } }; };
+  const limitedEnv = { ...env, RL_AUTH: counter(2), RL_GEO: counter(1), RL_WRITE: counter(3) };
+  const hit = (path, init = {}) => worker.fetch(new Request("https://x" + path, { ...init, headers: { "cf-connecting-ip": "203.0.113.9", ...(init.headers || {}) } }), limitedEnv);
+  const ask = () => hit("/api/auth/request", { method: "POST", body: JSON.stringify({ email: "limit@example.org" }) });
+  t5("sign-in requests are limited per address", (await ask()).status === 200 && (await ask()).status === 200 && (await ask()).status === 429);
+  t5("with a message that says so", /Too many/.test((await (await ask()).json()).error));
+
+  const em = { cookie: cookieFor("Emily", 1) };
+  const vote = () => hit("/api/t/1/vote", { method: "POST", headers: em, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) });
+  t5("writes are limited per account", (await vote()).status === 200 && (await vote()).status === 200 && (await vote()).status === 200 && (await vote()).status === 429);
+  t5("reads are not", (await hit("/api/t/1/state", { headers: em })).status === 200 && (await hit("/api/t/1/state", { headers: em })).status === 200);
+  const geo = () => hit("/api/t/1/geocode", { method: "POST", headers: em, body: JSON.stringify({ q: "51.5, -0.1" }) });
+  t5("lookups have their own, tighter counter", (await geo()).status === 200 && (await geo()).status === 429);
+  t5("without the bindings nothing is limited",
+     (await raw("/api/t/1/vote", { method: "POST", headers: em, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 200);
+
+  // hourly caps in the database
+  const maker = asUser("prolific@example.org");
+  let last;
+  for (let i = 0; i < 6; i++) last = await raw("/api/trips", { method: "POST", headers: maker, body: JSON.stringify({ name: `Trip ${i}` }) });
+  t5("five trips an hour, then a pause", last.status === 429 && db.prepare("SELECT COUNT(*) AS n FROM trip_members WHERE user_id = 'u-prolific@example.org'").get().n === 5);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

@@ -30,6 +30,7 @@ src/worker.js         the API, page routing, and the static-asset fallthrough
 src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
 src/invites.js        invites: create, list, revoke, and the /invite link that joins a trip
 src/http.js           json() and bad()
+src/limits.js         rate limits (the RL_* bindings in wrangler.toml) and the security headers
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
@@ -112,6 +113,8 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
   locally first. `CREATE TABLE IF NOT EXISTS` cannot add a column.
 - **Place ids are the vote key.** Changing an id resets that row's votes. Places
   are rows in `items` (`source` = builtin | added); nothing reads `sights.js` live.
+- **Every POST is rate-limited** (`limited()` in `src/limits.js`); a missing
+  binding limits nothing. Hourly caps are counts over `created_at`.
 - **Bind D1 parameters by number.** `?1`, `?2` are positional *by number*.
   Keep them ascending anyway.
 - **A place may have no location.** `hasPlace()` guards every route.

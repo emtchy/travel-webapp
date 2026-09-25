@@ -93,6 +93,10 @@ export async function handleInviteCreate(request, env, trip, ctx) {
     "SELECT COUNT(*) AS count FROM invites WHERE trip_id = ?1 AND accepted_at IS NULL AND expires_at > ?2"
   ).bind(trip, now).first();
   if (count >= 50) return bad("Fifty open invites is plenty. Let some expire first.");
+  const { recent } = await env.DB.prepare(
+    "SELECT COUNT(*) AS recent FROM invites WHERE trip_id = ?1 AND created_at > ?2"
+  ).bind(trip, now - 60 * 60 * 1000).first();
+  if (recent >= 20) return bad("That's twenty invitations in an hour. Try again later.", 429);
 
   const token = randomToken();
   await env.DB.prepare(

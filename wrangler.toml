@@ -21,6 +21,23 @@ binding = "DB"
 database_name = "london-votes"
 database_id = "d7412b9d-0cca-4b50-b13e-10c8476fceba"
 
+# Rate limits, counted at the edge per key per minute. Separate namespaces
+# so the counters never share. See src/limits.js for what each guards.
+[[ratelimits]]
+name = "RL_AUTH"
+namespace_id = "1001"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "RL_GEO"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
+[[ratelimits]]
+name = "RL_WRITE"
+namespace_id = "1003"
+simple = { limit = 60, period = 60 }
+
 [vars]
 # Who sign-in emails come from. Resend's test sender can only reach the
 # address the Resend account was made with; a verified domain reaches anyone.

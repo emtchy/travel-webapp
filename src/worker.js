@@ -3,6 +3,7 @@ import { json, bad } from "./http.js";
 import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
 import { TEMPLATES, ITEM_COLUMNS as TEMPLATE_COLUMNS, templatesFor } from "./templates.js";
+import { limited, ip, withHeaders } from "./limits.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -266,6 +267,11 @@ async function handleTripCreate(request, env) {
     "SELECT COUNT(*) AS count FROM trip_members WHERE user_id = ?1 AND role = 'owner'"
   ).bind(user.id).first();
   if (count >= 30) return bad("Thirty trips of your own is plenty. Delete one first.");
+  const { recent } = await env.DB.prepare(
+    `SELECT COUNT(*) AS recent FROM trips t JOIN trip_members m ON m.trip_id = t.id
+      WHERE m.user_id = ?1 AND m.role = 'owner' AND t.created_at > ?2`
+  ).bind(user.id, Date.now() - 60 * 60 * 1000).first();
+  if (recent >= 5) return bad("That's five trips in an hour. Take a break and try again later.", 429);
 
   const now = Date.now();
   const row = await env.DB.prepare(
@@ -1644,6 +1650,11 @@ async function handlePlanRemove(request, env, trip) {
 
 export default {
   async fetch(request, env) {
+    return withHeaders(await route(request, env));
+  },
+};
+
+async function route(request, env) {
     const url = new URL(request.url);
 
     if (url.pathname === "/auth" && request.method === "GET")
@@ -1653,6 +1664,16 @@ export default {
     if (!url.pathname.startsWith("/api/")) return servePage(request, env, url);
 
     const { method } = request;
+
+    // Writes are limited per account (per address if not signed in);
+    // address lookups more tightly; sign-in mail most tightly of all.
+    if (method === "POST") {
+      const who = (await currentUser(request, env))?.id || ip(request);
+      const over = url.pathname === "/api/auth/request" ? await limited(env, "RL_AUTH", ip(request))
+        : /\/api\/t\/[^/]+\/geocode$/.test(url.pathname) ? await limited(env, "RL_GEO", who)
+        : await limited(env, "RL_WRITE", who);
+      if (over) return over;
+    }
 
     // Accounts, and the list of trips, are not part of any trip.
     if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
@@ -1762,5 +1783,4 @@ export default {
       return handleNoteRemove(request, env, trip);
 
     return bad("Not found.", 404);
-  },
-};
+}

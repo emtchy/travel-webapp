@@ -364,6 +364,15 @@ sir-john-soane-s-museum          3  Manuel, Anna, Lena
 
 Or just open the page and hit the **Most wanted** filter.
 
+## Limits
+
+Sign-in and invitation mails are limited to five a minute per address, address
+lookups to ten a minute per account, every other change to sixty a minute per
+account; five new trips an hour, twenty invitations an hour per trip. Past a
+limit the app says so and asks you to wait a minute. Every page and answer
+carries security headers: nothing can embed the site, and the browser talks
+only to this site and to Wikipedia for the photos.
+
 ## Locking it down
 
 A trip is private to its members (see "Who is on a trip"), and `noindex`
