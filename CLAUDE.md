@@ -27,6 +27,7 @@ public/shell.js       the shared shell: nav + tab bar, sign-in and claim sheets,
 public/route.js       Google / Apple Maps links for a day or a stop
 src/worker.js         the API, page routing, and the static-asset fallthrough
 src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
+src/invites.js        invites: create, list, revoke, and the /invite link that joins a trip
 src/http.js           json() and bad()
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       (places live in the `items` table — this file is not read at runtime)
@@ -53,10 +54,12 @@ All JSON, under `/api/t/<trip>/…`; the pages call the bare paths below and
 `api()` in `shell.js` puts the trip in. The bare `/api/…` paths still answer
 for trip 1. An unknown trip is a 404.
 
-**Identity comes from the session cookie.** Every write is made as the member
-the signed-in account has claimed on that trip (`actor()` in `worker.js`);
-`voter` in a body is ignored. Not signed in → 401; signed in, no name claimed
-→ 403. Reads are open until step 7.
+**Identity comes from the session cookie.** Every call is made as the member
+the signed-in account is on that trip (`actor(request, env, trip, need)` in
+`worker.js`); `voter` in a body is ignored. Not signed in → 401; not on the
+trip → 403; role too low → 403. Roles: `viewer` reads, votes, comments;
+`editor` also places, bookings, plan, addresses; `owner` also the trip, its
+people, invites. Reads are members-only.
 
 | Method | Path | Does |
 | --- | --- | --- |
@@ -70,8 +73,12 @@ the signed-in account has claimed on that trip (`actor()` in `worker.js`);
 | POST | `/api/plan/note/add` · `/update` · `/remove` · `/address` | your own entries |
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
-| GET | `/api/t/<trip>/me` | `{ user, member, members }` — who you are on this trip |
-| POST | `/api/t/<trip>/claim` | `{ memberId }` or `{ name }` → claim a name on the trip |
+| GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone |
+| POST | `/api/t/<trip>/invite` | owner: `{ email, role?, memberId? \| name?, lang? }` → mails an invite link |
+| GET | `/api/t/<trip>/invites` | owner: the open invites (also on `/api/sights` for owners) |
+| POST | `/api/t/<trip>/invite/revoke` | owner: `{ id }` |
+| GET | `/invite?token=…` | the link: signs in, joins the trip with the role, lands on it |
+| POST | `/api/t/<trip>/trip/member/role` | owner: `{ id, role }` |
 | POST | `/api/auth/request` | `{ email, next?, lang? }` → a sign-in link by mail (not trip-scoped) |
 | GET | `/auth?token=…` | the link: starts a session, sets the cookie, redirects to `next` |
 | GET | `/api/auth/me` | `{ user }` or `{ user: null }` |

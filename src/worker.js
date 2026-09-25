@@ -1,6 +1,7 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
 import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, currentUser } from "./auth.js";
+import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -29,61 +30,36 @@ function tripOf(url) {
  */
 async function handleWhoAmI(request, env, trip) {
   const { user, member } = await whoIs(request, env, trip);
-  // The members come along so the claim sheet can offer the free names
-  // without waiting for the page's own snapshot.
-  return json({ user, member, members: await getMembers(env, trip) });
+  // The trip's name comes along so the bar can show it even to someone who
+  // is not on the trip and gets nothing else.
+  const row = await env.DB.prepare("SELECT name, destination FROM trips WHERE id = ?1").bind(trip).first();
+  return json({ user, member, trip: { id: trip, name: row?.name ?? null, destination: row?.destination ?? null } });
 }
 
-/**
- * POST /api/t/<trip>/claim  { memberId } | { name }
- *
- * Pick an existing, unclaimed name on the trip, or give a new one. Either way
- * the member row gets this account's id and the account acts as that name
- * from now on. A name someone else has claimed cannot be taken; an account
- * that already has a name here cannot take a second.
- */
-async function handleClaim(request, env, trip) {
+/** POST /api/t/<trip>/member/role  { id, role } — owner only. */
+async function handleMemberRole(request, env, trip) {
   let body;
   try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const { error } = await actor(request, env, trip, "own");
+  if (error) return error;
 
-  const { user, member } = await whoIs(request, env, trip);
-  if (!user) return bad("Sign in first.", 401);
-  if (member) return bad(`You are already ${member.name} on this trip.`, 409);
+  const { id, role } = body ?? {};
+  if (typeof id !== "string") return bad("Unknown member.");
+  if (!ROLES.includes(role)) return bad("Role must be owner, editor or viewer.");
 
-  const now = Date.now();
-  const { memberId } = body ?? {};
+  const target = await env.DB.prepare(
+    "SELECT id, role FROM trip_members WHERE id = ?1 AND trip_id = ?2"
+  ).bind(id, trip).first();
+  if (!target) return bad("That person isn't on this trip.", 404);
 
-  if (typeof memberId === "string") {
-    const row = await env.DB.prepare(
-      "SELECT id, user_id FROM trip_members WHERE id = ?1 AND trip_id = ?2"
-    ).bind(memberId, trip).first();
-    if (!row) return bad("That name isn't on this trip.", 404);
-    if (row.user_id) return bad("Someone has already claimed that name.", 409);
-    await env.DB.prepare("UPDATE trip_members SET user_id = ?1 WHERE id = ?2")
-      .bind(user.id, row.id).run();
-    return json({ ok: true, ...(await whoIs(request, env, trip)), ...(await snapshot(env, trip)) });
-  }
-
-  const name = cleanName(body?.name);
-  if (!name) return bad("A name between 1 and 32 characters.");
-  const existing = await env.DB.prepare(
-    "SELECT id, user_id FROM trip_members WHERE trip_id = ?1 AND name_key = ?2"
-  ).bind(trip, voterKey(name)).first();
-  if (existing?.user_id) return bad("Someone has already claimed that name.", 409);
-  if (existing) {
-    await env.DB.prepare("UPDATE trip_members SET user_id = ?1 WHERE id = ?2")
-      .bind(user.id, existing.id).run();
-  } else {
+  if (target.role === "owner" && role !== "owner") {
     const { count } = await env.DB.prepare(
-      "SELECT COUNT(*) AS count FROM trip_members WHERE trip_id = ?1"
+      "SELECT COUNT(*) AS count FROM trip_members WHERE trip_id = ?1 AND role = 'owner'"
     ).bind(trip).first();
-    if (count >= 50) return bad("Fifty people is not a trip, it's a coach tour.");
-    await env.DB.prepare(
-      `INSERT INTO trip_members (id, name, name_key, note, added_by, created_at, trip_id, user_id)
-       VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?6, ?7)`
-    ).bind(`m-${crypto.randomUUID()}`, name, voterKey(name), name, now, trip, user.id).run();
+    if (count <= 1) return bad("A trip needs an owner. Make someone else an owner first.");
   }
-  return json({ ok: true, ...(await whoIs(request, env, trip)), ...(await snapshot(env, trip)) });
+  await env.DB.prepare("UPDATE trip_members SET role = ?1 WHERE id = ?2").bind(role, id).run();
+  return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
 /* ------------------------------------------------------------------ pages */
@@ -264,16 +240,30 @@ async function whoIs(request, env, trip) {
   const user = await currentUser(request, env);
   if (!user) return { user: null, member: null };
   const m = await env.DB.prepare(
-    "SELECT id, name, name_key FROM trip_members WHERE trip_id = ?1 AND user_id = ?2"
+    "SELECT id, name, name_key, role FROM trip_members WHERE trip_id = ?1 AND user_id = ?2"
   ).bind(trip, user.id).first();
-  return { user, member: m ? { id: m.id, name: m.name, key: m.name_key } : null };
+  return { user, member: m ? { id: m.id, name: m.name, key: m.name_key, role: m.role } : null };
 }
 
+/**
+ * What each role may do. A role includes everything below it.
+ *   view   read the trip, vote, comment            — viewer, editor, owner
+ *   edit   places, bookings, the plan, addresses    — editor, owner
+ *   own    the trip itself, its people, invites     — owner
+ */
+const RANK = { viewer: 0, editor: 1, owner: 2 };
+const NEED = { view: 0, edit: 1, own: 2 };
+const NOT_ALLOWED = {
+  edit: "Only editors and owners can change that. Ask the trip's owner.",
+  own: "Only the trip's owner can do that.",
+};
+
 /** The member acting, or the response to send back instead. */
-async function actor(request, env, trip) {
+async function actor(request, env, trip, need = "view") {
   const { user, member } = await whoIs(request, env, trip);
   if (!user) return { error: bad("Sign in first.", 401) };
-  if (!member) return { error: bad("Say who you are on this trip first.", 403) };
+  if (!member) return { error: bad("You're not on this trip. Ask whoever runs it for an invitation.", 403) };
+  if ((RANK[member.role] ?? 0) < NEED[need]) return { error: bad(NOT_ALLOWED[need], 403) };
   return { user, member, name: member.name };
 }
 
@@ -481,7 +471,7 @@ async function handleAddSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: addedBy, error: authError } = await actor(request, env, trip);
+  const { name: addedBy, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -550,7 +540,7 @@ async function handleEditSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: name, error: authError } = await actor(request, env, trip);
+  const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -599,7 +589,7 @@ async function handleGeocode(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  if (!(await currentUser(request, env))) return bad("Sign in first.", 401);
+  { const { error } = await actor(request, env, trip, "edit"); if (error) return error; }
 
   const q = cleanText(body?.q, 500);
   if (q === undefined) return bad("That's too long to look up.");
@@ -664,7 +654,7 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
       return bad("Body must be JSON.");
     }
 
-    const { name: name, error: authError } = await actor(request, env, trip);
+    const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
     if (authError) return authError;
 
@@ -718,7 +708,7 @@ async function handleDeleteSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: name, error: authError } = await actor(request, env, trip);
+  const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
   const { id } = body ?? {};
@@ -839,7 +829,7 @@ async function handleBookingStatus(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: name, error: authError } = await actor(request, env, trip);
+  const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -898,12 +888,12 @@ async function handleBookingStatus(request, env, trip) {
 /** Who is coming. The key is the lowercased name, same identity as a vote. */
 async function getMembers(env, trip) {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, name_key, note, added_by, user_id FROM trip_members
+    `SELECT id, name, name_key, note, added_by, user_id, role FROM trip_members
       WHERE trip_id = ?1 ORDER BY name COLLATE NOCASE`
   ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.id, name: r.name, key: r.name_key, note: r.note, addedBy: r.added_by,
-    claimed: !!r.user_id,
+    claimed: !!r.user_id, role: r.role,
   }));
 }
 
@@ -931,7 +921,7 @@ async function handleTripSettings(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: who, error: authError } = await actor(request, env, trip);
+  const { name: who, error: authError } = await actor(request, env, trip, "own");
 
   if (authError) return authError;
 
@@ -996,7 +986,7 @@ async function handleMemberAdd(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: who, error: authError } = await actor(request, env, trip);
+  const { name: who, error: authError } = await actor(request, env, trip, "own");
 
   if (authError) return authError;
 
@@ -1031,7 +1021,7 @@ async function handleMemberRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  const { error: authError } = await actor(request, env, trip);
+  const { error: authError } = await actor(request, env, trip, "own");
   if (authError) return authError;
 
   const { id } = body ?? {};
@@ -1039,7 +1029,14 @@ async function handleMemberRemove(request, env, trip) {
 
   // Votes and comments are keyed on the name, not on this row, so they stay.
   // Taking someone off the list is not the same as erasing what they wanted.
-  await env.DB.prepare("DELETE FROM trip_members WHERE id = ?1").bind(id).run();
+  // An owner cannot be removed: change their role first, and the last owner
+  // cannot be changed, so a trip never ends up with nobody running it.
+  const target = await env.DB.prepare(
+    "SELECT role FROM trip_members WHERE id = ?1 AND trip_id = ?2"
+  ).bind(id, trip).first();
+  if (!target) return bad("That person isn't on this trip.", 404);
+  if (target.role === "owner") return bad("Owners can't be removed. Make them an editor first.");
+  await env.DB.prepare("DELETE FROM trip_members WHERE id = ?1 AND trip_id = ?2").bind(id, trip).run();
   return json({ ok: true, ...(await snapshot(env, trip)) });
 }
 
@@ -1052,7 +1049,7 @@ async function handleTravel(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: who, error: authError } = await actor(request, env, trip);
+  const { name: who, error: authError } = await actor(request, env, trip, "own");
 
   if (authError) return authError;
 
@@ -1121,7 +1118,7 @@ async function handleTripBase(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: who, error: authError } = await actor(request, env, trip);
+  const { name: who, error: authError } = await actor(request, env, trip, "own");
 
   if (authError) return authError;
 
@@ -1179,7 +1176,7 @@ async function handleNoteAdd(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: name, error: authError } = await actor(request, env, trip);
+  const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -1244,7 +1241,7 @@ async function handleNoteUpdate(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: who, error: authError } = await actor(request, env, trip);
+  const { name: who, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -1303,7 +1300,7 @@ async function handleNoteRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  const { error: authError } = await actor(request, env, trip);
+  const { error: authError } = await actor(request, env, trip, "edit");
   if (authError) return authError;
 
   const { id } = body ?? {};
@@ -1329,7 +1326,7 @@ async function handlePlanSet(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const { name: name, error: authError } = await actor(request, env, trip);
+  const { name: name, error: authError } = await actor(request, env, trip, "edit");
 
   if (authError) return authError;
 
@@ -1374,7 +1371,7 @@ async function handlePlanRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  const { error: authError } = await actor(request, env, trip);
+  const { error: authError } = await actor(request, env, trip, "edit");
   if (authError) return authError;
 
   const { sightId } = body ?? {};
@@ -1394,6 +1391,8 @@ export default {
 
     if (url.pathname === "/auth" && request.method === "GET")
       return handleAuthCallback(request, env, url);
+    if (url.pathname === "/invite" && request.method === "GET")
+      return handleInviteAccept(request, env, url, { voterKey });
     if (!url.pathname.startsWith("/api/")) return servePage(request, env, url);
 
     if (!checkAccess(request, env)) return json({ error: "Wrong access code." }, 401);
@@ -1411,14 +1410,30 @@ export default {
     if (pathname === "/api/me" && method === "GET")
       return handleWhoAmI(request, env, trip);
 
-    if (pathname === "/api/claim" && method === "POST")
-      return handleClaim(request, env, trip);
+    // Everything from here is for members of the trip.
+    const ctx = { actor, cleanName, voterKey, tripName: async (env, t) => (await getTrip(env, t)).name };
 
-    if (pathname === "/api/sights" && method === "GET")
-      return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)) });
+    if (pathname === "/api/sights" && method === "GET") {
+      const { member, error } = await actor(request, env, trip);
+      if (error) return error;
+      return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)),
+                    ...(member.role === "owner" ? { invites: await listInvites(env, trip) } : {}) });
+    }
 
-    if (pathname === "/api/state" && method === "GET")
+    if (pathname === "/api/state" && method === "GET") {
+      const { error } = await actor(request, env, trip);
+      if (error) return error;
       return json(await snapshot(env, trip));
+    }
+
+    if (pathname === "/api/invite" && method === "POST")
+      return handleInviteCreate(request, env, trip, ctx);
+    if (pathname === "/api/invites" && method === "GET")
+      return handleInviteList(request, env, trip, ctx);
+    if (pathname === "/api/invite/revoke" && method === "POST")
+      return handleInviteRevoke(request, env, trip, ctx);
+    if (pathname === "/api/trip/member/role" && method === "POST")
+      return handleMemberRole(request, env, trip);
 
     if (pathname === "/api/vote" && method === "POST")
       return handleVote(request, env, trip);

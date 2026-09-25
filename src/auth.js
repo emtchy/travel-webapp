@@ -30,12 +30,12 @@ const MAX_REQUESTS_PER_HOUR = 5;
 
 /* ------------------------------------------------------------- helpers */
 
-async function sha256(text) {
+export async function sha256(text) {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-function randomToken() {
+export function randomToken() {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
@@ -71,7 +71,7 @@ function cookieHeader(url, value, maxAge) {
   return `${COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure}`;
 }
 
-const displayNameOf = (email) => {
+export const displayNameOf = (email) => {
   const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
   return local.replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 32) || "Someone";
 };
@@ -119,24 +119,49 @@ const MAIL = {
   },
 };
 
-async function sendMail(env, to, lang, link) {
-  const L = MAIL[lang] ?? MAIL.en;
+/** One email through Resend. Throws with Resend's answer if it did not go. */
+export async function sendMail(env, { to, subject, text, html }) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from: env.MAIL_FROM || "Trip <onboarding@resend.dev>",
-      to: [to],
-      subject: L.subject,
-      text: L.body(link),
-      html: L.html(link),
-    }),
+    body: JSON.stringify({ from: env.MAIL_FROM || "Trip <onboarding@resend.dev>", to: [to], subject, text, html }),
   });
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Resend answered ${res.status}: ${detail.slice(0, 200)}`);
   }
 }
+
+/** The user with this address, created if new. Returns { id }. */
+export async function findOrCreateUser(env, email, now = Date.now()) {
+  let user = await env.DB.prepare("SELECT id FROM users WHERE email = ?1").bind(email).first();
+  if (user) return user;
+  user = { id: `u-${crypto.randomUUID()}` };
+  await env.DB.prepare(
+    "INSERT INTO users (id, email, display_name, created_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?4)"
+  ).bind(user.id, email, displayNameOf(email), now).run();
+  return user;
+}
+
+/** A new session for the user; returns the Set-Cookie header value. */
+export async function startSession(env, userId, url, now = Date.now()) {
+  const sid = randomToken();
+  await env.DB.prepare(
+    "INSERT INTO sessions (id_hash, user_id, created_at, expires_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?3)"
+  ).bind(await sha256(sid), userId, now, now + SESSION_TTL).run();
+  await env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?1").bind(now).run();
+  return cookieHeader(url, sid, Math.floor(SESSION_TTL / 1000));
+}
+
+/** A small standalone page for the moments a link leads somewhere but the app. */
+export const htmlPage = (title, text, home = "/", status = 200) => new Response(
+  `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+background:#F5F5F7;color:#1D1D1F;display:grid;place-items:center;min-height:100dvh;margin:0}
+main{text-align:center;padding:24px;max-width:36ch}h1{font-size:22px;margin:0 0 8px}p{color:#5C5C63;margin:0 0 18px}
+a{color:#0A66E0;font-weight:600;text-decoration:none}</style>
+<main><h1>${title}</h1><p>${text}</p><a href="${home}">Back to the trip</a></main>`,
+  { status, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
 
 /* ------------------------------------------------------------- handlers */
 
@@ -173,7 +198,8 @@ export async function handleAuthRequest(request, env) {
     return json({ ok: true, sent: false, devLink: link });
   }
   try {
-    await sendMail(env, email, lang, link);
+    const L = MAIL[lang] ?? MAIL.en;
+    await sendMail(env, { to: email, subject: L.subject, text: L.body(link), html: L.html(link) });
   } catch (err) {
     console.error(err.message);
     return bad("The email couldn't be sent. Try again in a moment.", 502);
@@ -181,20 +207,12 @@ export async function handleAuthRequest(request, env) {
   return json({ ok: true, sent: true });
 }
 
-const PAGE = (title, text, home) => `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-background:#F5F5F7;color:#1D1D1F;display:grid;place-items:center;min-height:100dvh;margin:0}
-main{text-align:center;padding:24px;max-width:36ch}h1{font-size:22px;margin:0 0 8px}p{color:#5C5C63;margin:0 0 18px}
-a{color:#0A66E0;font-weight:600;text-decoration:none}</style>
-<main><h1>${title}</h1><p>${text}</p><a href="${home}">Back to the trip</a></main>`;
-
 /** The link in the email. Proves the mailbox, starts the session, moves on. */
 export async function handleAuthCallback(request, env, url) {
   const token = url.searchParams.get("token") || "";
   const now = Date.now();
-  const fail = () => new Response(
-    PAGE("This link has expired", "Sign-in links work once and last fifteen minutes. Ask for a new one from the trip page.", "/"),
-    { status: 400, headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" } });
+  const fail = () => htmlPage("This link has expired",
+    "Sign-in links work once and last fifteen minutes. Ask for a new one from the trip page.", "/", 400);
 
   if (!/^[A-Za-z0-9_-]{20,64}$/.test(token)) return fail();
   const hash = await sha256(token);
@@ -205,25 +223,12 @@ export async function handleAuthCallback(request, env, url) {
 
   await env.DB.prepare("UPDATE login_tokens SET used_at = ?1 WHERE token_hash = ?2").bind(now, hash).run();
 
-  let user = await env.DB.prepare("SELECT id FROM users WHERE email = ?1").bind(row.email).first();
-  if (!user) {
-    user = { id: `u-${crypto.randomUUID()}` };
-    await env.DB.prepare(
-      "INSERT INTO users (id, email, display_name, created_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?4)"
-    ).bind(user.id, row.email, displayNameOf(row.email), now).run();
-  }
-
-  const sid = randomToken();
-  await env.DB.prepare(
-    "INSERT INTO sessions (id_hash, user_id, created_at, expires_at, last_seen) VALUES (?1, ?2, ?3, ?4, ?3)"
-  ).bind(await sha256(sid), user.id, now, now + SESSION_TTL).run();
-  await env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?1").bind(now).run();
-
+  const user = await findOrCreateUser(env, row.email, now);
   return new Response(null, {
     status: 302,
     headers: {
       location: `${url.origin}${cleanNext(row.next_path) ?? "/"}`,
-      "set-cookie": cookieHeader(url, sid, Math.floor(SESSION_TTL / 1000)),
+      "set-cookie": await startSession(env, user.id, url, now),
       "cache-control": "no-store",
     },
   });

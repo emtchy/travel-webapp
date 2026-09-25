@@ -116,10 +116,14 @@ the live database, each with a migration and a test.
       identity from the session and ignores the body's `voter`. Not signed in
       is 401, signed in but unclaimed is 403. **The typed name field is gone.**
       Reading is still open to anyone with the link; step 7 closes that.
-- [ ] **Step 7 — invites and roles.** `members (trip_id, user_id, role)` with
-      `owner | editor | viewer`. The owner invites by email; the invite is a
-      link that signs the person in and adds them. The API checks membership on
-      every trip-scoped call and the role on every write.
+- [x] **Step 7 — invites and roles.** *(2026-09-25)* `trip_members.role` is
+      `owner | editor | viewer` (migration 012; Emily is the London owner). An
+      owner invites by email from the Details page, optionally as an existing
+      unclaimed name; the link signs the person in and puts them on the trip
+      in one step, and works once for seven days. Reads are members-only; a
+      stranger sees "This trip is private". Self-claiming a name is gone —
+      membership is the owner's decision. Owners cannot be removed and the
+      last owner cannot step down. `src/invites.js`.
 - [ ] **Step 8 — settings.** An account page: display name, language, and
       **which maps app "Open in Maps" means** (Apple or Google). The setting
       replaces the per-device guess in `shell.js`, which stays as the default
@@ -316,6 +320,20 @@ and inherits everything under that name — including what was recorded before
 accounts existed. One account per name per trip, and a claimed name cannot be
 taken by anyone else; the Details page shows a tick on claimed names.
 
+**2026-09-25 — An invite is a sign-in.**
+The invitation goes to a mailbox; opening it proves that mailbox, which is
+exactly what a sign-in link proves. So the invite link does both: account,
+session, membership, role, and it lands on the trip. No "sign in, then find
+the invite" dance. It also means the "who are you?" sheet from step 6 went
+after one day: with invites, the owner picks which existing name a person
+becomes, and nobody can walk in and claim a name.
+
+**2026-09-25 — Three roles, and viewers vote.**
+Voting is the point of inviting someone, so `viewer` votes and comments.
+`editor` changes places, bookings, addresses and the plan. `owner` changes the
+trip itself and its people. Roles include everything below them. A trip must
+always have an owner: the last one cannot be demoted or removed.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -346,6 +364,3 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 
 ## 7. Open questions
 
-- Should a `viewer` be able to vote? (Leaning: yes — voting is the point of
-  inviting someone; `editor` adds places, bookings and plan changes; `owner`
-  edits the trip itself and members.)

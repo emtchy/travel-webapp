@@ -51,18 +51,29 @@ function cookieFor(name, trip) {
     .run(uid, `${key.replace(/\s+/g, ".")}@test`, name.trim());
   db.prepare("INSERT OR IGNORE INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, 0, ?)")
     .run(sha(sid), uid, Date.now() + 864e5);
+  // Everyone the tests name is an owner: they are "the group", and the role
+  // checks below use explicitly invited editors and viewers.
   const m = db.prepare("SELECT id, user_id FROM trip_members WHERE trip_id = ? AND name_key = ?").get(trip, key);
-  if (!m) db.prepare(`INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at, user_id)
-                      VALUES (?, ?, ?, ?, 'test', 0, ?)`).run(`m-${trip}-${key}`, trip, name.trim(), key, uid);
-  else if (!m.user_id) db.prepare("UPDATE trip_members SET user_id = ? WHERE id = ?").run(uid, m.id);
+  if (!m) db.prepare(`INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at, user_id, role)
+                      VALUES (?, ?, ?, ?, 'test', 0, ?, 'owner')`).run(`m-${trip}-${key}`, trip, name.trim(), key, uid);
+  else if (!m.user_id) db.prepare("UPDATE trip_members SET user_id = ?, role = 'owner' WHERE id = ?").run(uid, m.id);
   return `trip_session=${sid}`;
 }
+/** The Worker as the request sees it: no cookie unless you pass one. */
+const raw = (path, init = {}) => worker.fetch(new Request("https://x" + path, init), env);
+/**
+ * call(): a body with `voter` acts as that (owner) member; a body with
+ * voter: "" acts as a stranger; anything else — a GET, a body without voter —
+ * reads as Emily, the London owner, since reads are for members now.
+ */
 const call = (path, init = {}) => {
   const headers = { ...(init.headers || {}) };
-  if (typeof init.body === "string" && !headers.cookie) {
-    let voter; try { voter = JSON.parse(init.body)?.voter; } catch {}
+  if (!headers.cookie && path.startsWith("/api/") && !path.startsWith("/api/auth/")) {
     const trip = Number(path.match(/^\/api\/t\/(\d+)\//)?.[1] ?? 1);
-    const cookie = cookieFor(voter, trip);
+    let voter;
+    let hasVoter = false;
+    if (typeof init.body === "string") { try { const b = JSON.parse(init.body); hasVoter = b && "voter" in b; voter = b?.voter; } catch {} }
+    const cookie = hasVoter ? cookieFor(voter, trip) : cookieFor("Emily", trip);
     if (cookie) headers.cookie = cookie;
   }
   return worker.fetch(new Request("https://x" + path, { ...init, headers }), env);
@@ -122,7 +133,7 @@ t("non-api path falls through to ASSETS", (await res.text()).startsWith("static"
 const guarded = { ...env, ACCESS_CODE: "s3cret" };
 res = await worker.fetch(new Request("https://x/api/state"), guarded);
 t("ACCESS_CODE blocks without header (401)", res.status === 401);
-res = await worker.fetch(new Request("https://x/api/state", { headers: { "x-access-code": "s3cret" } }), guarded);
+res = await worker.fetch(new Request("https://x/api/state", { headers: { "x-access-code": "s3cret", cookie: cookieFor("Emily", 1) } }), guarded);
 t("ACCESS_CODE allows with header", res.status === 200);
 
 
@@ -824,6 +835,8 @@ t4("adding the same person again does not split them",
 
 await post({ voter: "Lena", sightId: "tower-of-london", wanted: true });
 const lena = mb.members.find(m => m.key === "lena");
+// The harness made Lena an owner by letting her act; owners cannot be removed.
+db.prepare("UPDATE trip_members SET role = 'editor' WHERE id = ?").run(lena.id);
 mb = await (await memberRm({ voter: "Emily", id: lena.id })).json();
 t4("someone can be taken off the list", !mb.members.some(m => m.key === "lena"));
 t4("but their votes stay, because a list is not a ledger",
@@ -1136,7 +1149,7 @@ t5("and trip 1 does not see trip 2's rows",
      && db.prepare("SELECT email FROM login_tokens").get().email === "emily@example.com");
 
   t5("nobody is signed in before the link is opened",
-     (await (await call("/api/auth/me")).json()).user === null);
+     (await (await raw("/api/auth/me")).json()).user === null);
 
   const link = new URL(d.devLink);
   const r1 = await call(link.pathname + link.search, { redirect: "manual" });
@@ -1194,7 +1207,7 @@ t5("and trip 1 does not see trip 2's rows",
   // sign out
   const out = await post("/api/auth/logout", {}, { cookie });
   t5("signing out clears the cookie", /Max-Age=0/.test(out.headers.get("set-cookie") || ""));
-  t5("and the session is gone", (await (await call("/api/auth/me", { headers: { cookie } })).json()).user === null);
+  t5("and the session is gone", (await (await raw("/api/auth/me", { headers: { cookie } })).json()).user === null);
 
   // with a key set, mail goes to Resend and the link stays out of the answer
   const realFetch = globalThis.fetch;
@@ -1214,69 +1227,121 @@ t5("and trip 1 does not see trip 2's rows",
   globalThis.fetch = realFetch;
 }
 
-// --- Phase 2, step 6: an account claims its name on the trip
+// --- Phase 2, steps 6 and 7: identity from the session; roles; invites
 {
-  const anon = await (await call("/api/t/1/me")).json();
-  t5("anonymous: no user, no member", anon.user === null && anon.member === null);
+  const anon = await (await raw("/api/t/1/me")).json();
+  t5("anonymous: no user, no member, but the trip's name", anon.user === null && anon.member === null && anon.trip?.name === "London 2026");
+  t5("a stranger cannot read the trip", (await raw("/api/t/1/sights")).status === 401 && (await raw("/api/t/1/state")).status === 401);
+  t5("nor vote", (await raw("/api/t/1/vote", { method: "POST", body: JSON.stringify({ sightId: "tower-of-london", wanted: true, voter: "Manuel" }) })).status === 401);
 
-  const fresh = asUser("newcomer@test");
-  const me0 = await (await call("/api/t/1/me", { headers: fresh })).json();
-  t5("signed in but unclaimed: a user, no member", me0.user?.email === "newcomer@test" && me0.member === null);
-
-  t5("an unclaimed account cannot vote",
-     (await call("/api/vote", { method: "POST", headers: fresh,
-        body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 403);
-  t5("nor change the trip",
-     (await call("/api/trip/settings", { method: "POST", headers: fresh, body: JSON.stringify({ name: "x" }) })).status === 403);
-  t5("and a stranger cannot vote at all",
-     (await call("/api/vote", { method: "POST", body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 401);
-  t5("the body's voter is ignored, not trusted",
-     (await call("/api/vote", { method: "POST", headers: fresh,
-        body: JSON.stringify({ sightId: "tower-of-london", wanted: true, voter: "Manuel" }) })).status === 403);
+  const outsider = asUser("outsider@example.org");
+  const me0 = await (await raw("/api/t/1/me", { headers: outsider })).json();
+  t5("signed in but not on the trip: a user, no member", me0.user?.email === "outsider@example.org" && me0.member === null);
+  t5("and still no reading", (await raw("/api/t/1/sights", { headers: outsider })).status === 403);
+  t5("or voting", (await raw("/api/t/1/vote", { method: "POST", headers: outsider, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 403);
+  t5("self-claiming a name is gone", (await raw("/api/t/1/claim", { method: "POST", headers: outsider, body: JSON.stringify({ name: "Emily" }) })).status === 404);
 
   const snap = await (await call("/api/sights")).json();
-  const roswitha = snap.members.find(m => m.key === "roswitha"), emily = snap.members.find(m => m.key === "emily");
-  t5("members say whether they are claimed", roswitha?.claimed === false && emily?.claimed === true);
+  const emily = snap.members.find(m => m.key === "emily");
+  t5("members carry a role and whether they are claimed", emily?.role === "owner" && emily.claimed === true);
+  t5("an owner's snapshot lists open invites", Array.isArray(snap.invites));
+  const asEditorView = await (await call("/api/state")).json();
+  t5("me on the trip says the role", (await (await call("/api/t/1/me")).json()).member?.role === "owner");
 
-  // a name nobody has claimed yet
-  db.prepare("INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at) VALUES ('m-free', 1, 'Supervote', 'supervote', 'setup', 0)").run();
-  const claimed = await (await call("/api/claim", { method: "POST", headers: fresh, body: JSON.stringify({ memberId: "m-free" }) })).json();
-  t5("claiming a free name works", claimed.ok === true && claimed.member?.name === "Supervote");
-  t5("and the snapshot now shows it claimed", claimed.members.find(m => m.id === "m-free").claimed === true);
-  const me1 = await (await call("/api/t/1/me", { headers: fresh })).json();
-  t5("/me knows the name now", me1.member?.name === "Supervote");
+  // --- invites
+  const inv = (b, headers) => call("/api/invite", { method: "POST", headers, body: JSON.stringify(b) });
+  t5("a bad address is refused", (await inv({ email: "nope", voter: "Emily" })).status === 400);
+  t5("inviting needs an owner", (await raw("/api/t/1/invite", { method: "POST", headers: outsider, body: JSON.stringify({ email: "a@b.co" }) })).status === 403);
 
-  const voted = await (await call("/api/vote", { method: "POST", headers: fresh,
-    body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).json();
-  t5("votes are cast under the claimed name", voted.votes["tower-of-london"].includes("Supervote"));
+  // Manuel voted before accounts existed; invite the person at that name
+  await post({ voter: "Manuel", sightId: "tower-of-london", wanted: true });
+  db.prepare("UPDATE trip_members SET user_id = NULL, role = 'editor' WHERE trip_id = 1 AND name_key = 'manuel'").run();
+  const manuelRow = db.prepare("SELECT id FROM trip_members WHERE trip_id = 1 AND name_key = 'manuel'").get();
+  let d = await (await inv({ email: "Manuel@Example.org", memberId: manuelRow.id, role: "editor", voter: "Emily" })).json();
+  t5("an invite for an existing name answers with the link locally", d.ok && typeof d.devLink === "string" && d.devLink.includes("/invite?token="));
+  t5("and lists it as pending", d.invites.some(i => i.email === "manuel@example.org" && i.memberId === manuelRow.id));
+  t5("only a hash is stored", db.prepare("SELECT COUNT(*) AS n FROM invites WHERE token_hash = ?").get(d.devLink.split("token=")[1]).n === 0);
 
-  t5("one name per account on a trip",
-     (await call("/api/claim", { method: "POST", headers: fresh, body: JSON.stringify({ name: "Another" }) })).status === 409);
-  const second = asUser("second@test");
-  t5("a claimed name cannot be taken by someone else",
-     (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ memberId: "m-free" }) })).status === 409);
-  t5("nor by typing it", (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ name: "supervote" }) })).status === 409);
-  t5("a made-up member id is a 404", (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ memberId: "m-nope" }) })).status === 404);
-  t5("claiming needs a sign-in", (await call("/api/claim", { method: "POST", body: JSON.stringify({ name: "Ghost" }) })).status === 401);
-
-  const named = await (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ name: " Nadja " }) })).json();
-  t5("a new name creates the member and claims it", named.member?.name === "Nadja" &&
-     db.prepare("SELECT user_id FROM trip_members WHERE trip_id = 1 AND name_key = 'nadja'").get().user_id === "u-second@test");
-  t5("the same account is a different member on another trip",
-     (await (await call("/api/t/2/me", { headers: second })).json()).member === null);
-  const onTwo = await (await call("/api/t/2/claim", { method: "POST", headers: second, body: JSON.stringify({ name: "Nadja" }) })).json();
-  t5("and can claim there separately", onTwo.member?.name === "Nadja" &&
-     db.prepare("SELECT COUNT(*) AS n FROM trip_members WHERE user_id = 'u-second@test'").get().n === 2);
-
-  // an old name with history: claiming it inherits the votes
-  const before = (await (await call("/api/sights")).json()).votes["tower-of-london"];
-  db.prepare("UPDATE trip_members SET user_id = NULL WHERE trip_id = 1 AND name_key = 'anna'").run();
-  const anna = asUser("anna.new@example.org");
-  await call("/api/claim", { method: "POST", headers: anna, body: JSON.stringify({ name: "Anna" }) });
-  const unvoted = await (await call("/api/vote", { method: "POST", headers: anna,
+  const votesBefore = (await (await call("/api/sights")).json()).votes["tower-of-london"];
+  const l = new URL(d.devLink);
+  const r = await raw(l.pathname + l.search, { redirect: "manual" });
+  const manuelCookie = (r.headers.get("set-cookie") || "").split(";")[0];
+  t5("opening it signs the person in and lands on the trip", r.status === 302 && r.headers.get("location").endsWith("/t/1/") && manuelCookie.startsWith("trip_session="));
+  const manuelMe = await (await raw("/api/t/1/me", { headers: { cookie: manuelCookie } })).json();
+  t5("as that name, with that role", manuelMe.member?.name === "Manuel" && manuelMe.member.role === "editor" && manuelMe.user.email === "manuel@example.org");
+  t5("the invite works once", (await raw(l.pathname + l.search, { redirect: "manual" })).status === 400);
+  t5("and is no longer pending", !(await (await call("/api/sights")).json()).invites.some(i => i.email === "manuel@example.org"));
+  const unvote = await (await raw("/api/t/1/vote", { method: "POST", headers: { cookie: manuelCookie },
     body: JSON.stringify({ sightId: "tower-of-london", wanted: false }) })).json();
-  t5("claiming a name with history acts on that history",
-     before.includes("Anna") && !unvoted.votes["tower-of-london"].includes("Anna"));
+  t5("history under the name is theirs", votesBefore.includes("Manuel") && !unvote.votes["tower-of-london"].includes("Manuel"));
+
+  // --- what each role may do
+  const M = { cookie: manuelCookie };
+  t5("an editor can read", (await raw("/api/t/1/sights", { headers: M })).status === 200);
+  t5("an editor can add a place", (await raw("/api/t/1/sights/add", { method: "POST", headers: M, body: JSON.stringify({ name: "Borough Market" }) })).status === 200);
+  t5("an editor cannot change the trip", (await raw("/api/t/1/trip/settings", { method: "POST", headers: M, body: JSON.stringify({ name: "x" }) })).status === 403);
+  t5("nor invite", (await raw("/api/t/1/invite", { method: "POST", headers: M, body: JSON.stringify({ email: "x@y.co" }) })).status === 403);
+  t5("nor change roles", (await raw("/api/t/1/trip/member/role", { method: "POST", headers: M, body: JSON.stringify({ id: manuelRow.id, role: "owner" }) })).status === 403);
+  t5("an editor's snapshot has no invites in it", !("invites" in (await (await raw("/api/t/1/sights", { headers: M })).json())));
+
+  d = await (await inv({ email: "viewer@example.org", name: "Vera", role: "viewer", voter: "Emily" })).json();
+  const lv = new URL(d.devLink);
+  const rv = await raw(lv.pathname + lv.search, { redirect: "manual" });
+  const V = { cookie: (rv.headers.get("set-cookie") || "").split(";")[0] };
+  const vera = await (await raw("/api/t/1/me", { headers: V })).json();
+  t5("an invite with a new name creates that member", vera.member?.name === "Vera" && vera.member.role === "viewer");
+  t5("a viewer can read and vote", (await raw("/api/t/1/state", { headers: V })).status === 200 &&
+     (await raw("/api/t/1/vote", { method: "POST", headers: V, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 200);
+  t5("and comment", (await raw("/api/t/1/comments/add", { method: "POST", headers: V, body: JSON.stringify({ sightId: "tower-of-london", body: "lovely" }) })).status === 200);
+  t5("but not add a place", (await raw("/api/t/1/sights/add", { method: "POST", headers: V, body: JSON.stringify({ name: "Nope" }) })).status === 403);
+  t5("nor book", (await raw("/api/t/1/bookings/status", { method: "POST", headers: V, body: JSON.stringify({ sightId: "tower-of-london", status: "booked" }) })).status === 403);
+  t5("nor touch the plan", (await raw("/api/t/1/plan/set", { method: "POST", headers: V, body: JSON.stringify({ sightId: "tower-of-london", day: "2026-09-12" }) })).status === 403);
+  t5("nor look up an address", (await raw("/api/t/1/geocode", { method: "POST", headers: V, body: JSON.stringify({ q: "Harrods" }) })).status === 403);
+
+  d = await (await inv({ email: "nobody@example.org", voter: "Emily" })).json();
+  const ln = new URL(d.devLink);
+  const rn = await raw(ln.pathname + ln.search, { redirect: "manual" });
+  const N = { cookie: (rn.headers.get("set-cookie") || "").split(";")[0] };
+  t5("an invite with no name uses the person's own", (await (await raw("/api/t/1/me", { headers: N })).json()).member?.name === "Nobody");
+
+  t5("inviting someone already on the trip is refused", (await inv({ email: "manuel@example.org", voter: "Emily" })).status === 409);
+  t5("inviting to a claimed name is refused", (await inv({ email: "z@example.org", memberId: manuelRow.id, voter: "Emily" })).status === 409);
+
+  d = await (await inv({ email: "late@example.org", voter: "Emily" })).json();
+  const pending = d.invites.find(i => i.email === "late@example.org");
+  const revoked = await (await call("/api/invite/revoke", { method: "POST", body: JSON.stringify({ id: pending.id, voter: "Emily" }) })).json();
+  t5("an invite can be withdrawn", !revoked.invites.some(i => i.email === "late@example.org"));
+
+  d = await (await inv({ email: "slow@example.org", voter: "Emily" })).json();
+  db.prepare("UPDATE invites SET expires_at = 0 WHERE email = 'slow@example.org'").run();
+  const ls = new URL(d.devLink);
+  t5("an expired invite is refused, with a page", (await raw(ls.pathname + ls.search, { redirect: "manual" })).status === 400 &&
+     /expired/.test(await (await raw(ls.pathname + ls.search)).text()));
+  t5("a made-up token is refused", (await raw("/invite?token=" + "y".repeat(40), { redirect: "manual" })).status === 400);
+
+  // --- roles and removal
+  const role = (b) => call("/api/trip/member/role", { method: "POST", body: JSON.stringify({ ...b, voter: "Emily" }) });
+  t5("an owner can promote", (await (await role({ id: manuelRow.id, role: "owner" })).json()).members.find(m => m.id === manuelRow.id).role === "owner");
+  t5("and demote", (await (await role({ id: manuelRow.id, role: "viewer" })).json()).members.find(m => m.id === manuelRow.id).role === "viewer");
+  t5("a nonsense role is refused", (await role({ id: manuelRow.id, role: "king" })).status === 400);
+  const emilyRow = db.prepare("SELECT id FROM trip_members WHERE trip_id = 1 AND name_key = 'emily'").get();
+  db.prepare("UPDATE trip_members SET role = 'editor' WHERE trip_id = 1 AND role = 'owner' AND id <> ?").run(emilyRow.id);
+  t5("the last owner cannot step down", (await role({ id: emilyRow.id, role: "editor" })).status === 400);
+  t5("an owner cannot be removed", (await call("/api/trip/member/remove", { method: "POST", body: JSON.stringify({ id: emilyRow.id, voter: "Emily" }) })).status === 400);
+  t5("but an editor can be", (await call("/api/trip/member/remove", { method: "POST", body: JSON.stringify({ id: manuelRow.id, voter: "Emily" }) })).status === 200);
+  t5("and is then locked out", (await raw("/api/t/1/sights", { headers: M })).status === 403);
+
+  // with a key set, the invitation goes out by mail
+  const realFetch = globalThis.fetch;
+  let mail = null;
+  globalThis.fetch = async (u, init) => { mail = JSON.parse(init.body); return new Response("{}", { status: 200 }); };
+  const keyed = { ...env, RESEND_API_KEY: "re_test" };
+  const sentInv = await (await worker.fetch(new Request("https://x/api/t/1/invite", { method: "POST",
+    headers: { cookie: cookieFor("Emily", 1) }, body: JSON.stringify({ email: "post@example.org", lang: "de" }) }), keyed)).json();
+  t5("with a key, the invitation is mailed and the link kept out of the answer",
+     mail?.to?.[0] === "post@example.org" && /London 2026/.test(mail.subject) && /Emily/.test(mail.subject) &&
+     /\/invite\?token=/.test(mail.text) && sentInv.sent === true && !sentInv.devLink);
+  globalThis.fetch = realFetch;
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

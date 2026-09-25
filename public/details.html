@@ -33,6 +33,11 @@
 .person button svg{width:11px;height:11px}
 .person button:hover{color:var(--red);background:var(--red-soft)}
 .people-empty{font-size:13.5px;color:var(--text-3)}
+.rolesel{font:inherit;font-size:12px;font-weight:600;color:var(--text-2);border:0;background:var(--surface);
+  border-radius:var(--r-pill);padding:2px 22px 2px 8px;box-shadow:0 0 0 1px var(--hair);cursor:pointer;
+  -webkit-appearance:none;appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%238A8A91' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 7px center}
 
 /* travel legs */
 .leg + .leg{margin-top:20px;padding-top:18px;border-top:1px solid var(--hair)}
@@ -110,12 +115,13 @@
   <div class="card-head"><span class="ico" data-ico="person"></span><h2 id="h-people">Who's coming</h2><span class="count" id="people-count"></span></div>
   <div class="card-body">
     <div class="people" id="people"></div>
-    <div class="field-row">
+    <div class="field-row" id="people-add">
       <label class="field" style="max-width:220px"><span id="l-newname">Name</span><input class="input" id="m-name" maxlength="32"></label>
       <label class="field" style="max-width:260px"><span id="l-newnote">Note</span><input class="input" id="m-note" maxlength="120"></label>
       <button class="btn btn-quiet" id="m-add" type="button">Add</button>
     </div>
     <p class="hint" id="people-hint" style="margin-top:10px"></p>
+    <div id="invites" hidden></div>
   </div>
 </section>
 
@@ -134,7 +140,7 @@
 
 <script type="module">
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker } from "/shell.js";
+         setStatus, setTrip, tripKicker, roleOf, roleLabel, onName } from "/shell.js";
 
 const T = {
   en: {
@@ -157,8 +163,16 @@ const T = {
     fDate: "Date", fDep: "Departs", fArr: "Arrives", fNote: "Note",
     clearLeg: "Clear this one",
     fPerson: "Name", fPersonNote: "Note",
-    peopleHint: "A tick means that person has signed in and claimed the name. Anyone you add here can claim it when they sign in.",
-    claimed: "Signed in and claimed",
+    peopleHint: "A tick means that person has signed in. Names without one are placeholders — invite the person and pick the name so they inherit its votes and bookings.",
+    claimed: "Signed in",
+    hInvite: "Invite someone", fEmail: "Email", fRole: "Role", fAs: "As",
+    asNew: "a new name", send: "Send invitation",
+    roleHelp: "Owners run the trip and its people. Editors change places, bookings and the plan. Viewers vote and comment.",
+    pending: "Waiting to be accepted", revoke: "Withdraw", expires: (d) => `expires ${d}`,
+    invitedAs: (n) => `as ${n}`,
+    devLink: "Local development — no email is sent. The link:",
+    sentTo: (e) => `Invitation sent to ${e}.`,
+    ownerOnly: "Only the trip's owner can invite people and change roles.",
     peopleEmpty: "Nobody yet — add the people coming, or let them vote and they'll appear.",
     removePerson: "Remove from the list",
     notesPh: "Currency, emergency number, passport and insurance details, airport transfer — anything worth having in one place.",
@@ -184,8 +198,16 @@ const T = {
     fDate: "Datum", fDep: "Abfahrt", fArr: "Ankunft", fNote: "Notiz",
     clearLeg: "Diesen Eintrag löschen",
     fPerson: "Name", fPersonNote: "Notiz",
-    peopleHint: "Ein Haken heißt: die Person hat sich angemeldet und den Namen übernommen. Wer hier steht, kann den Namen beim Anmelden übernehmen.",
-    claimed: "Angemeldet und übernommen",
+    peopleHint: "Ein Haken heißt: die Person hat sich angemeldet. Namen ohne Haken sind Platzhalter – lade die Person ein und wähle den Namen, damit sie ihre Stimmen und Buchungen übernimmt.",
+    claimed: "Angemeldet",
+    hInvite: "Jemanden einladen", fEmail: "E-Mail", fRole: "Rolle", fAs: "Als",
+    asNew: "neuer Name", send: "Einladung schicken",
+    roleHelp: "Verwaltung: die Reise und ihre Leute. Bearbeiten: Orte, Buchungen und der Plan. Ansehen: abstimmen und kommentieren.",
+    pending: "Wartet auf Annahme", revoke: "Zurückziehen", expires: (d) => `läuft ab ${d}`,
+    invitedAs: (n) => `als ${n}`,
+    devLink: "Lokale Entwicklung – es wird keine E-Mail verschickt. Der Link:",
+    sentTo: (e) => `Einladung an ${e} geschickt.`,
+    ownerOnly: "Nur die Verwaltung der Reise kann einladen und Rollen ändern.",
     peopleEmpty: "Noch niemand – trag die Mitreisenden ein, oder lass sie abstimmen, dann erscheinen sie hier.",
     removePerson: "Von der Liste nehmen",
     notesPh: "Währung, Notrufnummer, Pass und Versicherung, Transfer vom Flughafen – alles, was an einem Ort stehen sollte.",
@@ -194,7 +216,8 @@ const T = {
 };
 const t = () => T[getLang()];
 
-let TRIP = { days: [] }, MEMBERS = [], TRAVEL = [], VOTES = {};
+let TRIP = { days: [] }, MEMBERS = [], TRAVEL = [], VOTES = {}, INVITES = [];
+let inviteNote = "";   // what happened after the last invitation
 
 /* ------------------------------------------------------------------ render */
 
@@ -257,8 +280,12 @@ function renderStay() {
   $("#t-phone").value = b?.phone ?? "";
 }
 
+const ROLES = ["owner", "editor", "viewer"];
+const dateShort = (ms) => new Date(ms).toLocaleDateString(getLang() === "de" ? "de-DE" : "en-GB", { day: "numeric", month: "short" });
+
 function renderPeople() {
   const L = t();
+  const owner = roleOf() === "owner";
   const votesBy = {};
   for (const who of Object.values(VOTES).flat()) {
     const k = who.trim().toLowerCase().replace(/\s+/g, " ");
@@ -267,11 +294,48 @@ function renderPeople() {
   $("#people-count").textContent = MEMBERS.length || "";
   $("#people").innerHTML = MEMBERS.length ? MEMBERS.map((m) => `<span class="person${m.claimed ? " claimed" : ""}">
       <b>${esc(m.name)}</b>${m.claimed ? `<span class="tag tag-sm tag-green" title="${esc(L.claimed)}">${ICONS.check}</span>` : ""}
+      ${owner
+        ? `<select class="rolesel" data-role="${esc(m.id)}" aria-label="${esc(L.fRole)}">${ROLES.map((r) =>
+            `<option value="${r}"${m.role === r ? " selected" : ""}>${esc(roleLabel(r))}</option>`).join("")}</select>`
+        : `<span class="tag tag-sm tag-neutral">${esc(roleLabel(m.role))}</span>`}
       ${votesBy[m.key] || m.note ? `<em>${votesBy[m.key] ? `${votesBy[m.key]} ♥` : ""}${m.note ? `${votesBy[m.key] ? " · " : ""}${esc(m.note)}` : ""}</em>` : ""}
-      <button type="button" data-rmperson="${esc(m.id)}" title="${esc(L.removePerson)}"
-              aria-label="${esc(L.removePerson)}">${ICONS.close}</button>
+      ${owner && m.role !== "owner" ? `<button type="button" data-rmperson="${esc(m.id)}" title="${esc(L.removePerson)}"
+              aria-label="${esc(L.removePerson)}">${ICONS.close}</button>` : ""}
     </span>`).join("") : `<span class="people-empty">${esc(L.peopleEmpty)}</span>`;
-  $("#people-hint").textContent = L.peopleHint;
+  $("#people-hint").textContent = owner ? L.peopleHint : L.ownerOnly;
+  $("#people-add").hidden = !owner;
+  renderInvites();
+}
+
+function renderInvites() {
+  const L = t();
+  const box = $("#invites");
+  if (roleOf() !== "owner") { box.hidden = true; return; }
+  box.hidden = false;
+  const free = MEMBERS.filter((m) => !m.claimed);
+  box.innerHTML = `
+    <h3 class="title-3" style="margin:22px 0 10px">${esc(L.hInvite)}</h3>
+    <form id="invite-form" class="field-row">
+      <label class="field" style="flex:2 1 200px"><span>${esc(L.fEmail)}</span>
+        <input class="input" id="inv-email" type="email" required autocomplete="off" placeholder="name@example.com"></label>
+      <label class="field" style="flex:1 1 130px"><span>${esc(L.fAs)}</span>
+        <select class="select" id="inv-as"><option value="">${esc(L.asNew)}</option>${free.map((m) =>
+          `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join("")}</select></label>
+      <label class="field" style="flex:0 1 130px"><span>${esc(L.fRole)}</span>
+        <select class="select" id="inv-role">${ROLES.filter((r) => r !== "owner").concat("owner").map((r) =>
+          `<option value="${r}"${r === "editor" ? " selected" : ""}>${esc(roleLabel(r))}</option>`).join("")}</select></label>
+      <button class="btn btn-primary" type="submit" id="inv-send">${esc(L.send)}</button>
+    </form>
+    <p class="hint" style="margin-top:8px">${esc(L.roleHelp)}</p>
+    ${inviteNote ? `<p class="saved" style="margin-top:8px">${inviteNote}</p>` : ""}
+    ${INVITES.length ? `<p class="eyebrow" style="margin:16px 0 6px">${esc(L.pending)}</p>
+      <div class="rows card">${INVITES.map((i) => `<div class="row">
+        <div class="grow"><div class="name">${esc(i.email)}</div>
+          <div class="meta"><span class="tag tag-sm tag-neutral">${esc(roleLabel(i.role))}</span>
+            ${i.memberId || i.name ? `<span>${esc(L.invitedAs(MEMBERS.find((m) => m.id === i.memberId)?.name ?? i.name))}</span>` : ""}
+            <span>${esc(L.expires(dateShort(i.expiresAt)))}</span></div></div>
+        <button class="btn btn-sm btn-ghost danger" type="button" data-revoke="${esc(i.id)}">${esc(L.revoke)}</button>
+      </div>`).join("")}</div>` : ""}`;
 }
 
 function render() {
@@ -321,6 +385,7 @@ async function mutate(path, body) {
   try {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? VOTES;
+    if (d.invites) INVITES = d.invites;
     fillMembers(d.members);
     render();
     setStatus(t().saved);
@@ -347,7 +412,37 @@ $("#m-add").addEventListener("click", () => {
   $("#m-name").value = ""; $("#m-note").value = "";
 });
 
+document.addEventListener("change", (ev) => {
+  const sel = ev.target.closest("[data-role]");
+  if (sel) mutate("/api/trip/member/role", { id: sel.dataset.role, role: sel.value });
+});
+
+document.addEventListener("submit", async (ev) => {
+  const form = ev.target.closest("#invite-form");
+  if (!form) return;
+  ev.preventDefault();
+  const L = t();
+  const send = $("#inv-send"); send.disabled = true;
+  try {
+    const d = await api("/api/invite", { method: "POST", body: JSON.stringify({
+      email: $("#inv-email").value.trim(), role: $("#inv-role").value,
+      memberId: $("#inv-as").value || undefined, lang: getLang() }) });
+    INVITES = d.invites ?? INVITES;
+    inviteNote = esc(L.sentTo($("#inv-email").value.trim())) +
+      (d.devLink ? ` <span class="note">${esc(L.devLink)}</span> <a href="${esc(d.devLink)}">${esc(d.devLink)}</a>` : "");
+    renderInvites();
+  } catch (err) { setStatus(err.message, "err"); }
+  finally { send.disabled = false; }
+});
+
 document.addEventListener("click", async (ev) => {
+  const rv = ev.target.closest("[data-revoke]");
+  if (rv) {
+    try { const d = await api("/api/invite/revoke", { method: "POST", body: JSON.stringify({ id: rv.dataset.revoke }) });
+      INVITES = d.invites ?? []; inviteNote = ""; renderInvites(); }
+    catch (err) { setStatus(err.message, "err"); }
+    return;
+  }
   const rm = ev.target.closest("[data-rmperson]");
   if (rm) return void mutate("/api/trip/member/remove", { id: rm.dataset.rmperson });
 
@@ -396,11 +491,13 @@ $("#stay-addr").addEventListener("keydown", (ev) => {
 });
 
 onLang(() => render());
+onName(() => renderPeople());   // the role decides what this panel offers
 
 (async () => {
   try {
     const d = await api("/api/sights");
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? {};
+    INVITES = d.invites ?? [];
     fillMembers(d.members);
     render();
   } catch (err) { setStatus(err.message, "err"); }

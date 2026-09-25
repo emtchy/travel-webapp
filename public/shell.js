@@ -117,12 +117,12 @@ const NAV = {
         devLink: "Local development: no email is sent. Open the link:",
         signedInAs: (n) => `Signed in as ${n}`, close: "Close",
         sendFail: "That didn't go through. Try again in a moment.",
-        whoTitle: "Who are you on this trip?",
-        whoLede: "Pick your name and everything already recorded under it — votes, comments, bookings — is yours.",
-        whoNone: "Nobody is on the list yet — add your name.",
-        whoOther: "Someone else", whoName: "Your name", claim: "That's me",
-        onTrip: (n) => `On this trip as ${n}`, notOnTrip: "Not on this trip yet",
-        chooseName: "Choose your name" },
+        whoName: "Your name",
+        onTrip: (n, r) => `On this trip as ${n} (${r})`, notOnTrip: "Not on this trip",
+        privateTitle: "This trip is private",
+        privateSignIn: "Sign in with the address you were invited with to see it.",
+        privateNotMember: (e) => `You're signed in as ${e}, but that address isn't on this trip. Ask whoever runs it for an invitation, or sign in with a different address.`,
+        roleOwner: "owner", roleEditor: "editor", roleViewer: "viewer" },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
         name: "Dein Name", lang: "Sprache",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
@@ -132,12 +132,12 @@ const NAV = {
         devLink: "Lokale Entwicklung: es wird keine E-Mail verschickt. Link öffnen:",
         signedInAs: (n) => `Angemeldet als ${n}`, close: "Schließen",
         sendFail: "Das hat nicht geklappt. Versuch es gleich noch einmal.",
-        whoTitle: "Wer bist du auf dieser Reise?",
-        whoLede: "Wähl deinen Namen – alles, was schon darunter steht (Stimmen, Kommentare, Buchungen), gehört dann dir.",
-        whoNone: "Noch niemand auf der Liste – trag deinen Namen ein.",
-        whoOther: "Jemand anderes", whoName: "Dein Name", claim: "Das bin ich",
-        onTrip: (n) => `Auf dieser Reise als ${n}`, notOnTrip: "Noch nicht auf dieser Reise",
-        chooseName: "Namen wählen" },
+        whoName: "Dein Name",
+        onTrip: (n, r) => `Auf dieser Reise als ${n} (${r})`, notOnTrip: "Nicht auf dieser Reise",
+        privateTitle: "Diese Reise ist privat",
+        privateSignIn: "Melde dich mit der Adresse an, mit der du eingeladen wurdest.",
+        privateNotMember: (e) => `Du bist als ${e} angemeldet, aber diese Adresse ist nicht auf der Reise. Bitte wen, der sie verwaltet, um eine Einladung – oder melde dich mit einer anderen Adresse an.`,
+        roleOwner: "Verwaltung", roleEditor: "Bearbeiten", roleViewer: "Ansehen" },
 };
 
 const PAGES = [
@@ -204,9 +204,7 @@ $("#langs")?.addEventListener("click", (e) => {
    is real, so the rest can build on it. */
 
 let user = null;
-let member = null;      // this account's name on this trip, or null
-let MEMBERS = [];       // everyone on the trip, with whether they are claimed
-let askedOnce = false;  // the claim sheet opens itself once per page, not on every render
+let member = null;      // this account's name and role on this trip, or null
 const userListeners = new Set();
 export const getUser = () => user;
 export function onUser(cb) { userListeners.add(cb); cb(user); }
@@ -221,9 +219,9 @@ function paintAccount() {
   const btn = $("#account");
   if (!btn) return;
   btn.hidden = false;
-  const label = member ? member.name : user ? L.chooseName : L.signIn;
+  const label = member ? member.name : user ? user.displayName : L.signIn;
   btn.innerHTML = `${ICONS.person}<span>${esc(label)}</span>`;
-  btn.title = member ? L.onTrip(member.name) : user ? L.notOnTrip : L.signIn;
+  btn.title = member ? L.onTrip(member.name, roleLabel(member.role)) : user ? L.notOnTrip : L.signIn;
   btn.classList.toggle("btn-quiet", !!member);
   btn.classList.toggle("btn-tint", !member);
 }
@@ -233,30 +231,12 @@ function paintAuthSheet() {
   const title = $("#auth-title"), body = $("#auth-body");
   if (!title || !body) return;
   $("#auth-close").setAttribute("aria-label", L.close);
-  if (user && !member) {
-    title.textContent = L.whoTitle;
-    const free = MEMBERS.filter((m) => !m.claimed);
-    body.innerHTML = `<p class="sval muted">${esc(L.whoLede)}</p>
-      ${free.length
-        ? `<div class="stack" style="gap:8px">${free.map((m) =>
-            `<button type="button" class="btn btn-outline btn-lg" data-claim="${esc(m.id)}" style="justify-content:space-between">
-               <span>${esc(m.name)}</span><span class="tag tag-tint">${esc(L.claim)}</span></button>`).join("")}</div>`
-        : `<p class="note">${esc(L.whoNone)}</p>`}
-      <form id="claim-form" class="stack" style="padding-top:12px;border-top:1px solid var(--hair)">
-        <label class="field"><span>${esc(free.length ? L.whoOther : L.whoName)}</span>
-          <input class="input" id="claim-name" type="text" maxlength="32" autocomplete="name" placeholder="${esc(L.whoName)}"></label>
-        <p class="err" id="claim-err" hidden></p>
-        <div class="spread"><button class="btn btn-primary" type="submit">${esc(L.claim)}</button>
-          <button class="btn btn-ghost right" type="button" id="auth-logout">${esc(L.signOut)}</button></div>
-      </form>`;
-    return;
-  }
   if (user) {
     title.textContent = L.account;
     body.innerHTML = `<div class="srow"><span class="slabel">${esc(L.email)}</span>
         <span class="sval">${esc(user.email)}</span></div>
       <div class="srow"><span class="slabel">${esc(L.whoName)}</span>
-        <span class="sval">${esc(member.name)}</span></div>
+        <span class="sval">${member ? `${esc(member.name)} <span class="tag tag-sm tag-neutral">${esc(roleLabel(member.role))}</span>` : `<span class="muted">${esc(L.notOnTrip)}</span>`}</span></div>
       <div class="sfoot"><button class="btn btn-quiet" type="button" id="auth-logout">${esc(L.signOut)}</button></div>`;
     return;
   }
@@ -277,7 +257,36 @@ function paintAuthSheet() {
 }
 
 function openAuth() { authView = "form"; devLink = null; paintAuthSheet(); $("#auth-sheet").hidden = false;
-  setTimeout(() => ($("#auth-email") ?? $("#claim-name"))?.focus(), 0); }
+  setTimeout(() => $("#auth-email")?.focus(), 0); }
+
+export const roleLabel = (r) => NAV[lang][{ owner: "roleOwner", editor: "roleEditor", viewer: "roleViewer" }[r]] ?? r;
+
+/**
+ * Someone who is not on the trip sees nothing of it: the page's own content
+ * is hidden and a short notice takes its place, with the one thing they can
+ * do — sign in, or sign in as someone else.
+ */
+function paintPrivate() {
+  const L = NAV[lang];
+  let box = $("#private");
+  const main = document.querySelector("main");
+  if (member || !main) { if (box) box.hidden = true; main?.removeAttribute("hidden"); document.body.dataset.locked = ""; return; }
+  document.body.dataset.locked = "1";
+  main.hidden = true;
+  if (!box) { box = document.createElement("section"); box.id = "private"; box.className = "page"; main.after(box); }
+  box.hidden = false;
+  box.innerHTML = `<div class="card" style="max-width:480px;margin:56px auto 0"><div class="card-body" style="padding:28px 24px;text-align:center">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--tint-soft);color:var(--tint);display:grid;place-items:center;margin:0 auto 14px">${ICONS.person}</div>
+      <h1 class="title-2" style="margin-bottom:8px">${esc(L.privateTitle)}</h1>
+      <p class="footnote" style="margin-bottom:18px">${esc(user ? L.privateNotMember(user.email) : L.privateSignIn)}</p>
+      <button type="button" class="btn btn-primary" id="private-cta">${esc(user ? L.signOut : L.signIn)}</button>
+    </div></div>`;
+}
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#private-cta")) return;
+  if (user) { try { await api("/api/auth/logout", { method: "POST" }); } catch {} user = null; member = null; paintAccount(); paintPrivate(); announce(); }
+  else openAuth();
+});
 function closeAuth() { $("#auth-sheet").hidden = true; }
 
 $("#account")?.addEventListener("click", openAuth);
@@ -305,42 +314,20 @@ document.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("click", async (e) => {
-  const pick = e.target.closest("[data-claim]");
-  if (pick) return void claim({ memberId: pick.dataset.claim });
   if (!e.target.closest("#auth-logout")) return;
   try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-  user = null; member = null; closeAuth(); paintAccount(); announce();
+  user = null; member = null; closeAuth(); paintAccount(); paintPrivate(); announce();
 });
-
-document.addEventListener("submit", (e) => {
-  const form = e.target.closest("#claim-form");
-  if (!form) return;
-  e.preventDefault();
-  claim({ name: $("#claim-name").value.trim() });
-});
-
-async function claim(body) {
-  const err = $("#claim-err");
-  try {
-    const d = await api("/api/claim", { method: "POST", body: JSON.stringify(body) });
-    member = d.member ?? null;
-    MEMBERS = d.members ?? MEMBERS;
-    closeAuth(); paintAccount(); announce();
-  } catch (ex) {
-    if (err) { err.textContent = ex.message; err.hidden = false; }
-  }
-}
 
 async function loadUser() {
   try {
     const d = await api("/api/me");
     user = d.user ?? null; member = d.member ?? null;
-    if (Array.isArray(d.members)) MEMBERS = d.members;
+    if (d.trip?.name) setTrip(d.trip);
   } catch { user = null; member = null; }
   paintAccount();
+  paintPrivate();
   announce();
-  // Signed in but not yet a name on this trip: ask now, once.
-  if (user && !member && !askedOnce) { askedOnce = true; openAuth(); }
 }
 
 document.documentElement.lang = lang;
@@ -363,12 +350,11 @@ export function onName(cb) { nameListeners.add(cb); }
 /** Sign in, or claim a name — whichever is the missing step. */
 export function askName() { openAuth(); }
 
-/** The trip's members, from any snapshot; the claim sheet offers the free ones. */
-export function fillMembers(list) {
-  if (!Array.isArray(list)) return;
-  MEMBERS = list;
-  if (user && !member && !$("#auth-sheet")?.hidden) paintAuthSheet();
-}
+/** Kept for the pages that call it; the bar no longer lists members. */
+export function fillMembers() {}
+
+/** Your role on this trip: "owner" | "editor" | "viewer" | null. */
+export const roleOf = () => member?.role ?? null;
 
 /* ------------------------------------------------------------- status */
 
@@ -380,6 +366,7 @@ let toastTimer = 0;
 export function setStatus(message, kind = "") {
   const el = $("#status");
   if (!el) return;
+  if (document.body.dataset.locked === "1") return;   // the private notice says it all
   clearTimeout(toastTimer);
   if (!message) { el.classList.remove("show"); return; }
   el.textContent = message;

@@ -187,6 +187,7 @@ CREATE TABLE IF NOT EXISTS trip_members (
   added_by   TEXT    NOT NULL,
   created_at INTEGER NOT NULL,
   user_id    TEXT,                  -- the account that claimed this name
+  role       TEXT    NOT NULL DEFAULT 'editor',  -- owner | editor | viewer
   UNIQUE (trip_id, name_key)
 );
 
@@ -243,6 +244,24 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
 
+-- An invite: a link by email that signs the person in and puts them on the
+-- trip as a member, in one step. Only a hash of the token is stored.
+CREATE TABLE IF NOT EXISTS invites (
+  token_hash  TEXT    PRIMARY KEY,
+  trip_id     INTEGER NOT NULL,
+  email       TEXT    NOT NULL,
+  role        TEXT    NOT NULL DEFAULT 'editor'
+                      CHECK (role IN ('owner', 'editor', 'viewer')),
+  member_id   TEXT,
+  name        TEXT,
+  invited_by  TEXT    NOT NULL,
+  created_at  INTEGER NOT NULL,
+  expires_at  INTEGER NOT NULL,
+  accepted_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_invites_trip ON invites (trip_id, created_at);
+
 -- Which migrations a database has had. A fresh database is already at the
 -- shape they produce, so every one of them is recorded here up front and
 -- `npm run migrate` has nothing to do.
@@ -261,7 +280,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-007-trips.sql', 0),
   ('migrate-008-items.sql', 0),
   ('migrate-010-accounts.sql', 0),
-  ('migrate-011-claim.sql', 0);
+  ('migrate-011-claim.sql', 0),
+  ('migrate-012-roles.sql', 0);
 -- 009, the London places, is deliberately not recorded: `npm run migrate` on
 -- a fresh database imports them, so trip 1 is the London trip there too.
 

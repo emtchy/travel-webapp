@@ -51,16 +51,21 @@ made with; to reach everyone on a trip, verify a domain in Resend and set
 Locally, with no key set, nothing is sent: the response carries the link and
 the sheet shows it, so the flow can be walked without a mailbox.
 
-**Your name on the trip.** The first time you sign in on a trip, a sheet asks
-who you are: pick your name from the people on it, or type a new one. From
-then on everything you do is recorded under that name, and everything already
-under it — votes, comments, bookings — is yours. One account per name; a
-name someone has claimed cannot be taken by anyone else. The Details page
-shows a tick next to names that have been claimed.
+**Who is on a trip.** A trip is private: only its members can see it, and
+the owner decides who they are. On the Details page the owner invites people
+by email, picks a role, and can say which existing name the person is — so
+someone who voted before accounts existed becomes that name and keeps every
+vote, comment and booking under it. The invitation is a link that signs the
+person in and puts them on the trip in one step; it works once and lasts seven
+days. Open invitations are listed there and can be withdrawn.
 
-There is no typed name any more. Voting, adding, booking and planning all
-need you to be signed in and to have claimed a name; reading is still open to
-anyone with the link until invites arrive.
+Three roles: **viewers** vote and comment, **editors** also add places, book,
+and lay out the plan, **owners** also change the trip itself and its people.
+Owners cannot be removed, and the last owner cannot step down. Anyone who is
+not on the trip sees only "This trip is private" and a Sign in button.
+
+There is no typed name any more: everything you do is recorded under your
+name on the trip, which the server takes from your session.
 
 ## Addresses
 
