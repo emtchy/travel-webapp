@@ -101,9 +101,13 @@ the live database, each with a migration and a test.
 
 ### Phase 2 — accounts
 
-- [ ] **Step 5 — sign in.** `users (id, email, display_name, created_at)` and
-      `sessions`. Magic link by email, no passwords. Sending goes through
-      Cloudflare's email service; the Worker never stores a password.
+- [x] **Step 5 — sign in.** *(2026-09-25)* `users`, `login_tokens`, `sessions`
+      (migration 010). A link by email, no passwords; the link works once and
+      lasts fifteen minutes, the session thirty days. Mail goes through Resend
+      (`RESEND_API_KEY` secret, `MAIL_FROM` var); with no key set the link is
+      returned in the response, which is how development and the tests walk
+      the flow. `src/auth.js`; a Sign in button and sheet in the shell. Nothing
+      about a trip changes yet.
 - [ ] **Step 6 — claim your name.** On first sign-in, pick which existing
       member you are; that member row gets your `user_id`, and votes, comments
       and bookings stay attached through `name_key`. The four London names are
@@ -266,6 +270,19 @@ routing change: the pages did not need to know they had moved. It also means
 the Worker now runs for every request, which was the price of being able to
 redirect the old addresses at all.
 
+**2026-09-25 — Sign-in mail goes through Resend.**
+Cloudflare's own email sending needs a domain set up in Cloudflare; Resend
+needs an API key and, to reach anyone but the account owner, a verified
+domain — but it works today with the test sender, has a free tier, and is one
+HTTP call. The sender is one function (`sendMail` in `src/auth.js`), so
+swapping it later is contained.
+
+**2026-09-25 — Tokens and sessions are stored as hashes; the link in the mail is the secret.**
+A copy of the database cannot sign anyone in. A request for a link always
+answers the same way whether or not mail went out, and stops sending after
+five an hour per address, so the endpoint confirms nothing about who has an
+account. `next` is kept only if it is a path on this site.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -295,8 +312,6 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 
 ## 7. Open questions
 
-- Which sender for magic-link mail: Cloudflare Email Service from the Worker,
-  or a third party? (Leaning: Cloudflare, no extra account.)
 - Should a `viewer` be able to vote? (Leaning: yes — voting is the point of
   inviting someone; `editor` adds places, bookings and plan changes; `owner`
   edits the trip itself and members.)

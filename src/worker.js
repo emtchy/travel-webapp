@@ -1,16 +1,8 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
+import { json, bad } from "./http.js";
+import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout } from "./auth.js";
 
 /* ------------------------------------------------------------------ utils */
-
-const JSON_HEADERS = {
-  "content-type": "application/json; charset=utf-8",
-  "cache-control": "no-store",
-};
-
-const json = (data, status = 200) =>
-  new Response(JSON.stringify(data), { status, headers: JSON_HEADERS });
-
-const bad = (message, status = 400) => json({ error: message }, status);
 
 /**
  * Which trip a request is about, and the path with the trip taken out.
@@ -1290,11 +1282,19 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
+    if (url.pathname === "/auth" && request.method === "GET")
+      return handleAuthCallback(request, env, url);
     if (!url.pathname.startsWith("/api/")) return servePage(request, env, url);
 
     if (!checkAccess(request, env)) return json({ error: "Wrong access code." }, 401);
 
     const { method } = request;
+
+    // Accounts are not part of any trip.
+    if (url.pathname === "/api/auth/request" && method === "POST") return handleAuthRequest(request, env);
+    if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);
+    if (url.pathname === "/api/auth/logout" && method === "POST") return handleAuthLogout(request, env, url);
+
     const { trip, path: pathname } = tripOf(url);
     if (!(await tripExists(env, trip))) return bad("No such trip.", 404);
 

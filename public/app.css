@@ -225,6 +225,8 @@ h1,h2,h3,p{margin:0}
   .who input{width:118px}
   .who input:focus{width:140px}
   .brand{font-size:15px}
+  #account span{display:none}
+  #account{width:34px;padding:0;border-radius:50%}
 }
 @media (max-width:420px){
   .brand .name{max-width:118px}

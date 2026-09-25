@@ -25,7 +25,9 @@ public/plan.html      Plan      /t/<trip>/plan      a column per day, maps route
 public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, name, language, toast, api(), maps preference
 public/route.js       Google / Apple Maps links for a day or a stop
-src/worker.js         the API and the static-asset fallthrough
+src/worker.js         the API, page routing, and the static-asset fallthrough
+src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
+src/http.js           json() and bad()
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       (places live in the `items` table — this file is not read at runtime)
 src/maplink.js        coordinates out of a pasted maps link
@@ -42,6 +44,7 @@ npm test                # 277 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
 npm run deploy          # only when asked — a push to main does NOT deploy
+npx wrangler secret put RESEND_API_KEY   # once; sign-in mail. Unset locally = link returned, not mailed
 ```
 
 ## API
@@ -63,6 +66,10 @@ unknown trip is a 404.
 | POST | `/api/plan/note/add` · `/update` · `/remove` · `/address` | your own entries |
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
+| POST | `/api/auth/request` | `{ email, next?, lang? }` → a sign-in link by mail (not trip-scoped) |
+| GET | `/auth?token=…` | the link: starts a session, sets the cookie, redirects to `next` |
+| GET | `/api/auth/me` | `{ user }` or `{ user: null }` |
+| POST | `/api/auth/logout` | ends the session |
 
 Every write returns the full snapshot, so a page never re-fetches after a click.
 

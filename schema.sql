@@ -209,6 +209,37 @@ CREATE TABLE IF NOT EXISTS trip_travel (
   PRIMARY KEY (trip_id, direction)
 );
 
+-- Accounts: signed in by a link sent by email, no passwords. Only hashes of
+-- tokens and session ids are stored. See src/auth.js.
+CREATE TABLE IF NOT EXISTS users (
+  id           TEXT    PRIMARY KEY,   -- "u-<uuid>"
+  email        TEXT    NOT NULL UNIQUE,  -- lowercased
+  display_name TEXT    NOT NULL,
+  created_at   INTEGER NOT NULL,
+  last_seen    INTEGER
+);
+
+CREATE TABLE IF NOT EXISTS login_tokens (
+  token_hash TEXT    PRIMARY KEY,
+  email      TEXT    NOT NULL,
+  next_path  TEXT,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  used_at    INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_email ON login_tokens (email, created_at);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id_hash    TEXT    PRIMARY KEY,
+  user_id    TEXT    NOT NULL,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  last_seen  INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
+
 -- Which migrations a database has had. A fresh database is already at the
 -- shape they produce, so every one of them is recorded here up front and
 -- `npm run migrate` has nothing to do.
@@ -225,7 +256,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-005-trip-base.sql', 0),
   ('migrate-006-trip.sql', 0),
   ('migrate-007-trips.sql', 0),
-  ('migrate-008-items.sql', 0);
+  ('migrate-008-items.sql', 0),
+  ('migrate-010-accounts.sql', 0);
 -- 009, the London places, is deliberately not recorded: `npm run migrate` on
 -- a fresh database imports them, so trip 1 is the London trip there too.
 

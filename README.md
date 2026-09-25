@@ -30,6 +30,30 @@ scripts/migrate.mjs        applies each migration below once, recording it in sc
 scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
 
+## Signing in
+
+**Sign in** in the bar asks for an email address and sends a link. Opening the
+link signs you in for thirty days on that device; there is no password. The
+link works once and expires after fifteen minutes, and asking for more than
+five in an hour sends nothing further.
+
+Mail goes through [Resend](https://resend.com). Set the API key once:
+
+```bash
+npx wrangler secret put RESEND_API_KEY
+```
+
+`MAIL_FROM` in `wrangler.toml` is the sender. Resend's test sender,
+`onboarding@resend.dev`, only delivers to the address the Resend account was
+made with; to reach everyone on a trip, verify a domain in Resend and set
+`MAIL_FROM` to an address on it.
+
+Locally, with no key set, nothing is sent: the response carries the link and
+the sheet shows it, so the flow can be walked without a mailbox.
+
+Signing in does not yet change what you can do — that is the next step, where
+an account claims its name on a trip.
+
 ## Addresses
 
 Every page lives under its trip: `/t/1/` is the London trip's Sights page,

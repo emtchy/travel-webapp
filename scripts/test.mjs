@@ -1077,5 +1077,98 @@ t5("and trip 1 does not see trip 2's rows",
   t5("the page files themselves are still reachable", await served("/plan.html") === "static /plan.html");
 }
 
+// --- Phase 2, step 5: sign in by email link
+{
+  const post = (p, b, headers = {}) => call(p, { method: "POST", headers, body: JSON.stringify(b) });
+  const req = (b) => post("/api/auth/request", b);
+
+  t5("a bad address is refused", (await req({ email: "not-an-email" })).status === 400);
+  t5("so is a missing one", (await req({})).status === 400);
+
+  let d = await (await req({ email: "  Emily@Example.COM ", next: "/t/1/plan?x=1" })).json();
+  t5("a request answers ok", d.ok === true);
+  t5("with no key set, the link comes back for development", typeof d.devLink === "string" && d.devLink.includes("/auth?token="));
+  t5("only a hash of the token is stored",
+     db.prepare("SELECT COUNT(*) AS n FROM login_tokens WHERE token_hash LIKE '%' || ? || '%'").get(d.devLink.split("token=")[1]).n === 0
+     && db.prepare("SELECT email FROM login_tokens").get().email === "emily@example.com");
+
+  t5("nobody is signed in before the link is opened",
+     (await (await call("/api/auth/me")).json()).user === null);
+
+  const link = new URL(d.devLink);
+  const r1 = await call(link.pathname + link.search, { redirect: "manual" });
+  const cookie = (r1.headers.get("set-cookie") || "").split(";")[0];
+  t5("opening the link redirects to where you were", r1.status === 302 && r1.headers.get("location").endsWith("/t/1/plan?x=1"));
+  t5("and sets a session cookie, HttpOnly", cookie.startsWith("trip_session=") &&
+     /HttpOnly/.test(r1.headers.get("set-cookie")) && /SameSite=Lax/.test(r1.headers.get("set-cookie")));
+  t5("a user was created from the address",
+     db.prepare("SELECT display_name FROM users WHERE email = 'emily@example.com'").get()?.display_name === "Emily");
+
+  const me = await (await call("/api/auth/me", { headers: { cookie } })).json();
+  t5("with the cookie, /me knows who you are", me.user?.email === "emily@example.com" && me.user.displayName === "Emily");
+  t5("the session id is stored hashed",
+     db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE id_hash = ?").get(cookie.split("=")[1]).n === 0 &&
+     db.prepare("SELECT COUNT(*) AS n FROM sessions").get().n === 1);
+
+  t5("the link works once", (await call(link.pathname + link.search, { redirect: "manual" })).status === 400);
+  t5("a made-up token is refused", (await call("/auth?token=" + "x".repeat(40), { redirect: "manual" })).status === 400);
+  t5("and shows a page, not JSON", /expired/.test(await (await call("/auth?token=nope")).text()));
+
+  // the same person again: no second user, a second session
+  d = await (await req({ email: "emily@example.com" })).json();
+  const l2 = new URL(d.devLink);
+  const r2 = await call(l2.pathname + l2.search, { redirect: "manual" });
+  t5("signing in again finds the same user",
+     db.prepare("SELECT COUNT(*) AS n FROM users").get().n === 1 &&
+     db.prepare("SELECT COUNT(*) AS n FROM sessions").get().n === 2);
+  t5("with no next, the link lands on the front page", r2.headers.get("location").endsWith("/"));
+
+  // an expired link
+  d = await (await req({ email: "emily@example.com" })).json();
+  db.prepare("UPDATE login_tokens SET expires_at = 0 WHERE used_at IS NULL").run();
+  const l3 = new URL(d.devLink);
+  t5("an expired link is refused", (await call(l3.pathname + l3.search, { redirect: "manual" })).status === 400);
+
+  // next must stay on this site
+  d = await (await req({ email: "emily@example.com", next: "https://elsewhere.example/steal" })).json();
+  const l4 = new URL(d.devLink);
+  t5("an off-site next is ignored",
+     (await call(l4.pathname + l4.search, { redirect: "manual" })).headers.get("location") === "https://x/");
+  d = await (await req({ email: "emily@example.com", next: "//elsewhere.example" })).json();
+  const l5 = new URL(d.devLink);
+  t5("and so is a protocol-relative one",
+     (await call(l5.pathname + l5.search, { redirect: "manual" })).headers.get("location") === "https://x/");
+
+  // rate limit: five an hour, and the answer does not change
+  const before = db.prepare("SELECT COUNT(*) AS n FROM login_tokens WHERE email = 'maya@example.com'").get().n;
+  let last;
+  for (let i = 0; i < 7; i++) last = await (await req({ email: "maya@example.com" })).json();
+  const after = db.prepare("SELECT COUNT(*) AS n FROM login_tokens WHERE email = 'maya@example.com'").get().n;
+  t5("more than five requests an hour stop producing tokens", after - before === 5);
+  t5("but the answer still says ok, giving nothing away", last.ok === true && last.sent === true && !last.devLink);
+
+  // sign out
+  const out = await post("/api/auth/logout", {}, { cookie });
+  t5("signing out clears the cookie", /Max-Age=0/.test(out.headers.get("set-cookie") || ""));
+  t5("and the session is gone", (await (await call("/api/auth/me", { headers: { cookie } })).json()).user === null);
+
+  // with a key set, mail goes to Resend and the link stays out of the answer
+  const realFetch = globalThis.fetch;
+  let sentMail = null;
+  globalThis.fetch = async (u, init) => { sentMail = { url: String(u), body: JSON.parse(init.body), auth: init.headers.authorization }; return new Response("{}", { status: 200 }); };
+  const keyed = { ...env, RESEND_API_KEY: "re_test", MAIL_FROM: "Trips <hi@example.com>" };
+  const sent = await (await worker.fetch(new Request("https://x/api/auth/request", { method: "POST",
+    body: JSON.stringify({ email: "roswitha@example.com", lang: "de" }) }), keyed)).json();
+  t5("with a key, the request sends through Resend", sentMail?.url === "https://api.resend.com/emails" &&
+     sentMail.auth === "Bearer re_test" && sentMail.body.to[0] === "roswitha@example.com" && sentMail.body.from === "Trips <hi@example.com>");
+  t5("in the asked-for language", sentMail.body.subject === "Dein Anmeldelink" && /\/auth\?token=/.test(sentMail.body.text));
+  t5("and the link is not in the answer", sent.ok === true && sent.sent === true && !sent.devLink);
+  globalThis.fetch = async () => new Response("nope", { status: 500 });
+  t5("a failed send is reported, not swallowed",
+     (await worker.fetch(new Request("https://x/api/auth/request", { method: "POST",
+        body: JSON.stringify({ email: "roswitha@example.com" }) }), keyed)).status === 502);
+  globalThis.fetch = realFetch;
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

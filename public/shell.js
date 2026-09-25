@@ -109,9 +109,23 @@ export const ICONS = {
 
 const NAV = {
   en: { details: "Details", sights: "Sights", bookings: "Bookings", plan: "Plan",
-        name: "Your name", lang: "Language" },
+        name: "Your name", lang: "Language",
+        signIn: "Sign in", signOut: "Sign out", account: "Account",
+        signInTitle: "Sign in", signInLede: "Enter your email and we'll send you a link. No password to remember.",
+        email: "Email", sendLink: "Send me a link", sending: "Sending…",
+        sentTitle: "Check your email", sentLede: (e) => `We sent a sign-in link to ${e}. It works once and lasts 15 minutes.`,
+        devLink: "Local development: no email is sent. Open the link:",
+        signedInAs: (n) => `Signed in as ${n}`, close: "Close",
+        sendFail: "That didn't go through. Try again in a moment." },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
-        name: "Dein Name", lang: "Sprache" },
+        name: "Dein Name", lang: "Sprache",
+        signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
+        signInTitle: "Anmelden", signInLede: "E-Mail-Adresse eingeben, wir schicken dir einen Link. Kein Passwort nötig.",
+        email: "E-Mail", sendLink: "Link schicken", sending: "Wird gesendet…",
+        sentTitle: "Schau in dein Postfach", sentLede: (e) => `Wir haben einen Anmeldelink an ${e} geschickt. Er funktioniert einmal und gilt 15 Minuten.`,
+        devLink: "Lokale Entwicklung: es wird keine E-Mail verschickt. Link öffnen:",
+        signedInAs: (n) => `Angemeldet als ${n}`, close: "Schließen",
+        sendFail: "Das hat nicht geklappt. Versuch es gleich noch einmal." },
 };
 
 const PAGES = [
@@ -148,15 +162,25 @@ if (mount) {
           <button type="button" data-lang="en" aria-pressed="${lang === "en"}">EN</button>
           <button type="button" data-lang="de" aria-pressed="${lang === "de"}">DE</button>
         </div>
+        <button type="button" class="btn btn-sm btn-tint" id="account" hidden></button>
       </div>
     </div>
   </nav>
   <nav class="tabbar" id="tabbar" aria-label="Pages">${linksHTML(true)}</nav>
-  <div class="toast" id="status" role="status" aria-live="polite"></div>`;
+  <div class="toast" id="status" role="status" aria-live="polite"></div>
+  <div class="sheet-back" id="auth-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="auth-title">
+    <div class="sheet" style="width:min(440px,100%)">
+      <header><h2 id="auth-title"></h2>
+        <button class="sheet-close" id="auth-close" type="button">${ICONS.close}</button></header>
+      <div class="sheet-body" id="auth-body"></div>
+    </div>
+  </div>`;
 }
 
 function paintNav() {
   const L = NAV[lang];
+  paintAccount();
+  if (!$("#auth-sheet")?.hidden) paintAuthSheet();
   for (const a of document.querySelectorAll("[data-nav]"))
     a.querySelector("span").textContent = L[a.dataset.nav];
   const name = $("#name");
@@ -172,7 +196,103 @@ $("#langs")?.addEventListener("click", (e) => {
   if (b) setLang(b.dataset.lang);
 });
 
+/* ------------------------------------------------------------- account */
+/* Sign in by email link. The button in the bar says "Sign in" or shows who
+   you are; the sheet asks for an address and then says to check the inbox.
+   Nothing about a trip changes yet — that is the next step — but the session
+   is real, so the rest can build on it. */
+
+let user = null;
+const userListeners = new Set();
+export const getUser = () => user;
+export function onUser(cb) { userListeners.add(cb); cb(user); }
+
+let authView = "form";   // form | sent
+let sentTo = "";
+let devLink = null;
+
+function paintAccount() {
+  const L = NAV[lang];
+  const btn = $("#account");
+  if (!btn) return;
+  btn.hidden = false;
+  btn.innerHTML = `${ICONS.person}<span>${esc(user ? user.displayName : L.signIn)}</span>`;
+  btn.title = user ? L.signedInAs(user.email) : L.signIn;
+  btn.classList.toggle("btn-quiet", !!user);
+  btn.classList.toggle("btn-tint", !user);
+}
+
+function paintAuthSheet() {
+  const L = NAV[lang];
+  const title = $("#auth-title"), body = $("#auth-body");
+  if (!title || !body) return;
+  $("#auth-close").setAttribute("aria-label", L.close);
+  if (user) {
+    title.textContent = L.account;
+    body.innerHTML = `<div class="srow"><span class="slabel">${esc(L.email)}</span>
+        <span class="sval">${esc(user.email)}</span></div>
+      <div class="sfoot"><button class="btn btn-quiet" type="button" id="auth-logout">${esc(L.signOut)}</button></div>`;
+    return;
+  }
+  if (authView === "sent") {
+    title.textContent = L.sentTitle;
+    body.innerHTML = `<p class="sval">${esc(L.sentLede(sentTo))}</p>` +
+      (devLink ? `<p class="note">${esc(L.devLink)}</p><a class="btn btn-sm btn-tint" href="${esc(devLink)}" style="align-self:start">${esc(L.signIn)}</a>` : "");
+    return;
+  }
+  title.textContent = L.signInTitle;
+  body.innerHTML = `<p class="sval muted">${esc(L.signInLede)}</p>
+    <form id="auth-form" class="stack">
+      <label class="field"><span>${esc(L.email)}</span>
+        <input class="input" id="auth-email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com"></label>
+      <p class="err" id="auth-err" hidden></p>
+      <div><button class="btn btn-primary" type="submit" id="auth-send">${esc(L.sendLink)}</button></div>
+    </form>`;
+}
+
+function openAuth() { authView = "form"; devLink = null; paintAuthSheet(); $("#auth-sheet").hidden = false;
+  setTimeout(() => $("#auth-email")?.focus(), 0); }
+function closeAuth() { $("#auth-sheet").hidden = true; }
+
+$("#account")?.addEventListener("click", openAuth);
+$("#auth-close")?.addEventListener("click", closeAuth);
+$("#auth-sheet")?.addEventListener("click", (e) => { if (e.target.id === "auth-sheet") closeAuth(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#auth-sheet")?.hidden) closeAuth(); });
+
+document.addEventListener("submit", async (e) => {
+  const form = e.target.closest("#auth-form");
+  if (!form) return;
+  e.preventDefault();
+  const L = NAV[lang];
+  const email = $("#auth-email").value.trim();
+  const send = $("#auth-send"), err = $("#auth-err");
+  send.disabled = true; send.textContent = L.sending; err.hidden = true;
+  try {
+    const d = await api("/api/auth/request", { method: "POST",
+      body: JSON.stringify({ email, next: location.pathname + location.search, lang }) });
+    sentTo = email; devLink = d.devLink ?? null; authView = "sent";
+    paintAuthSheet();
+  } catch (ex) {
+    err.textContent = ex.message || L.sendFail; err.hidden = false;
+    send.disabled = false; send.textContent = L.sendLink;
+  }
+});
+
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#auth-logout")) return;
+  try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+  user = null; closeAuth(); paintAccount();
+  for (const cb of userListeners) cb(user);
+});
+
+async function loadUser() {
+  try { user = (await api("/api/auth/me")).user ?? null; } catch { user = null; }
+  paintAccount();
+  for (const cb of userListeners) cb(user);
+}
+
 document.documentElement.lang = lang;
+paintAccount();
 
 /* ------------------------------------------------------------- identity */
 
@@ -270,7 +390,8 @@ let accessCode = store("code") || "";
  * keep writing the endpoint and the shell supplies the trip.
  */
 export async function api(path, options, retried = false) {
-  const scoped = path.startsWith("/api/") && !path.startsWith("/api/t/")
+  // Accounts are not part of any trip, so /api/auth/… is left as it is.
+  const scoped = path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
     ? `/api/t/${TRIP}${path.slice(4)}` : path;
   const res = await fetch(scoped, {
     ...options,
@@ -332,3 +453,5 @@ export function backToTop(label) {
   }
   btn.title = label; btn.setAttribute("aria-label", label);
 }
+
+loadUser();
