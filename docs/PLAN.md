@@ -66,8 +66,8 @@ Identity is still a typed name. That is the thing Phase 2 replaces.
 | 0 | The London trip on the current stack: vote, book, plan by hand | ✅ done, trip travelled |
 | 0.5 | Redesign on a shared design system; nothing London-specific in the pages | ✅ done 2026-09-11 |
 | 1 | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ✅ done 2026-09-25 |
-| **2** | **Accounts** — email-link sign-in, members linked to accounts, invites, roles, settings (maps app, language) | ⬜ next |
-| 3 | Create your own trip: trip list, new-trip flow, the London 55 as an optional template | ⬜ |
+| 2 | **Accounts** — email-link sign-in, invites, roles, settings | ✅ done 2026-09-25 (password optional, step 9, open) |
+| **3** | **The front door** — a real `/`: what this is, how it works, example trips, sign in; then your trips and a new-trip flow | ⬜ next |
 | 4 | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ |
 
 Phases 1 and 2 are cut into steps small enough to ship one at a time against
@@ -137,11 +137,35 @@ the live database, each with a migration and a test.
       (PBKDF2 through Web Crypto — no dependency), never the password itself.
       Adds one column to `users`; `sessions` and everything else unchanged.
 
-### Phase 3 — your own trip
+### Phase 3 — the front door
 
-- [ ] A trip list at `/`, a "new trip" flow, the London list offered as a
-      template when the destination is London, and a landing page for people
-      who are not signed in.
+Rethought on 2026-09-25. Until now `/` redirected to the London trip, and a
+signed-out visitor met a private-trip notice — or, worse, the leftover
+"access code" prompt. The front page has to stand on its own: say what this
+is, show it, and offer the way in.
+
+- [ ] **Step 10 — `/` is the front page.** Signed out: a short statement of
+      what the app does (a group picks places, votes, books, lays out the
+      days), a three-step "how it works" (Sights → Bookings → Plan) with
+      real screenshots of the pages, the example trips (step 11), and Sign in.
+      Signed in: your trips, each with dates and your role, and "New trip".
+      The redirect from `/` to trip 1 goes; `/plan`, `/bookings`, `/details`
+      keep redirecting so the London links still work. The nav on the front
+      page has no trip tabs. `public/home.html`, served by the Worker.
+- [ ] **Step 11 — example trips.** `trips.visibility` = `private | public`.
+      A public trip can be read by anyone, signed in or not, at its usual
+      addresses; only members can change it. The front page lists public
+      trips as examples. One is seeded: a short, believable trip built from a
+      template (a weekend, four or five places, a booking, a two-day plan) —
+      not the London trip, which stays private and real. Migration 014.
+- [ ] **Step 12 — new trip.** From the front page: name, destination, first
+      and last day. The creator's account becomes the trip's owner as their
+      display name. Optionally start from a template: the London 55 when the
+      destination is London, the example's places otherwise. `POST
+      /api/trips`, `GET /api/trips` (mine).
+- [ ] **Step 13 — leave and delete.** A member can leave a trip; the owner
+      can delete one (everything under it goes; asks twice). Drops the two
+      unread tables `trip_settings` and `custom_sights` in the same migration.
 
 ### Phase 4 — public hardening
 
@@ -186,6 +210,8 @@ out of password storage entirely.
 
 **2026-08-25 — No landing page yet; the vote page keeps `/`.**
 The group has the `/` link. A landing page belongs with signup (Phase 3).
+*Superseded 2026-09-25: the front page is Phase 3 step 10; the London links
+are on `/t/1/…` and the old page paths keep redirecting.*
 
 **2026-08-27 — The route origin is personal; the trip's base is shared.**
 Where a day starts for *the group* (the hotel) is a trip setting. Where a route
@@ -342,6 +368,19 @@ the same on the phone and the laptop, and an explicit choice beats the guess
 — but nobody is forced to choose, so an account with nothing set behaves as
 before. The account's language is applied on load; the maps choice is read
 whenever a link is built.
+
+**2026-09-25 — The shared passphrase is gone.**
+`ACCESS_CODE` guarded the whole site before accounts existed, and the shell
+answered any 401 with an "Access code" prompt. Once 401 meant "sign in", every
+signed-out visitor got that prompt on every page. Removed outright rather than
+special-cased: trips are private by membership, which is the stronger guard.
+
+**2026-09-25 — The front door comes before "new trip".**
+Superseding the Phase 3 order. A visitor who is not signed in should land on
+a page that explains the app and lets them in — not on someone's private
+trip. Example trips do the explaining better than prose, so public
+(read-only) trips come right after the page itself, and creating a trip
+comes after there is a place to create it from.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

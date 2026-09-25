@@ -29,4 +29,3 @@ MAIL_FROM = "Trip <onboarding@resend.dev>"
 # Secrets, set once with `npx wrangler secret put <NAME>`, never in this file:
 #   RESEND_API_KEY   sign-in emails go through Resend. Unset locally, which
 #                    makes /api/auth/request return the link instead of mailing it.
-#   ACCESS_CODE      optional shared passphrase for the whole site. Unset = open.

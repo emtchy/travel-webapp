@@ -267,16 +267,6 @@ async function actor(request, env, trip, need = "view") {
   return { user, member, name: member.name };
 }
 
-/** Optional shared passphrase. Unset => open access. */
-function checkAccess(request, env, trip) {
-  const expected = env.ACCESS_CODE;
-  if (!expected) return true;
-  const supplied =
-    request.headers.get("x-access-code") ||
-    new URL(request.url).searchParams.get("code");
-  return supplied === expected;
-}
-
 /* --------------------------------------------------------------- database */
 
 async function getVotes(env, trip) {
@@ -1394,8 +1384,6 @@ export default {
     if (url.pathname === "/invite" && request.method === "GET")
       return handleInviteAccept(request, env, url, { voterKey });
     if (!url.pathname.startsWith("/api/")) return servePage(request, env, url);
-
-    if (!checkAccess(request, env)) return json({ error: "Wrong access code." }, 401);
 
     const { method } = request;
 

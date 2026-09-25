@@ -337,15 +337,10 @@ Or just open the page and hit the **Most wanted** filter.
 
 ## Locking it down
 
-The page is unlisted but public — anyone with the URL can vote. `noindex` keeps
-it out of search results. If you want a passphrase:
-
-```bash
-npx --yes wrangler@4 secret put ACCESS_CODE     # type the passphrase when prompted
-```
-
-The page then asks for it once and remembers it. Remove it with
-`npx --yes wrangler@4 secret delete ACCESS_CODE`.
+A trip is private to its members (see "Who is on a trip"), and `noindex`
+keeps the pages out of search results. The shared passphrase that used to
+guard the whole site is gone: accounts replaced it, and a `401` now means
+"sign in", never "type the code".
 
 ## Photos
 
@@ -372,7 +367,7 @@ npm test
 ```
 
 271 checks against a SQLite-backed mock of the Worker — voting, un-voting,
-duplicate names, adding and removing options, URL sanitising, the access code,
+duplicate names, adding and removing options, URL sanitising,
 and the bookings list: what belongs on it, the cost fields on added sights, and
 moving entries between still-to-book, booked and not-booking without touching
 their votes, the date and time of a booked slot, the plan (placing a sight by

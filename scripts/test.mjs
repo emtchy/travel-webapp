@@ -129,12 +129,10 @@ t("unknown api route 404s", res.status === 404);
 res = await call("/index.html");
 t("non-api path falls through to ASSETS", (await res.text()).startsWith("static"));
 
-// access code
-const guarded = { ...env, ACCESS_CODE: "s3cret" };
-res = await worker.fetch(new Request("https://x/api/state"), guarded);
-t("ACCESS_CODE blocks without header (401)", res.status === 401);
-res = await worker.fetch(new Request("https://x/api/state", { headers: { "x-access-code": "s3cret", cookie: cookieFor("Emily", 1) } }), guarded);
-t("ACCESS_CODE allows with header", res.status === 200);
+// the shared passphrase is gone: a 401 means "sign in", never "type the code"
+res = await worker.fetch(new Request("https://x/api/state", { headers: { "x-access-code": "anything" } }), { ...env, ACCESS_CODE: "s3cret" });
+t("an access code no longer opens anything", res.status === 401);
+t("and a 401 says to sign in", (await res.json()).error === "Sign in first.");
 
 
 /* ---------------- new endpoints ---------------- */

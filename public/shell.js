@@ -33,8 +33,8 @@ export const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
 
 // Keys were once "london-vote-*". Old values are read once so nobody loses
 // their name or language on the day the keys changed.
-const KEYS = { name: "trip-name", code: "trip-code", lang: "trip-lang" };
-const OLD = { name: "london-vote-name", code: "london-vote-code", lang: "london-vote-lang" };
+const KEYS = { name: "trip-name", lang: "trip-lang" };
+const OLD = { name: "london-vote-name", lang: "london-vote-lang" };
 
 export function store(key, value) {
   try {
@@ -469,14 +469,14 @@ export const weekdayShort = (iso) => fmtDate(iso, { weekday: "short" });
 
 /* ------------------------------------------------------------- api */
 
-let accessCode = store("code") || "";
-
 /**
- * fetch() with the JSON headers, the access code, and one retry after a 401.
- * A path like "/api/plan/set" is sent as "/api/t/<trip>/plan/set", so pages
- * keep writing the endpoint and the shell supplies the trip.
+ * fetch() with the JSON headers. A path like "/api/plan/set" is sent as
+ * "/api/t/<trip>/plan/set", so pages keep writing the endpoint and the shell
+ * supplies the trip. A 401 means "sign in" and is the caller's to show; the
+ * shared passphrase this used to prompt for is gone now that there are
+ * accounts.
  */
-export async function api(path, options, retried = false) {
+export async function api(path, options) {
   // Accounts are not part of any trip, so /api/auth/… is left as it is.
   const scoped = path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
     ? `/api/t/${TRIP}${path.slice(4)}` : path;
@@ -484,19 +484,10 @@ export async function api(path, options, retried = false) {
     ...options,
     headers: {
       "content-type": "application/json",
-      ...(accessCode ? { "x-access-code": accessCode } : {}),
       ...(options?.headers || {}),
     },
   });
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && !retried) {
-    const entered = window.prompt("Access code / Zugangscode:");
-    if (entered) {
-      accessCode = entered.trim();
-      store("code", accessCode);
-      return api(path, options, true);
-    }
-  }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
