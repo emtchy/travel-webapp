@@ -32,8 +32,9 @@ async function handleWhoAmI(request, env, trip) {
   const { user, member } = await whoIs(request, env, trip);
   // The trip's name comes along so the bar can show it even to someone who
   // is not on the trip and gets nothing else.
-  const row = await env.DB.prepare("SELECT name, destination FROM trips WHERE id = ?1").bind(trip).first();
-  return json({ user, member, trip: { id: trip, name: row?.name ?? null, destination: row?.destination ?? null } });
+  const row = await env.DB.prepare("SELECT name, destination, visibility FROM trips WHERE id = ?1").bind(trip).first();
+  return json({ user, member, trip: { id: trip, name: row?.name ?? null, destination: row?.destination ?? null,
+                                      visibility: row?.visibility === "public" ? "public" : "private" } });
 }
 
 /** POST /api/t/<trip>/member/role  { id, role } — owner only. */
@@ -84,8 +85,20 @@ async function handleTripList(request, env) {
       memberName: r.member_name, role: r.role,
       days: daysBetween(r.start_date, r.end_date).length,
     })),
-    examples: [],
+    examples: await publicTrips(env),
   });
+}
+
+/** The public trips, for the front page. */
+async function publicTrips(env) {
+  const { results } = await env.DB.prepare(
+    `SELECT id, name, destination, start_date, end_date FROM trips
+      WHERE visibility = 'public' ORDER BY id ASC LIMIT 12`
+  ).all();
+  return (results ?? []).map((r) => ({
+    id: r.id, name: r.name, destination: r.destination, startDate: r.start_date, endDate: r.end_date,
+    days: daysBetween(r.start_date, r.end_date).length,
+  }));
 }
 
 /* ------------------------------------------------------------------ pages */
@@ -177,7 +190,7 @@ async function getTrip(env, trip) {
   const row = await env.DB.prepare(
     `SELECT name, destination, start_date, end_date,
             base_name, base_lat, base_lon, base_checkin, base_checkout,
-            base_ref, base_phone, near_lat, near_lon, notes, set_by
+            base_ref, base_phone, near_lat, near_lon, notes, set_by, visibility
        FROM trips WHERE id = ?1`
   ).bind(trip).first();
 
@@ -185,6 +198,7 @@ async function getTrip(env, trip) {
 
   return {
     id: trip,
+    visibility: row?.visibility === "public" ? "public" : "private",
     name: row?.name ?? FALLBACK_TRIP.name,
     destination: row?.destination ?? FALLBACK_TRIP.destination,
     startDate: row?.start_date ?? null,
@@ -286,6 +300,19 @@ const NOT_ALLOWED = {
   edit: "Only editors and owners can change that. Ask the trip's owner.",
   own: "Only the trip's owner can do that.",
 };
+
+/**
+ * A reader: a member, or anyone at all on a public trip. For reads only —
+ * writes always go through actor(), so a public trip is looked at, never
+ * changed, by people who are not on it.
+ */
+async function reader(request, env, trip) {
+  const got = await actor(request, env, trip);
+  if (!got.error) return got;
+  const row = await env.DB.prepare("SELECT visibility FROM trips WHERE id = ?1").bind(trip).first();
+  if (row?.visibility === "public") return { user: null, member: null, name: null, readOnly: true };
+  return got;
+}
 
 /** The member acting, or the response to send back instead. */
 async function actor(request, env, trip, need = "view") {
@@ -971,12 +998,16 @@ async function handleTripSettings(request, env, trip) {
   const notes = cleanText(body?.notes, 2000);
   if (notes === undefined) return bad("Keep the notes under 2000 characters.");
 
+  const { visibility } = body ?? {};
+  if (visibility != null && visibility !== "public" && visibility !== "private")
+    return bad("Visibility must be public or private.");
+
   // Only what was sent changes; COALESCE keeps the rest.
   await env.DB.prepare(
     `INSERT INTO trips (id, name, destination, start_date, end_date,
                         base_checkin, base_checkout, base_ref, base_phone,
-                        notes, set_by, updated_at, created_at)
-     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                        notes, set_by, updated_at, created_at, visibility)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, COALESCE(?14, 'private'))
      ON CONFLICT (id) DO UPDATE SET
        name          = COALESCE(excluded.name, trips.name),
        destination   = COALESCE(excluded.destination, trips.destination),
@@ -987,10 +1018,12 @@ async function handleTripSettings(request, env, trip) {
        base_ref      = COALESCE(excluded.base_ref, trips.base_ref),
        base_phone    = COALESCE(excluded.base_phone, trips.base_phone),
        notes         = COALESCE(excluded.notes, trips.notes),
+       visibility    = COALESCE(?15, trips.visibility),
        set_by = excluded.set_by, updated_at = excluded.updated_at`
   )
     .bind(trip, name, destination, startDate || null, endDate || null,
-          checkIn, checkOut, reference, phone, notes, who, Date.now(), Date.now())
+          checkIn, checkOut, reference, phone, notes, who, Date.now(), Date.now(),
+          visibility ?? null, visibility ?? null)
     .run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -1418,6 +1451,7 @@ export default {
 
     // Accounts, and the list of trips, are not part of any trip.
     if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
+    if (url.pathname === "/api/examples" && method === "GET") return json({ examples: await publicTrips(env) });
     if (url.pathname === "/api/auth/request" && method === "POST") return handleAuthRequest(request, env);
     if (url.pathname === "/api/auth/me" && method === "GET") return handleAuthMe(request, env);
     if (url.pathname === "/api/auth/logout" && method === "POST") return handleAuthLogout(request, env, url);
@@ -1433,14 +1467,14 @@ export default {
     const ctx = { actor, cleanName, voterKey, tripName: async (env, t) => (await getTrip(env, t)).name };
 
     if (pathname === "/api/sights" && method === "GET") {
-      const { member, error } = await actor(request, env, trip);
+      const { member, error } = await reader(request, env, trip);
       if (error) return error;
       return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)),
-                    ...(member.role === "owner" ? { invites: await listInvites(env, trip) } : {}) });
+                    ...(member?.role === "owner" ? { invites: await listInvites(env, trip) } : {}) });
     }
 
     if (pathname === "/api/state" && method === "GET") {
-      const { error } = await actor(request, env, trip);
+      const { error } = await reader(request, env, trip);
       if (error) return error;
       return json(await snapshot(env, trip));
     }

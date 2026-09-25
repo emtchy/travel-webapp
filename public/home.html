@@ -138,6 +138,7 @@
 
 <section class="section" id="examples" hidden>
   <div class="section-head"><h2 id="ex-h"></h2></div>
+  <p class="footnote" id="ex-lede" style="margin:-6px 0 12px"></p>
   <div class="trips" id="ex-list"></div>
 </section>
 
@@ -168,9 +169,9 @@ const T = {
     s3h: "Plan", s3p: "A column per day. Put places on days, give them a rough time, and open any stop in Maps — or route the whole day.",
     m1name: "Rijksmuseum", m1where: "Museumplein · tram 2", m1free: "Free", m1like: "Liked", m1votes: "votes",
     m2a: "Canal cruise", m2am: "Booked · Sat, 14:00", m2b: "Anne Frank House", m2bm: "Book ahead · sells out",
-    m3wd: "Saturday", m3day: "14 March", m3a: "Rijksmuseum", m3am: "2 ♥ · added by Sam", m3b: "Canal cruise", m3bm: "booked",
+    m3wd: "Saturday", m3day: "13 March", m3a: "Rijksmuseum", m3am: "3 ♥ · added by Sam", m3b: "Canal cruise", m3bm: "booked",
     mine: "Your trips", none: "You're not on a trip yet. Ask whoever runs one for an invitation.",
-    examples: "Example trips",
+    examples: "Example trips", exLede: "Made-up trips you can look around, to see what a finished plan looks like.",
     siH: "Already on a trip?", siP: "Sign in with the address you were invited with and it's right here.",
     privacy: "Trips are private to the people on them. You sign in by a link sent to your email; there is no password and nothing to install.",
     days: (n) => `${n} ${n === 1 ? "day" : "days"}`, as: (n) => `as ${n}`,
@@ -186,9 +187,9 @@ const T = {
     s3h: "Plan", s3p: "Eine Spalte pro Tag. Orte auf Tage legen, ungefähre Zeiten dazu, und jeden Stopp in Maps öffnen – oder gleich den ganzen Tag.",
     m1name: "Rijksmuseum", m1where: "Museumplein · Tram 2", m1free: "Kostenlos", m1like: "Liked", m1votes: "Stimmen",
     m2a: "Grachtenfahrt", m2am: "Gebucht · Sa, 14:00", m2b: "Anne-Frank-Haus", m2bm: "Vorab buchen · schnell ausverkauft",
-    m3wd: "Samstag", m3day: "14. März", m3a: "Rijksmuseum", m3am: "2 ♥ · von Sam", m3b: "Grachtenfahrt", m3bm: "gebucht",
+    m3wd: "Samstag", m3day: "13. März", m3a: "Rijksmuseum", m3am: "3 ♥ · von Sam", m3b: "Grachtenfahrt", m3bm: "gebucht",
     mine: "Deine Reisen", none: "Du bist noch auf keiner Reise. Bitte, wer eine verwaltet, um eine Einladung.",
-    examples: "Beispielreisen",
+    examples: "Beispielreisen", exLede: "Ausgedachte Reisen zum Anschauen – so sieht ein fertiger Plan aus.",
     siH: "Schon auf einer Reise?", siP: "Melde dich mit der Adresse an, mit der du eingeladen wurdest – dann ist sie hier.",
     privacy: "Reisen sind privat für die, die dabei sind. Du meldest dich mit einem Link an deine E-Mail an; kein Passwort, nichts zu installieren.",
     days: (n) => `${n} ${n === 1 ? "Tag" : "Tage"}`, as: (n) => `als ${n}`,
@@ -213,7 +214,7 @@ function paint() {
     ["m1-name","m1name"],["m1-where","m1where"],["m1-free","m1free"],["m1-votes","m1votes"],
     ["m2-a","m2a"],["m2-a-m","m2am"],["m2-b","m2b"],["m2-b-m","m2bm"],
     ["m3-wd","m3wd"],["m3-day","m3day"],["m3-a","m3a"],["m3-a-m","m3am"],["m3-b","m3b"],["m3-b-m","m3bm"],
-    ["si-h","siH"],["si-p","siP"],["si-btn","ctaIn"],["pv-p","privacy"],["foot","foot"],["mine-h","mine"],["ex-h","examples"]])
+    ["si-h","siH"],["si-p","siP"],["si-btn","ctaIn"],["pv-p","privacy"],["foot","foot"],["mine-h","mine"],["ex-h","examples"],["ex-lede","exLede"]])
     $("#" + id).textContent = L[key];
   $("#m1-like").innerHTML = `${ICONS.heartFill}${esc(L.m1like)}`;
   $("#m2-tick").innerHTML = ICONS.check; $("#m2-warn").innerHTML = ICONS.ticket;
@@ -240,11 +241,10 @@ function paint() {
 }
 
 async function load() {
-  if (!getUser()) { TRIPS = null; paint(); return; }
   try {
-    const d = await api("/api/trips");
-    TRIPS = d.trips ?? []; EXAMPLES = d.examples ?? [];
-  } catch (err) { TRIPS = []; setStatus(err.message, "err"); }
+    const d = await api(getUser() ? "/api/trips" : "/api/examples");
+    TRIPS = getUser() ? (d.trips ?? []) : null; EXAMPLES = d.examples ?? [];
+  } catch (err) { TRIPS = getUser() ? [] : null; setStatus(err.message, "err"); }
   paint();
 }
 

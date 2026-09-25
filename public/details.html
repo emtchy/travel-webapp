@@ -84,6 +84,10 @@
       <label class="field"><span id="l-start">First day</span><input class="input" id="t-start" type="date"></label>
       <label class="field"><span id="l-end">Last day</span><input class="input" id="t-end" type="date"></label>
     </div>
+    <label class="check" id="l-public" style="margin-top:14px;align-items:flex-start;gap:10px">
+      <input type="checkbox" id="t-public" style="margin-top:2px">
+      <span><span id="l-public-t"></span><br><span class="hint" id="l-public-h"></span></span>
+    </label>
     <div class="frow">
       <button class="btn btn-primary" id="t-save" type="button">Save</button>
       <span class="hint" id="t-hint"></span>
@@ -154,6 +158,7 @@ const T = {
     fName: "Trip name", fDest: "Destination", fStart: "First day", fLast: "Last day",
     save: "Save", add: "Add",
     tripHint: "The dates decide which days the plan and the booking dates offer.",
+    fPublic: "Anyone with the link can look at this trip", fPublicHint: "Only members can change it. Public trips appear as examples on the front page.",
     stayNone: "No address set yet.", stayPh: "Address, place name, maps link or coordinates",
     find: "Find", clear: "Remove", cancel: "Cancel", pick: "Pick one:",
     noHits: "Nothing found. Open it in Maps, copy the link, and paste that here.",
@@ -189,6 +194,7 @@ const T = {
     fName: "Name der Reise", fDest: "Ziel", fStart: "Erster Tag", fLast: "Letzter Tag",
     save: "Speichern", add: "Hinzufügen",
     tripHint: "Die Daten bestimmen, welche Tage Plan und Buchungen anbieten.",
+    fPublic: "Jeder mit dem Link kann diese Reise anschauen", fPublicHint: "Ändern können sie nur die, die dabei sind. Öffentliche Reisen erscheinen als Beispiele auf der Startseite.",
     stayNone: "Noch keine Adresse hinterlegt.", stayPh: "Adresse, Ortsname, Maps-Link oder Koordinaten",
     find: "Suchen", clear: "Entfernen", cancel: "Abbrechen", pick: "Auswählen:",
     noHits: "Nichts gefunden. In Maps öffnen, Link kopieren und hier einfügen.",
@@ -361,6 +367,9 @@ function render() {
   $("#t-start").value = TRIP.startDate ?? "";
   $("#t-end").value = TRIP.endDate ?? "";
   $("#t-notes").value = TRIP.notes ?? "";
+  $("#t-public").checked = TRIP.visibility === "public";
+  $("#l-public-t").textContent = L.fPublic; $("#l-public-h").textContent = L.fPublicHint;
+  $("#l-public").hidden = roleOf() !== "owner";
 
   const nights = Math.max(0, TRIP.days.length - 1);
   const until = TRIP.startDate
@@ -395,6 +404,7 @@ async function mutate(path, body) {
 $("#t-save").addEventListener("click", () => mutate("/api/trip/settings", {
   name: $("#t-name").value || null, destination: $("#t-dest").value || null,
   startDate: $("#t-start").value || null, endDate: $("#t-end").value || null,
+  visibility: $("#t-public").checked ? "public" : "private",
 }));
 
 $("#stay-save").addEventListener("click", () => mutate("/api/trip/settings", {

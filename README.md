@@ -61,6 +61,10 @@ days. Open invitations are listed there and can be withdrawn.
 
 Three roles: **viewers** vote and comment, **editors** also add places, book,
 and lay out the plan, **owners** also change the trip itself and its people.
+An owner can also make a trip **public** on the Details page: anyone with the
+link can then look at it, still only members can change it, and it appears as
+an example on the front page. One example trip comes with the app, a made-up
+weekend in Amsterdam.
 Owners cannot be removed, and the last owner cannot step down. Anyone who is
 not on the trip sees only "This trip is private" and a Sign in button.
 

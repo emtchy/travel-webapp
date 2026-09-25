@@ -7,9 +7,11 @@ import { splitStatements } from "./sql-split.mjs";
 const db = new DatabaseSync(":memory:");
 // A fresh database, plus the London places the way `npm run migrate` would
 // import them — so the tests see the same trip 1 the live database has.
-for (const file of ["../schema.sql", "./migrate-009-london-items.sql"])
-  for (const stmt of splitStatements(readFileSync(new URL(file, import.meta.url), "utf8")))
-    db.exec(stmt + ";");
+for (const file of ["../schema.sql", "./migrate-009-london-items.sql", "./migrate-014-example.sql"])
+  for (const stmt of splitStatements(readFileSync(new URL(file, import.meta.url), "utf8"))) {
+    // schema.sql already has every column; a seed file's ALTER is then a no-op, as in the runner.
+    try { db.exec(stmt + ";"); } catch (e) { if (!/duplicate column/i.test(e.message)) throw e; }
+  }
 // Minimal D1 shim over node:sqlite
 const DB = {
   prepare(sql) {
@@ -978,7 +980,7 @@ let ts = await (await tripCall("/api/trip/settings",
   { voter: "Emily", name: "London 2026", destination: "London" })).json();
 t5("the trip is trip 1", ts.trip.id === 1 && ts.trip.name === "London 2026");
 t5("its days come from the trips table", ts.trip.days.length === 6);
-t5("there is exactly one trip row", db.prepare("SELECT COUNT(*) AS n FROM trips").get().n === 1);
+t5("the trips are London and the example", db.prepare("SELECT COUNT(*) AS n FROM trips").get().n === 2);
 
 let mm = await (await tripCall("/api/trip/member/add", { voter: "Emily", name: "Roswitha" })).json();
 t5("a member can be added", mm.members.some(m => m.name === "Roswitha"));
@@ -992,22 +994,22 @@ const tvOut = await (await tripCall("/api/trip/travel",
   { voter: "Emily", direction: "out", carrier: "BA2865", date: "2026-09-11" })).json();
 t5("the journey out is recorded", tvOut.travel.find(x => x.direction === "out")?.carrier === "BA2865");
 
-t5("every vote belongs to trip 1",
-   db.prepare("SELECT COUNT(*) AS n FROM votes WHERE trip_id <> 1").get().n === 0);
-t5("so does every added sight, comment, booking, plan entry, note, member and journey",
+t5("every vote is on London or the example",
+   db.prepare("SELECT COUNT(*) AS n FROM votes WHERE trip_id NOT IN (1, 2)").get().n === 0);
+t5("so is every added sight, comment, booking, plan entry, note, member and journey",
    ["custom_sights", "comments", "booking_status", "plan_entries", "plan_notes",
     "trip_members", "trip_travel"].every(tb =>
-     db.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE trip_id <> 1`).get().n === 0));
+     db.prepare(`SELECT COUNT(*) AS n FROM ${tb} WHERE trip_id NOT IN (1, 2)`).get().n === 0));
 
 // A second trip may have a member of the same name and its own journeys —
 // the two keys that used to be global are per trip now.
-db.prepare("INSERT INTO trips (id, name, created_at) VALUES (2, 'Rome', 0)").run();
+db.prepare("INSERT INTO trips (id, name, created_at) VALUES (3, 'Rome', 0)").run();
 let separate = true;
 try {
   db.prepare(`INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at)
-              VALUES ('m-rome', 2, 'Roswitha', 'roswitha', 'Emily', 0)`).run();
+              VALUES ('m-rome', 3, 'Roswitha', 'roswitha', 'Emily', 0)`).run();
   db.prepare(`INSERT INTO trip_travel (trip_id, direction, set_by, updated_at)
-              VALUES (2, 'out', 'Emily', 0)`).run();
+              VALUES (3, 'out', 'Emily', 0)`).run();
 } catch { separate = false; }
 t5("a second trip can have the same member name and its own journey", separate);
 
@@ -1074,8 +1076,8 @@ t5("and trip 1 does not see trip 2's rows",
      (await call("/api/t/1/nothing")).status === 404);
 
   // trip 2 was created by the step 1 checks above, with no places of its own
-  const two = await (await call("/api/t/2/sights")).json();
-  t5("a second trip answers as itself", two.trip.id === 2 && two.trip.name === "Rome");
+  const two = await (await call("/api/t/3/sights")).json();
+  t5("a second trip answers as itself", two.trip.id === 3 && two.trip.name === "Rome");
   t5("with none of trip 1's places", two.sights.length === 0 && two.custom.length === 0);
   t5("or votes, comments, bookings, plan, notes",
      Object.keys(two.votes).length === 0 && Object.keys(two.comments).length === 0 &&
@@ -1083,22 +1085,22 @@ t5("and trip 1 does not see trip 2's rows",
   t5("but its own member and journey", two.members.some(m => m.id === "m-rome") &&
      two.travel.some(x => x.direction === "out"));
 
-  const p2 = (b) => call("/api/t/2/" + b.path, { method: "POST", body: JSON.stringify(b.body) });
+  const p2 = (b) => call("/api/t/3/" + b.path, { method: "POST", body: JSON.stringify(b.body) });
   t5("a trip-1 place cannot be voted on from trip 2",
      (await p2({ path: "vote", body: { sightId: "tower-of-london", voter: "Emily", wanted: true } })).status === 400);
 
   const named = await (await p2({ path: "trip/settings",
     body: { voter: "Emily", name: "Roma", destination: "Rome", startDate: "2027-04-01", endDate: "2027-04-04" } })).json();
-  t5("trip 2's settings change trip 2", named.trip.id === 2 && named.trip.name === "Roma" && named.trip.days.length === 4);
+  t5("trip 3's settings change trip 3", named.trip.id === 3 && named.trip.name === "Roma" && named.trip.days.length === 4);
   t5("and not trip 1", (await (await call("/api/sights")).json()).trip.name === "London 2026");
 
   const addedTwo = await (await p2({ path: "sights/add", body: { voter: "Emily", name: "Colosseum", costs: true } })).json();
   const col = addedTwo.custom.find(c => c.name === "Colosseum");
   t5("a place added on trip 2 belongs to trip 2", !!col &&
-     db.prepare("SELECT trip_id FROM items WHERE id = ?").get(col.id).trip_id === 2);
+     db.prepare("SELECT trip_id FROM items WHERE id = ?").get(col.id).trip_id === 3);
   t5("trip 1 does not see it", !(await (await call("/api/sights")).json()).custom.some(c => c.id === col.id));
   t5("the vote that came with it is on trip 2 too",
-     db.prepare("SELECT trip_id FROM votes WHERE sight_id = ?").get(col.id).trip_id === 2);
+     db.prepare("SELECT trip_id FROM votes WHERE sight_id = ?").get(col.id).trip_id === 3);
   const planTwo = await (await p2({ path: "plan/set", body: { voter: "Emily", sightId: col.id, day: "2027-04-02" } })).json();
   t5("a day of trip 2 is a valid plan day there", planTwo.plan.some(e => e.id === col.id));
   t5("a day of trip 1 is not", (await p2({ path: "plan/set",
@@ -1113,7 +1115,7 @@ t5("and trip 1 does not see trip 2's rows",
   const served = async (p) => (await call(p)).text();
   t5("/t/1/ serves the Sights page", await served("/t/1/") === "static /index.html");
   t5("/t/1/plan serves the Plan page", await served("/t/1/plan") === "static /plan.html");
-  t5("/t/2/bookings serves Bookings for trip 2", await served("/t/2/bookings") === "static /bookings.html");
+  t5("/t/3/bookings serves Bookings for trip 3", await served("/t/3/bookings") === "static /bookings.html");
   t5("/t/1/details/ tolerates a trailing slash", await served("/t/1/details/") === "static /details.html");
 
   const r = (p) => call(p, { redirect: "manual" });
@@ -1367,10 +1369,38 @@ t5("and trip 1 does not see trip 2's rows",
   const london = mine.trips.find(tr => tr.id === 1);
   t5("a signed-in account gets its trips", Array.isArray(mine.trips) && london?.name === "London 2026");
   t5("with its name and role on each", london.memberName === "Emily" && london.role === "owner" && london.days === 6);
-  t5("and not trips it is not on", !mine.trips.some(tr => tr.id === 2) || db.prepare("SELECT 1 FROM trip_members WHERE trip_id = 2 AND name_key = 'emily'").get());
+  t5("and not trips it is not on", !mine.trips.some(tr => tr.id === 3) || db.prepare("SELECT 1 FROM trip_members WHERE trip_id = 3 AND name_key = 'emily'").get());
   const nobody = asUser("alone@example.org");
   const empty = await (await raw("/api/trips", { headers: nobody })).json();
   t5("an account on no trip gets an empty list, not an error", empty.trips.length === 0 && Array.isArray(empty.examples));
+}
+
+// --- Phase 3, step 11: public trips, and the example
+{
+  t5("the example trip is public", db.prepare("SELECT visibility FROM trips WHERE id = 2").get().visibility === "public");
+  t5("and London is not", db.prepare("SELECT visibility FROM trips WHERE id = 1").get().visibility === "private");
+  const ex = await (await raw("/api/t/2/sights")).json();
+  t5("anyone can read the example", ex.trip?.id === 2 && ex.custom.length === 6 && ex.plan.length === 4 && ex.bookings.length === 1);
+  t5("the example's places all have coordinates and a route",
+     ex.custom.every(c => typeof c.lat === "number" && c.lat > 52.3 && c.lat < 52.4 && c.lon > 4.8 && c.lon < 5.0));
+  t5("but London still refuses a stranger", (await raw("/api/t/1/sights")).status === 401);
+  t5("/me on the example says it is public", (await (await raw("/api/t/2/me")).json()).trip.visibility === "public");
+  t5("a stranger still cannot vote on it",
+     (await raw("/api/t/2/vote", { method: "POST", body: JSON.stringify({ sightId: "ams-vondelpark", wanted: true }) })).status === 401);
+  const stranger = asUser("looker@example.org");
+  t5("nor a signed-in non-member",
+     (await raw("/api/t/2/vote", { method: "POST", headers: stranger, body: JSON.stringify({ sightId: "ams-vondelpark", wanted: true }) })).status === 403);
+  t5("the front page lists it as an example, signed out",
+     (await (await raw("/api/examples")).json()).examples.some(e => e.id === 2 && e.days === 2));
+  t5("and signed in", (await (await call("/api/trips")).json()).examples.some(e => e.id === 2));
+
+  const vis = (v, voter = "Emily") => call("/api/trip/settings", { method: "POST", body: JSON.stringify({ visibility: v, voter }) });
+  t5("an owner can make a trip public", (await (await vis("public")).json()).trip.visibility === "public");
+  t5("and a stranger can then read it", (await raw("/api/t/1/state")).status === 200);
+  t5("and back to private", (await (await vis("private")).json()).trip.visibility === "private" && (await raw("/api/t/1/state")).status === 401);
+  t5("nonsense is refused", (await vis("secret")).status === 400);
+  t5("an owner's other settings leave visibility alone",
+     (await (await call("/api/trip/settings", { method: "POST", body: JSON.stringify({ name: "London 2026", voter: "Emily" }) })).json()).trip.visibility === "private");
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);

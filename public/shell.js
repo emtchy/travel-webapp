@@ -123,6 +123,8 @@ const NAV = {
         privateSignIn: "Sign in with the address you were invited with to see it.",
         privateNotMember: (e) => `You're signed in as ${e}, but that address isn't on this trip. Ask whoever runs it for an invitation, or sign in with a different address.`,
         roleOwner: "owner", roleEditor: "editor", roleViewer: "viewer",
+        example: "An example trip — look around. To plan your own, sign in.",
+        exampleIn: "An example trip. You can look, but only its members can change it.",
         sDisplay: "Display name", sDisplayHint: "What a trip calls you when you join without a name of your own there.",
         sLang: "Language", sMaps: "Open in Maps means", sAuto: "Automatic",
         sMapsHint: "Automatic picks Apple Maps on Apple devices and Google Maps elsewhere.",
@@ -142,6 +144,8 @@ const NAV = {
         privateSignIn: "Melde dich mit der Adresse an, mit der du eingeladen wurdest.",
         privateNotMember: (e) => `Du bist als ${e} angemeldet, aber diese Adresse ist nicht auf der Reise. Bitte wen, der sie verwaltet, um eine Einladung – oder melde dich mit einer anderen Adresse an.`,
         roleOwner: "Verwaltung", roleEditor: "Bearbeiten", roleViewer: "Ansehen",
+        example: "Eine Beispielreise – schau dich um. Für deine eigene: anmelden.",
+        exampleIn: "Eine Beispielreise. Anschauen ja, ändern können nur die, die dabei sind.",
         sDisplay: "Anzeigename", sDisplayHint: "So heißt du auf einer Reise, wenn du dort ohne eigenen Namen dazukommst.",
         sLang: "Sprache", sMaps: "„In Maps öffnen“ bedeutet", sAuto: "Automatisch",
         sMapsHint: "Automatisch wählt Apple Maps auf Apple-Geräten und sonst Google Maps.",
@@ -215,6 +219,7 @@ $("#langs")?.addEventListener("click", (e) => {
 
 let user = null;
 let member = null;      // this account's name and role on this trip, or null
+let tripPublic = false; // a public trip can be looked at by anyone
 const userListeners = new Set();
 export const getUser = () => user;
 export function onUser(cb) { userListeners.add(cb); cb(user); }
@@ -295,7 +300,8 @@ function paintPrivate() {
   const L = NAV[lang];
   let box = $("#private");
   const main = document.querySelector("main");
-  if (HOME || member || !main) { if (box) box.hidden = true; main?.removeAttribute("hidden"); document.body.dataset.locked = ""; return; }
+  paintExample();
+  if (HOME || member || tripPublic || !main) { if (box) box.hidden = true; main?.removeAttribute("hidden"); document.body.dataset.locked = ""; return; }
   document.body.dataset.locked = "1";
   main.hidden = true;
   if (!box) { box = document.createElement("section"); box.id = "private"; box.className = "page"; main.after(box); }
@@ -307,6 +313,22 @@ function paintPrivate() {
       <button type="button" class="btn btn-primary" id="private-cta">${esc(user ? L.signOut : L.signIn)}</button>
     </div></div>`;
 }
+/** On a public trip you are not on: a thin banner under the bar, and a way in. */
+function paintExample() {
+  const L = NAV[lang];
+  let bar = $("#example-bar");
+  if (!tripPublic || member || HOME) { if (bar) bar.hidden = true; return; }
+  if (!bar) {
+    bar = document.createElement("div"); bar.id = "example-bar"; bar.className = "banner banner-info";
+    bar.style.cssText = "border-radius:0;text-align:center;font-size:13.5px;padding:9px 16px";
+    document.querySelector(".nav")?.after(bar);
+  }
+  bar.hidden = false;
+  bar.innerHTML = user ? esc(L.exampleIn)
+    : `${esc(L.example)} <button type="button" class="btn btn-sm btn-primary" id="example-cta" style="margin-left:8px">${esc(L.signIn)}</button>`;
+}
+document.addEventListener("click", (e) => { if (e.target.closest("#example-cta")) openAuth(); });
+
 document.addEventListener("click", async (e) => {
   if (!e.target.closest("#private-cta")) return;
   if (user) { try { await api("/api/auth/logout", { method: "POST" }); } catch {} user = null; member = null; paintAccount(); paintPrivate(); announce(); }
@@ -382,6 +404,7 @@ async function loadUser() {
   try {
     const d = await api(HOME ? "/api/auth/me" : "/api/me");
     user = d.user ?? null; member = d.member ?? null;
+    tripPublic = d.trip?.visibility === "public";
     if (d.trip?.name) setTrip(d.trip);
   } catch { user = null; member = null; }
   applyUserPrefs();

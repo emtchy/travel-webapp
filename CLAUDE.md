@@ -60,7 +60,9 @@ the signed-in account is on that trip (`actor(request, env, trip, need)` in
 `worker.js`); `voter` in a body is ignored. Not signed in → 401; not on the
 trip → 403; role too low → 403. Roles: `viewer` reads, votes, comments;
 `editor` also places, bookings, plan, addresses; `owner` also the trip, its
-people, invites. Reads are members-only.
+people, invites. Reads are members-only, except on a public trip
+(`trips.visibility`), which anyone may read through `reader()` but nobody
+outside it may change.
 
 | Method | Path | Does |
 | --- | --- | --- |
@@ -75,6 +77,7 @@ people, invites. Reads are members-only.
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
 | GET | `/api/trips` | signed in: `{ user, trips, examples }` — the trips you are on, with your role |
+| GET | `/api/examples` | the public trips, for the front page; open to anyone |
 | GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone |
 | POST | `/api/t/<trip>/invite` | owner: `{ email, role?, memberId? \| name?, lang? }` → mails an invite link |
 | GET | `/api/t/<trip>/invites` | owner: the open invites (also on `/api/sights` for owners) |

@@ -152,12 +152,16 @@ is, show it, and offer the way in.
       redirect from `/` to trip 1 is gone; the other old paths still redirect.
       The shell has a trip-less home mode: no tabs, no private notice, no
       path scoping. `GET /api/trips`. "New trip" comes with step 12.
-- [ ] **Step 11 — example trips.** `trips.visibility` = `private | public`.
-      A public trip can be read by anyone, signed in or not, at its usual
-      addresses; only members can change it. The front page lists public
-      trips as examples. One is seeded: a short, believable trip built from a
-      template (a weekend, four or five places, a booking, a two-day plan) —
-      not the London trip, which stays private and real. Migration 014.
+- [x] **Step 11 — example trips.** *(2026-09-25)* `trips.visibility` =
+      `private | public` (migration 014). A public trip can be read by anyone
+      at its usual addresses — `reader()` in the Worker — with a thin banner
+      and a Sign in; only members can change it, through the unchanged
+      `actor()`. The owner switches it on the Details page. The front page
+      lists public trips as examples, signed in or out. One is seeded: "A
+      weekend in Amsterdam", six places with coordinates checked against
+      OpenStreetMap, three placeholder people, votes, a comment or two, one
+      booking, a two-day plan and two entries of their own. Trip 2; ids
+      prefixed `ams-`. London stays private.
 - [ ] **Step 12 — new trip.** From the front page: name, destination, first
       and last day. The creator's account becomes the trip's owner as their
       display name. Optionally start from a template: the London 55 when the
@@ -381,6 +385,13 @@ a page that explains the app and lets them in — not on someone's private
 trip. Example trips do the explaining better than prose, so public
 (read-only) trips come right after the page itself, and creating a trip
 comes after there is a place to create it from.
+
+**2026-09-25 — Public means readable, never writable.**
+A public trip needs no new permission model: reads go through `reader()`,
+which is `actor()` with one fallback for a public trip, and every write still
+goes through `actor()`. So the example can be looked at by the whole world and
+changed by nobody who is not on it. The example is seeded as data, not
+special-cased in code: it is a trip like any other that happens to be public.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS trips (
   notes         TEXT,
   set_by        TEXT,
   updated_at    INTEGER,
-  created_at    INTEGER NOT NULL DEFAULT 0
+  created_at    INTEGER NOT NULL DEFAULT 0,
+  visibility    TEXT    NOT NULL DEFAULT 'private'  -- 'public' = anyone may read
 );
 
 -- One row per (sight, voter). Toggling a vote off deletes the row.
@@ -285,8 +286,9 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-011-claim.sql', 0),
   ('migrate-012-roles.sql', 0),
   ('migrate-013-settings.sql', 0);
--- 009, the London places, is deliberately not recorded: `npm run migrate` on
--- a fresh database imports them, so trip 1 is the London trip there too.
+-- 009 (the London places) and 014 (the example trip) are deliberately not
+-- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
+-- the London trip there too and the front page has its example.
 
 -- The first trip. Seeded here as well as by the migrations, so a database
 -- built fresh from this file and one brought forward end up identical.
