@@ -44,7 +44,7 @@ simple = { limit = 60, period = 60 }
 MAIL_FROM = "Trip <onboarding@resend.dev>"
 # Shown on /privacy as the address to write to. Empty = the page says to ask
 # whoever invited you.
-CONTACT_EMAIL = ""
+CONTACT_EMAIL = "emily@gombocz.com"
 
 # Secrets, set once with `npx wrangler secret put <NAME>`, never in this file:
 #   RESEND_API_KEY   sign-in emails go through Resend. Unset locally, which

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
-<title>Trips</title>
+<title>Home</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
 <link rel="stylesheet" href="/app.css">
 <style>
@@ -292,7 +292,7 @@ let FEATURED = null;
 function paint() {
   const L = t();
   const user = getUser();
-  document.title = L.mine;
+  document.title = "Home";
   $("#h-title").textContent = L.title;
   $("#h-lede").textContent = L.lede;
   $("#h-cta").innerHTML = user ? "" :

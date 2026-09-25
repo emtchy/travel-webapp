@@ -266,6 +266,10 @@ comes next is whatever the next real trip asks for.
 
 ### Polish
 
+- [x] **The front page is called Home.** *(2026-09-25, Emily.)* The brand on
+      it, the "‹ Home" link in every trip's bar, the tab title and the
+      back-links on the privacy and private-trip pages all say Home.
+
 - [x] **Badges under the facts, not among them.** *(2026-09-25, Emily.)* On
       the trip cards the "no dates yet", "cancelled" and role tags sat inside
       the date line and the facts line, which made both hard to read. They

@@ -109,7 +109,7 @@ export const ICONS = {
 
 const NAV = {
   en: { details: "Details", sights: "Sights", bookings: "Bookings", plan: "Plan",
-        name: "Your name", lang: "Language", home: "Trips", front: "Back to the front page",
+        name: "Your name", lang: "Language", home: "Home", front: "Back to Home",
         signIn: "Sign in", signOut: "Sign out", account: "Account",
         signInTitle: "Sign in", signInLede: "Enter your email and we'll send you a link. No password to remember.",
         email: "Email", sendLink: "Send me a link", sending: "Sending…",
@@ -138,7 +138,7 @@ const NAV = {
         pwSave: "Set password", pwChange: "Change password", pwRemove: "Remove password", pwSaved: "Password set", pwRemoved: "Password removed",
         pwRemoveConfirm: "Remove your password? You'll sign in by email link only." },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
-        name: "Dein Name", lang: "Sprache", home: "Reisen", front: "Zur Startseite",
+        name: "Dein Name", lang: "Sprache", home: "Home", front: "Zurück zu Home",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
         signInTitle: "Anmelden", signInLede: "E-Mail-Adresse eingeben, wir schicken dir einen Link. Kein Passwort nötig.",
         email: "E-Mail", sendLink: "Link schicken", sending: "Wird gesendet…",
@@ -191,7 +191,7 @@ if (mount) {
   <nav class="nav">
     <div class="nav-inner">
       ${HOME ? "" : `<a class="home" href="/" id="home-link" title="${esc(NAV[lang].home)}"><span class="chev">${ICONS.chevron}</span>${ICONS.home}<span>${esc(NAV[lang].home)}</span></a>`}
-      <a class="brand" href="${HOME ? "/" : pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">${HOME ? "Trips" : "Trip"}</span></a>
+      <a class="brand" href="${HOME ? "/" : pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">${HOME ? NAV[lang].home : "Trip"}</span></a>
       ${HOME ? "" : `<div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>`}
       <div class="nav-tools">
         <div class="seg" role="group" aria-label="${esc(NAV[lang].lang)}" id="langs">
@@ -217,6 +217,7 @@ function paintNav() {
   const L = NAV[lang];
   const home = $("#home-link");
   if (home) { home.querySelector("span:last-child").textContent = L.home; home.title = L.home; }
+  if (HOME) { const b = $("#brand-name"); if (b) b.textContent = L.home; }
   paintAccount();
   if (!$("#auth-sheet")?.hidden) paintAuthSheet();
   for (const a of document.querySelectorAll("[data-nav]"))
