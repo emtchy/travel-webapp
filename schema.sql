@@ -186,10 +186,13 @@ CREATE TABLE IF NOT EXISTS trip_members (
   note       TEXT,
   added_by   TEXT    NOT NULL,
   created_at INTEGER NOT NULL,
+  user_id    TEXT,                  -- the account that claimed this name
   UNIQUE (trip_id, name_key)
 );
 
 CREATE INDEX IF NOT EXISTS idx_members_trip ON trip_members (trip_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_members_user
+  ON trip_members (trip_id, user_id) WHERE user_id IS NOT NULL;
 
 -- Getting there and back. Two rows at most per trip: the direction is the key.
 CREATE TABLE IF NOT EXISTS trip_travel (
@@ -257,7 +260,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-006-trip.sql', 0),
   ('migrate-007-trips.sql', 0),
   ('migrate-008-items.sql', 0),
-  ('migrate-010-accounts.sql', 0);
+  ('migrate-010-accounts.sql', 0),
+  ('migrate-011-claim.sql', 0);
 -- 009, the London places, is deliberately not recorded: `npm run migrate` on
 -- a fresh database imports them, so trip 1 is the London trip there too.
 

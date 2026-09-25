@@ -108,10 +108,14 @@ the live database, each with a migration and a test.
       returned in the response, which is how development and the tests walk
       the flow. `src/auth.js`; a Sign in button and sheet in the shell. Nothing
       about a trip changes yet.
-- [ ] **Step 6 — claim your name.** On first sign-in, pick which existing
-      member you are; that member row gets your `user_id`, and votes, comments
-      and bookings stay attached through `name_key`. The four London names are
-      claimed once and the typed-name field disappears.
+- [x] **Step 6 — claim your name.** *(2026-09-25)* On first sign-in a sheet
+      asks "Who are you on this trip?" with the unclaimed names, or a box for a
+      new one; the member row gets the account's `user_id` (migration 011), and
+      votes, comments and bookings stay attached through `name_key`. Every
+      write is made as the claimed member — `actor()` in the Worker takes the
+      identity from the session and ignores the body's `voter`. Not signed in
+      is 401, signed in but unclaimed is 403. **The typed name field is gone.**
+      Reading is still open to anyone with the link; step 7 closes that.
 - [ ] **Step 7 — invites and roles.** `members (trip_id, user_id, role)` with
       `owner | editor | viewer`. The owner invites by email; the invite is a
       link that signs the person in and adds them. The API checks membership on
@@ -120,6 +124,12 @@ the live database, each with a migration and a test.
       **which maps app "Open in Maps" means** (Apple or Google). The setting
       replaces the per-device guess in `shell.js`, which stays as the default
       for anyone who has not chosen.
+- [ ] **Step 9 — a password, optionally.** Asked for on 2026-09-25. An
+      account may set a password on the settings page; the sign-in sheet then
+      offers "email me a link" *and* "password". The link stays the way in
+      for anyone without one, and is the reset path. Stored with a slow hash
+      (PBKDF2 through Web Crypto — no dependency), never the password itself.
+      Adds one column to `users`; `sessions` and everything else unchanged.
 
 ### Phase 3 — your own trip
 
@@ -283,6 +293,29 @@ answers the same way whether or not mail went out, and stops sending after
 five an hour per address, so the endpoint confirms nothing about who has an
 account. `next` is kept only if it is a path on this site.
 
+**2026-09-25 — A password, as an option next to the link.**
+Emily asked why there is no password. The link stays the default because the
+mailbox already is the proof and there is nothing to leak; but a password is
+faster on a device you use every day, and does not depend on mail arriving.
+So: optional, set from settings, never required, the link remains the reset
+path. Step 9.
+
+**2026-09-25 — The server decides who you are.**
+Until now every write carried `voter`, a name the page typed in, and the
+server believed it. With accounts, `actor()` resolves the session cookie to
+the member that account has claimed on the trip, and that is the name every
+write is recorded under. The pages still send `voter` out of habit; it is
+ignored. The test harness turns `voter: "Manuel"` into the cookie of an
+account that has claimed Manuel, so the four hundred existing checks kept
+their meaning without a rewrite.
+
+**2026-09-25 — Claiming is how history carries over.**
+Votes, comments, bookings and plan entries are keyed on the lowercased name.
+Rather than migrate those keys to user ids, an account claims the member row
+and inherits everything under that name — including what was recorded before
+accounts existed. One account per name per trip, and a claimed name cannot be
+taken by anyone else; the Details page shows a tick on claimed names.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -306,7 +339,8 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - **Per-row translations for user content.** `name_de` / `summary_de` exist
   only because the London 55 were authored. User content is one language; i18n
   stays for UI chrome.
-- **Passwords.** Magic link only.
+- ~~**Passwords.** Magic link only.~~ Reconsidered 2026-09-25: an optional
+  password per account, alongside the link — Phase 2 step 9.
 
 ---
 

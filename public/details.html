@@ -157,7 +157,8 @@ const T = {
     fDate: "Date", fDep: "Departs", fArr: "Arrives", fNote: "Note",
     clearLeg: "Clear this one",
     fPerson: "Name", fPersonNote: "Note",
-    peopleHint: "Everyone who has voted is already here. Names match the ones used to vote, so adding someone doesn't split their picks.",
+    peopleHint: "A tick means that person has signed in and claimed the name. Anyone you add here can claim it when they sign in.",
+    claimed: "Signed in and claimed",
     peopleEmpty: "Nobody yet — add the people coming, or let them vote and they'll appear.",
     removePerson: "Remove from the list",
     notesPh: "Currency, emergency number, passport and insurance details, airport transfer — anything worth having in one place.",
@@ -183,7 +184,8 @@ const T = {
     fDate: "Datum", fDep: "Abfahrt", fArr: "Ankunft", fNote: "Notiz",
     clearLeg: "Diesen Eintrag löschen",
     fPerson: "Name", fPersonNote: "Notiz",
-    peopleHint: "Wer abgestimmt hat, steht schon hier. Die Namen entsprechen denen beim Abstimmen, niemand wird also aufgeteilt.",
+    peopleHint: "Ein Haken heißt: die Person hat sich angemeldet und den Namen übernommen. Wer hier steht, kann den Namen beim Anmelden übernehmen.",
+    claimed: "Angemeldet und übernommen",
     peopleEmpty: "Noch niemand – trag die Mitreisenden ein, oder lass sie abstimmen, dann erscheinen sie hier.",
     removePerson: "Von der Liste nehmen",
     notesPh: "Währung, Notrufnummer, Pass und Versicherung, Transfer vom Flughafen – alles, was an einem Ort stehen sollte.",
@@ -263,8 +265,8 @@ function renderPeople() {
     votesBy[k] = (votesBy[k] ?? 0) + 1;
   }
   $("#people-count").textContent = MEMBERS.length || "";
-  $("#people").innerHTML = MEMBERS.length ? MEMBERS.map((m) => `<span class="person">
-      <b>${esc(m.name)}</b>
+  $("#people").innerHTML = MEMBERS.length ? MEMBERS.map((m) => `<span class="person${m.claimed ? " claimed" : ""}">
+      <b>${esc(m.name)}</b>${m.claimed ? `<span class="tag tag-sm tag-green" title="${esc(L.claimed)}">${ICONS.check}</span>` : ""}
       ${votesBy[m.key] || m.note ? `<em>${votesBy[m.key] ? `${votesBy[m.key]} ♥` : ""}${m.note ? `${votesBy[m.key] ? " · " : ""}${esc(m.note)}` : ""}</em>` : ""}
       <button type="button" data-rmperson="${esc(m.id)}" title="${esc(L.removePerson)}"
               aria-label="${esc(L.removePerson)}">${ICONS.close}</button>

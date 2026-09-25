@@ -1,6 +1,6 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
-import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout } from "./auth.js";
+import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, currentUser } from "./auth.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -20,6 +20,70 @@ function tripOf(url) {
   if (!m) return { trip: 1, path: url.pathname };
   const trip = /^[1-9]\d{0,8}$/.test(m[1]) ? Number(m[1]) : null;
   return { trip, path: `/api${m[2] ?? ""}` };
+}
+
+/**
+ * GET /api/t/<trip>/me — the account and, if it has one, its name on this trip.
+ * The shell asks this on every page load; the answer decides whether the bar
+ * shows a name, "Sign in", or "Who are you?".
+ */
+async function handleWhoAmI(request, env, trip) {
+  const { user, member } = await whoIs(request, env, trip);
+  // The members come along so the claim sheet can offer the free names
+  // without waiting for the page's own snapshot.
+  return json({ user, member, members: await getMembers(env, trip) });
+}
+
+/**
+ * POST /api/t/<trip>/claim  { memberId } | { name }
+ *
+ * Pick an existing, unclaimed name on the trip, or give a new one. Either way
+ * the member row gets this account's id and the account acts as that name
+ * from now on. A name someone else has claimed cannot be taken; an account
+ * that already has a name here cannot take a second.
+ */
+async function handleClaim(request, env, trip) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+
+  const { user, member } = await whoIs(request, env, trip);
+  if (!user) return bad("Sign in first.", 401);
+  if (member) return bad(`You are already ${member.name} on this trip.`, 409);
+
+  const now = Date.now();
+  const { memberId } = body ?? {};
+
+  if (typeof memberId === "string") {
+    const row = await env.DB.prepare(
+      "SELECT id, user_id FROM trip_members WHERE id = ?1 AND trip_id = ?2"
+    ).bind(memberId, trip).first();
+    if (!row) return bad("That name isn't on this trip.", 404);
+    if (row.user_id) return bad("Someone has already claimed that name.", 409);
+    await env.DB.prepare("UPDATE trip_members SET user_id = ?1 WHERE id = ?2")
+      .bind(user.id, row.id).run();
+    return json({ ok: true, ...(await whoIs(request, env, trip)), ...(await snapshot(env, trip)) });
+  }
+
+  const name = cleanName(body?.name);
+  if (!name) return bad("A name between 1 and 32 characters.");
+  const existing = await env.DB.prepare(
+    "SELECT id, user_id FROM trip_members WHERE trip_id = ?1 AND name_key = ?2"
+  ).bind(trip, voterKey(name)).first();
+  if (existing?.user_id) return bad("Someone has already claimed that name.", 409);
+  if (existing) {
+    await env.DB.prepare("UPDATE trip_members SET user_id = ?1 WHERE id = ?2")
+      .bind(user.id, existing.id).run();
+  } else {
+    const { count } = await env.DB.prepare(
+      "SELECT COUNT(*) AS count FROM trip_members WHERE trip_id = ?1"
+    ).bind(trip).first();
+    if (count >= 50) return bad("Fifty people is not a trip, it's a coach tour.");
+    await env.DB.prepare(
+      `INSERT INTO trip_members (id, name, name_key, note, added_by, created_at, trip_id, user_id)
+       VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?6, ?7)`
+    ).bind(`m-${crypto.randomUUID()}`, name, voterKey(name), name, now, trip, user.id).run();
+  }
+  return json({ ok: true, ...(await whoIs(request, env, trip)), ...(await snapshot(env, trip)) });
 }
 
 /* ------------------------------------------------------------------ pages */
@@ -182,6 +246,35 @@ function cleanUrl(raw) {
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return undefined;
   return parsed.href;
+}
+
+/* ------------------------------------------------------------ identity */
+
+/**
+ * Who is making this request, on this trip.
+ *
+ * `user` is the signed-in account, or null. `member` is the name that account
+ * has claimed on this trip — the row every vote, comment and booking is keyed
+ * on — or null if it has not claimed one yet. Every write is made as the
+ * member; the body's `voter`, which the pages still send out of habit, is
+ * ignored. That is the whole point of accounts: the server decides who you
+ * are, not the request.
+ */
+async function whoIs(request, env, trip) {
+  const user = await currentUser(request, env);
+  if (!user) return { user: null, member: null };
+  const m = await env.DB.prepare(
+    "SELECT id, name, name_key FROM trip_members WHERE trip_id = ?1 AND user_id = ?2"
+  ).bind(trip, user.id).first();
+  return { user, member: m ? { id: m.id, name: m.name, key: m.name_key } : null };
+}
+
+/** The member acting, or the response to send back instead. */
+async function actor(request, env, trip) {
+  const { user, member } = await whoIs(request, env, trip);
+  if (!user) return { error: bad("Sign in first.", 401) };
+  if (!member) return { error: bad("Say who you are on this trip first.", 403) };
+  return { user, member, name: member.name };
 }
 
 /** Optional shared passphrase. Unset => open access. */
@@ -354,9 +447,8 @@ async function handleVote(request, env, trip) {
   }
 
   const { sightId, wanted } = body ?? {};
-  const name = cleanName(body?.voter);
-
-  if (!name) return bad("Enter a name between 1 and 32 characters.");
+  const { name: name, error: authError } = await actor(request, env, trip);
+  if (authError) return authError;
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
     return bad("Unknown sight.");
   if (typeof wanted !== "boolean") return bad("`wanted` must be true or false.");
@@ -389,8 +481,9 @@ async function handleAddSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const addedBy = cleanName(body?.voter);
-  if (!addedBy) return bad("Enter your name first.");
+  const { name: addedBy, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const name = cleanText(body?.name, 80);
   if (name === undefined) return bad("That name is too long or has odd characters.");
@@ -457,8 +550,9 @@ async function handleEditSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
-  if (!name) return bad("Enter your name first.");
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { id, costs, bookingRequired } = body ?? {};
   if (typeof id !== "string" || !id.startsWith("custom-"))
@@ -505,7 +599,7 @@ async function handleGeocode(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+  if (!(await currentUser(request, env))) return bad("Sign in first.", 401);
 
   const q = cleanText(body?.q, 500);
   if (q === undefined) return bad("That's too long to look up.");
@@ -570,8 +664,9 @@ function makeAddressHandler({ table, prefix, missing, wrongKind }) {
       return bad("Body must be JSON.");
     }
 
-    const name = cleanName(body?.voter);
-    if (!name) return bad("Enter your name first.");
+    const { name: name, error: authError } = await actor(request, env, trip);
+
+    if (authError) return authError;
 
     const { id, lat, lon } = body ?? {};
     if (typeof id !== "string" || !id.startsWith(prefix)) return bad(wrongKind);
@@ -623,9 +718,10 @@ async function handleDeleteSight(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
   const { id } = body ?? {};
-  if (!name) return bad("Enter your name first.");
   if (typeof id !== "string" || !id.startsWith("custom-"))
     return bad("Only added sights can be removed.");
 
@@ -655,8 +751,9 @@ async function handleAddComment(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const author = cleanName(body?.voter);
-  if (!author) return bad("Enter your name first.");
+  const { name: author, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { sightId } = body ?? {};
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
@@ -691,9 +788,10 @@ async function handleRemoveComment(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
   const { id } = body ?? {};
-  if (!name) return bad("Enter your name first.");
   if (typeof id !== "string" || !id.startsWith("c-")) return bad("Unknown comment.");
 
   const row = await env.DB.prepare("SELECT author_key FROM comments WHERE id = ?1")
@@ -741,8 +839,9 @@ async function handleBookingStatus(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
-  if (!name) return bad("Enter your name first.");
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { sightId, status } = body ?? {};
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
@@ -799,11 +898,12 @@ async function handleBookingStatus(request, env, trip) {
 /** Who is coming. The key is the lowercased name, same identity as a vote. */
 async function getMembers(env, trip) {
   const { results } = await env.DB.prepare(
-    `SELECT id, name, name_key, note, added_by FROM trip_members
+    `SELECT id, name, name_key, note, added_by, user_id FROM trip_members
       WHERE trip_id = ?1 ORDER BY name COLLATE NOCASE`
   ).bind(trip).all();
   return (results ?? []).map((r) => ({
     id: r.id, name: r.name, key: r.name_key, note: r.note, addedBy: r.added_by,
+    claimed: !!r.user_id,
   }));
 }
 
@@ -831,8 +931,9 @@ async function handleTripSettings(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const who = cleanName(body?.voter);
-  if (!who) return bad("Enter your name first.");
+  const { name: who, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const name = cleanText(body?.name, 80);
   if (name === undefined) return bad("Keep the trip name under 80 characters.");
@@ -895,8 +996,9 @@ async function handleMemberAdd(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const who = cleanName(body?.voter);
-  if (!who) return bad("Enter your name first.");
+  const { name: who, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const name = cleanName(body?.name);
   if (!name) return bad("A name between 1 and 32 characters.");
@@ -929,7 +1031,8 @@ async function handleMemberRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+  const { error: authError } = await actor(request, env, trip);
+  if (authError) return authError;
 
   const { id } = body ?? {};
   if (typeof id !== "string" || !id.startsWith("m-")) return bad("Unknown member.");
@@ -949,8 +1052,9 @@ async function handleTravel(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const who = cleanName(body?.voter);
-  if (!who) return bad("Enter your name first.");
+  const { name: who, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { direction } = body ?? {};
   if (direction !== "out" && direction !== "back")
@@ -1017,8 +1121,9 @@ async function handleTripBase(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const who = cleanName(body?.voter);
-  if (!who) return bad("Enter your name first.");
+  const { name: who, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { lat, lon } = body ?? {};
   const name = cleanText(body?.name, 200);
@@ -1074,8 +1179,9 @@ async function handleNoteAdd(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
-  if (!name) return bad("Enter your name first.");
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const label = cleanText(body?.label, 80);
   // undefined means malformed or too long, null means empty. Check the
@@ -1138,8 +1244,9 @@ async function handleNoteUpdate(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const who = cleanName(body?.voter);
-  if (!who) return bad("Enter your name first.");
+  const { name: who, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { id } = body ?? {};
   if (typeof id !== "string" || !id.startsWith("note-"))
@@ -1196,7 +1303,8 @@ async function handleNoteRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+  const { error: authError } = await actor(request, env, trip);
+  if (authError) return authError;
 
   const { id } = body ?? {};
   if (typeof id !== "string" || !id.startsWith("note-"))
@@ -1221,8 +1329,9 @@ async function handlePlanSet(request, env, trip) {
     return bad("Body must be JSON.");
   }
 
-  const name = cleanName(body?.voter);
-  if (!name) return bad("Enter your name first.");
+  const { name: name, error: authError } = await actor(request, env, trip);
+
+  if (authError) return authError;
 
   const { sightId, day } = body ?? {};
   if (typeof sightId !== "string" || !(await isKnownSight(env, sightId, trip)))
@@ -1265,7 +1374,8 @@ async function handlePlanRemove(request, env, trip) {
   } catch {
     return bad("Body must be JSON.");
   }
-  if (!cleanName(body?.voter)) return bad("Enter your name first.");
+  const { error: authError } = await actor(request, env, trip);
+  if (authError) return authError;
 
   const { sightId } = body ?? {};
   if (typeof sightId !== "string") return bad("Unknown sight.");
@@ -1297,6 +1407,12 @@ export default {
 
     const { trip, path: pathname } = tripOf(url);
     if (!(await tripExists(env, trip))) return bad("No such trip.", 404);
+
+    if (pathname === "/api/me" && method === "GET")
+      return handleWhoAmI(request, env, trip);
+
+    if (pathname === "/api/claim" && method === "POST")
+      return handleClaim(request, env, trip);
 
     if (pathname === "/api/sights" && method === "GET")
       return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)) });

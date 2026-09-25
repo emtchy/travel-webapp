@@ -23,7 +23,7 @@ public/bookings.html  Bookings  /t/<trip>/bookings  still to book / booked / not
 public/plan.html      Plan      /t/<trip>/plan      a column per day, maps routes, a detail sheet
                       (the Worker maps these to the files; /, /plan… redirect to trip 1)
 public/app.css        the design system: tokens, colour concept, components
-public/shell.js       the shared shell: nav + tab bar, name, language, toast, api(), maps preference
+public/shell.js       the shared shell: nav + tab bar, sign-in and claim sheets, language, toast, api(), maps preference
 public/route.js       Google / Apple Maps links for a day or a stop
 src/worker.js         the API, page routing, and the static-asset fallthrough
 src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
@@ -51,8 +51,12 @@ npx wrangler secret put RESEND_API_KEY   # once; sign-in mail. Unset locally = l
 
 All JSON, under `/api/t/<trip>/…`; the pages call the bare paths below and
 `api()` in `shell.js` puts the trip in. The bare `/api/…` paths still answer
-for trip 1. Writes take `voter` (the typed name) until accounts exist. An
-unknown trip is a 404.
+for trip 1. An unknown trip is a 404.
+
+**Identity comes from the session cookie.** Every write is made as the member
+the signed-in account has claimed on that trip (`actor()` in `worker.js`);
+`voter` in a body is ignored. Not signed in → 401; signed in, no name claimed
+→ 403. Reads are open until step 7.
 
 | Method | Path | Does |
 | --- | --- | --- |
@@ -66,6 +70,8 @@ unknown trip is a 404.
 | POST | `/api/plan/note/add` · `/update` · `/remove` · `/address` | your own entries |
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places |
+| GET | `/api/t/<trip>/me` | `{ user, member, members }` — who you are on this trip |
+| POST | `/api/t/<trip>/claim` | `{ memberId }` or `{ name }` → claim a name on the trip |
 | POST | `/api/auth/request` | `{ email, next?, lang? }` → a sign-in link by mail (not trip-scoped) |
 | GET | `/auth?token=…` | the link: starts a session, sets the cookie, redirects to `next` |
 | GET | `/api/auth/me` | `{ user }` or `{ user: null }` |

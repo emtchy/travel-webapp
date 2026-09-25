@@ -116,7 +116,13 @@ const NAV = {
         sentTitle: "Check your email", sentLede: (e) => `We sent a sign-in link to ${e}. It works once and lasts 15 minutes.`,
         devLink: "Local development: no email is sent. Open the link:",
         signedInAs: (n) => `Signed in as ${n}`, close: "Close",
-        sendFail: "That didn't go through. Try again in a moment." },
+        sendFail: "That didn't go through. Try again in a moment.",
+        whoTitle: "Who are you on this trip?",
+        whoLede: "Pick your name and everything already recorded under it — votes, comments, bookings — is yours.",
+        whoNone: "Nobody is on the list yet — add your name.",
+        whoOther: "Someone else", whoName: "Your name", claim: "That's me",
+        onTrip: (n) => `On this trip as ${n}`, notOnTrip: "Not on this trip yet",
+        chooseName: "Choose your name" },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
         name: "Dein Name", lang: "Sprache",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
@@ -125,7 +131,13 @@ const NAV = {
         sentTitle: "Schau in dein Postfach", sentLede: (e) => `Wir haben einen Anmeldelink an ${e} geschickt. Er funktioniert einmal und gilt 15 Minuten.`,
         devLink: "Lokale Entwicklung: es wird keine E-Mail verschickt. Link öffnen:",
         signedInAs: (n) => `Angemeldet als ${n}`, close: "Schließen",
-        sendFail: "Das hat nicht geklappt. Versuch es gleich noch einmal." },
+        sendFail: "Das hat nicht geklappt. Versuch es gleich noch einmal.",
+        whoTitle: "Wer bist du auf dieser Reise?",
+        whoLede: "Wähl deinen Namen – alles, was schon darunter steht (Stimmen, Kommentare, Buchungen), gehört dann dir.",
+        whoNone: "Noch niemand auf der Liste – trag deinen Namen ein.",
+        whoOther: "Jemand anderes", whoName: "Dein Name", claim: "Das bin ich",
+        onTrip: (n) => `Auf dieser Reise als ${n}`, notOnTrip: "Noch nicht auf dieser Reise",
+        chooseName: "Namen wählen" },
 };
 
 const PAGES = [
@@ -151,13 +163,6 @@ if (mount) {
       <a class="brand" href="${pageHref("/")}"><span class="mark">${ICONS.mark}</span><span class="name" id="brand-name">Trip</span></a>
       <div class="nav-tabs" id="nav-tabs">${linksHTML(false)}</div>
       <div class="nav-tools">
-        <label class="who" id="who">
-          <span class="visually-hidden" id="name-label">${esc(NAV[lang].name)}</span>
-          ${ICONS.person}
-          <input id="name" type="text" maxlength="32" placeholder="${esc(NAV[lang].name)}"
-                 autocomplete="off" spellcheck="false" list="members" aria-labelledby="name-label">
-          <datalist id="members"></datalist>
-        </label>
         <div class="seg" role="group" aria-label="${esc(NAV[lang].lang)}" id="langs">
           <button type="button" data-lang="en" aria-pressed="${lang === "en"}">EN</button>
           <button type="button" data-lang="de" aria-pressed="${lang === "de"}">DE</button>
@@ -183,10 +188,6 @@ function paintNav() {
   if (!$("#auth-sheet")?.hidden) paintAuthSheet();
   for (const a of document.querySelectorAll("[data-nav]"))
     a.querySelector("span").textContent = L[a.dataset.nav];
-  const name = $("#name");
-  if (name) name.placeholder = L.name;
-  const lbl = $("#name-label");
-  if (lbl) lbl.textContent = L.name;
   for (const b of document.querySelectorAll("#langs button"))
     b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
 }
@@ -203,9 +204,13 @@ $("#langs")?.addEventListener("click", (e) => {
    is real, so the rest can build on it. */
 
 let user = null;
+let member = null;      // this account's name on this trip, or null
+let MEMBERS = [];       // everyone on the trip, with whether they are claimed
+let askedOnce = false;  // the claim sheet opens itself once per page, not on every render
 const userListeners = new Set();
 export const getUser = () => user;
 export function onUser(cb) { userListeners.add(cb); cb(user); }
+const announce = () => { for (const cb of userListeners) cb(user); for (const cb of nameListeners) cb(nameOf()); };
 
 let authView = "form";   // form | sent
 let sentTo = "";
@@ -216,10 +221,11 @@ function paintAccount() {
   const btn = $("#account");
   if (!btn) return;
   btn.hidden = false;
-  btn.innerHTML = `${ICONS.person}<span>${esc(user ? user.displayName : L.signIn)}</span>`;
-  btn.title = user ? L.signedInAs(user.email) : L.signIn;
-  btn.classList.toggle("btn-quiet", !!user);
-  btn.classList.toggle("btn-tint", !user);
+  const label = member ? member.name : user ? L.chooseName : L.signIn;
+  btn.innerHTML = `${ICONS.person}<span>${esc(label)}</span>`;
+  btn.title = member ? L.onTrip(member.name) : user ? L.notOnTrip : L.signIn;
+  btn.classList.toggle("btn-quiet", !!member);
+  btn.classList.toggle("btn-tint", !member);
 }
 
 function paintAuthSheet() {
@@ -227,10 +233,30 @@ function paintAuthSheet() {
   const title = $("#auth-title"), body = $("#auth-body");
   if (!title || !body) return;
   $("#auth-close").setAttribute("aria-label", L.close);
+  if (user && !member) {
+    title.textContent = L.whoTitle;
+    const free = MEMBERS.filter((m) => !m.claimed);
+    body.innerHTML = `<p class="sval muted">${esc(L.whoLede)}</p>
+      ${free.length
+        ? `<div class="stack" style="gap:8px">${free.map((m) =>
+            `<button type="button" class="btn btn-outline btn-lg" data-claim="${esc(m.id)}" style="justify-content:space-between">
+               <span>${esc(m.name)}</span><span class="tag tag-tint">${esc(L.claim)}</span></button>`).join("")}</div>`
+        : `<p class="note">${esc(L.whoNone)}</p>`}
+      <form id="claim-form" class="stack" style="padding-top:12px;border-top:1px solid var(--hair)">
+        <label class="field"><span>${esc(free.length ? L.whoOther : L.whoName)}</span>
+          <input class="input" id="claim-name" type="text" maxlength="32" autocomplete="name" placeholder="${esc(L.whoName)}"></label>
+        <p class="err" id="claim-err" hidden></p>
+        <div class="spread"><button class="btn btn-primary" type="submit">${esc(L.claim)}</button>
+          <button class="btn btn-ghost right" type="button" id="auth-logout">${esc(L.signOut)}</button></div>
+      </form>`;
+    return;
+  }
   if (user) {
     title.textContent = L.account;
     body.innerHTML = `<div class="srow"><span class="slabel">${esc(L.email)}</span>
         <span class="sval">${esc(user.email)}</span></div>
+      <div class="srow"><span class="slabel">${esc(L.whoName)}</span>
+        <span class="sval">${esc(member.name)}</span></div>
       <div class="sfoot"><button class="btn btn-quiet" type="button" id="auth-logout">${esc(L.signOut)}</button></div>`;
     return;
   }
@@ -251,7 +277,7 @@ function paintAuthSheet() {
 }
 
 function openAuth() { authView = "form"; devLink = null; paintAuthSheet(); $("#auth-sheet").hidden = false;
-  setTimeout(() => $("#auth-email")?.focus(), 0); }
+  setTimeout(() => ($("#auth-email") ?? $("#claim-name"))?.focus(), 0); }
 function closeAuth() { $("#auth-sheet").hidden = true; }
 
 $("#account")?.addEventListener("click", openAuth);
@@ -279,16 +305,42 @@ document.addEventListener("submit", async (e) => {
 });
 
 document.addEventListener("click", async (e) => {
+  const pick = e.target.closest("[data-claim]");
+  if (pick) return void claim({ memberId: pick.dataset.claim });
   if (!e.target.closest("#auth-logout")) return;
   try { await api("/api/auth/logout", { method: "POST" }); } catch {}
-  user = null; closeAuth(); paintAccount();
-  for (const cb of userListeners) cb(user);
+  user = null; member = null; closeAuth(); paintAccount(); announce();
 });
 
+document.addEventListener("submit", (e) => {
+  const form = e.target.closest("#claim-form");
+  if (!form) return;
+  e.preventDefault();
+  claim({ name: $("#claim-name").value.trim() });
+});
+
+async function claim(body) {
+  const err = $("#claim-err");
+  try {
+    const d = await api("/api/claim", { method: "POST", body: JSON.stringify(body) });
+    member = d.member ?? null;
+    MEMBERS = d.members ?? MEMBERS;
+    closeAuth(); paintAccount(); announce();
+  } catch (ex) {
+    if (err) { err.textContent = ex.message; err.hidden = false; }
+  }
+}
+
 async function loadUser() {
-  try { user = (await api("/api/auth/me")).user ?? null; } catch { user = null; }
+  try {
+    const d = await api("/api/me");
+    user = d.user ?? null; member = d.member ?? null;
+    if (Array.isArray(d.members)) MEMBERS = d.members;
+  } catch { user = null; member = null; }
   paintAccount();
-  for (const cb of userListeners) cb(user);
+  announce();
+  // Signed in but not yet a name on this trip: ask now, once.
+  if (user && !member && !askedOnce) { askedOnce = true; openAuth(); }
 }
 
 document.documentElement.lang = lang;
@@ -296,36 +348,26 @@ paintAccount();
 
 /* ------------------------------------------------------------- identity */
 
-const nameInput = $("#name");
+/* Identity used to be a name typed into the bar. It is the claimed member
+   now, and these keep the same names so the pages did not have to change:
+   nameOf() is who you are on this trip, askName() opens the sheet that sorts
+   that out, onName() fires when it changes. */
+
 const nameListeners = new Set();
-export const nameOf = () => (nameInput?.value ?? "").trim();
+export const nameOf = () => member?.name ?? "";
 export const nameKey = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 
-function paintWho() { $("#who")?.classList.toggle("set", !!nameOf()); }
-
-if (nameInput) {
-  nameInput.value = store("name") || "";
-  paintWho();
-  nameInput.addEventListener("input", () => {
-    store("name", nameOf());
-    paintWho();
-    for (const cb of nameListeners) cb(nameOf());
-  });
-}
-
-/** Run `cb(name)` whenever the name in the bar changes. */
+/** Run `cb(name)` whenever who you are changes. */
 export function onName(cb) { nameListeners.add(cb); }
 
-/** Put the caret in the name field — the polite way to say "who are you?". */
-export function askName() { nameInput?.focus(); }
+/** Sign in, or claim a name — whichever is the missing step. */
+export function askName() { openAuth(); }
 
-/** Everyone on the trip, offered as suggestions on the name box. Still free
- *  text, so nobody is locked out for not being on the list yet. */
+/** The trip's members, from any snapshot; the claim sheet offers the free ones. */
 export function fillMembers(list) {
-  const box = document.getElementById("members");
-  if (!box) return;
-  box.innerHTML = (list ?? []).map((m) =>
-    `<option value="${String(m.name).replace(/"/g, "&quot;")}"></option>`).join("");
+  if (!Array.isArray(list)) return;
+  MEMBERS = list;
+  if (user && !member && !$("#auth-sheet")?.hidden) paintAuthSheet();
 }
 
 /* ------------------------------------------------------------- status */

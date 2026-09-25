@@ -1,7 +1,7 @@
 # London sights — vote and book
 
-Two pages. On **Sights**, everyone types their name, taps **Want this** on what
-they'd like to do, and sees everyone else's picks live. On **Bookings**, the
+Four pages. On **Sights**, everyone signs in, taps **Like** on what they'd
+like to do, and sees everyone else's picks live. On **Bookings**, the
 same list filtered down to what costs money or has to be booked ahead, so you
 can see what actually needs arranging.
 
@@ -51,8 +51,16 @@ made with; to reach everyone on a trip, verify a domain in Resend and set
 Locally, with no key set, nothing is sent: the response carries the link and
 the sheet shows it, so the flow can be walked without a mailbox.
 
-Signing in does not yet change what you can do — that is the next step, where
-an account claims its name on a trip.
+**Your name on the trip.** The first time you sign in on a trip, a sheet asks
+who you are: pick your name from the people on it, or type a new one. From
+then on everything you do is recorded under that name, and everything already
+under it — votes, comments, bookings — is yours. One account per name; a
+name someone has claimed cannot be taken by anyone else. The Details page
+shows a tick next to names that have been claimed.
+
+There is no typed name any more. Voting, adding, booking and planning all
+need you to be signed in and to have claimed a name; reading is still open to
+anyone with the link until invites arrive.
 
 ## Addresses
 

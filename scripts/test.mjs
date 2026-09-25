@@ -30,7 +30,50 @@ const DB = {
 // The assets mock answers with the path it was asked for, so a test can see
 // which file the Worker chose to serve.
 const env = { DB, ASSETS: { fetch: (req) => new Response("static " + new URL(req.url).pathname, { status: 200 }) } };
-const call = (path, init) => worker.fetch(new Request("https://x" + path, init), env);
+
+/*
+ * Identity comes from the session cookie, never from the body. The tests were
+ * written with `voter: "Manuel"` in every body, and that is still the clearest
+ * way to say who is acting — so the harness reads it and attaches the cookie
+ * of an account that has claimed that name on the trip the path names,
+ * creating account, session and member the first time. A blank or invalid
+ * voter attaches nothing, and the Worker answers 401 as it would for anyone
+ * not signed in. The Worker itself never sees `voter`.
+ */
+import { createHash } from "node:crypto";
+const sha = (t) => createHash("sha256").update(t).digest("hex");
+const keyOf = (n) => n.trim().toLowerCase().replace(/\s+/g, " ");
+const validName = (n) => typeof n === "string" && n.trim().length >= 1 && n.trim().length <= 32;
+function cookieFor(name, trip) {
+  if (!validName(name)) return null;
+  const key = keyOf(name), uid = `u-${key}`, sid = `sid-${key}`;
+  db.prepare("INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, 0)")
+    .run(uid, `${key.replace(/\s+/g, ".")}@test`, name.trim());
+  db.prepare("INSERT OR IGNORE INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, 0, ?)")
+    .run(sha(sid), uid, Date.now() + 864e5);
+  const m = db.prepare("SELECT id, user_id FROM trip_members WHERE trip_id = ? AND name_key = ?").get(trip, key);
+  if (!m) db.prepare(`INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at, user_id)
+                      VALUES (?, ?, ?, ?, 'test', 0, ?)`).run(`m-${trip}-${key}`, trip, name.trim(), key, uid);
+  else if (!m.user_id) db.prepare("UPDATE trip_members SET user_id = ? WHERE id = ?").run(uid, m.id);
+  return `trip_session=${sid}`;
+}
+const call = (path, init = {}) => {
+  const headers = { ...(init.headers || {}) };
+  if (typeof init.body === "string" && !headers.cookie) {
+    let voter; try { voter = JSON.parse(init.body)?.voter; } catch {}
+    const trip = Number(path.match(/^\/api\/t\/(\d+)\//)?.[1] ?? 1);
+    const cookie = cookieFor(voter, trip);
+    if (cookie) headers.cookie = cookie;
+  }
+  return worker.fetch(new Request("https://x" + path, { ...init, headers }), env);
+};
+/** As a signed-in account with no name on the trip yet. */
+const asUser = (email) => {
+  const uid = `u-${email}`, sid = `sid-${email}`;
+  db.prepare("INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, 0)").run(uid, email, email.split("@")[0]);
+  db.prepare("INSERT OR IGNORE INTO sessions (id_hash, user_id, created_at, expires_at) VALUES (?, ?, 0, ?)").run(sha(sid), uid, Date.now() + 864e5);
+  return { cookie: `trip_session=${sid}` };
+};
 const post = (body) => call("/api/vote", { method: "POST", body: JSON.stringify(body) });
 
 let ok = 0, fail = 0;
@@ -58,10 +101,10 @@ let res = await post({ sightId: "not-a-real-place", voter: "Manuel", wanted: tru
 t("unknown sight rejected (400)", res.status === 400);
 
 res = await post({ sightId: "sky-garden", voter: "   ", wanted: true });
-t("blank name rejected (400)", res.status === 400);
+t("blank name rejected: not signed in (401)", res.status === 401);
 
 res = await post({ sightId: "sky-garden", voter: "x".repeat(40), wanted: true });
-t("over-long name rejected (400)", res.status === 400);
+t("over-long name rejected: not signed in (401)", res.status === 401);
 
 res = await post({ sightId: "sky-garden", voter: "Manuel", wanted: "yes" });
 t("non-boolean `wanted` rejected (400)", res.status === 400);
@@ -118,7 +161,7 @@ res2 = await add({ voter: "Anna", name: "" });
 t2("empty name rejected", res2.status === 400);
 
 res2 = await add({ voter: "", name: "No voter" });
-t2("missing voter rejected", res2.status === 400);
+t2("missing voter rejected: not signed in", res2.status === 401);
 
 res2 = await add({ voter: "Anna", name: "Long", summary: "x".repeat(400) });
 t2("over-long description rejected", res2.status === 400);
@@ -162,7 +205,7 @@ cr = await cadd({ voter: "Manuel", sightId: "tower-of-london", body: "x".repeat(
 t2("over-long comment rejected", cr.status === 400);
 
 cr = await cadd({ voter: "", sightId: "tower-of-london", body: "anon" });
-t2("comment without a name rejected", cr.status === 400);
+t2("comment without a name rejected: not signed in", cr.status === 401);
 
 cr = await cadd({ voter: "Manuel", sightId: "nope", body: "hi" });
 t2("comment on unknown sight rejected", cr.status === 400);
@@ -264,7 +307,7 @@ t3("the flags are required",
 t3("a non-boolean flag is rejected",
    (await edit({ voter: "E", id: plain.id, costs: "yes", bookingRequired: false })).status === 400);
 t3("editing needs a name",
-   (await edit({ voter: "", id: plain.id, costs: true, bookingRequired: false })).status === 400);
+   (await edit({ voter: "", id: plain.id, costs: true, bookingRequired: false })).status === 401);
 t3("editing something gone gives a 404",
    (await edit({ voter: "E", id: "custom-nope", costs: true, bookingRequired: false })).status === 404);
 t3("an over-long price is rejected",
@@ -303,7 +346,7 @@ t3("an over-long address is refused",
    (await setAddr({ voter: "E", id: noAddr.id, address: "x".repeat(201),
                     lat: 51.5, lon: -0.1 })).status === 400);
 t3("setting an address needs a name",
-   (await setAddr({ voter: "", id: noAddr.id, lat: 51.5, lon: -0.1 })).status === 400);
+   (await setAddr({ voter: "", id: noAddr.id, lat: 51.5, lon: -0.1 })).status === 401);
 t3("a sight that is gone gives a 404",
    (await setAddr({ voter: "E", id: "custom-nope", lat: 51.5, lon: -0.1 })).status === 404);
 
@@ -315,7 +358,7 @@ t3("a pasted Google link resolves without a search",
 const coords = await (await geo({ voter: "M", q: "51.5074, -0.1278" })).json();
 t3("raw coordinates are accepted", coords.results[0].lon === -0.1278);
 t3("an empty search is refused", (await geo({ voter: "M", q: "" })).status === 400);
-t3("looking up needs a name", (await geo({ voter: "", q: "Harrods" })).status === 400);
+t3("looking up needs a name", (await geo({ voter: "", q: "Harrods" })).status === 401);
 
 // --- what it is all for: the sight now appears in a day's route
 {
@@ -415,7 +458,7 @@ t3("an invalid status is rejected",
 t3("a missing status is rejected",
    (await setStatus({ voter: "Emily", sightId: paid.id })).status === 400);
 
-t3("hiding needs a name", (await hide({ voter: "", sightId: "london-eye" })).status === 400);
+t3("hiding needs a name", (await hide({ voter: "", sightId: "london-eye" })).status === 401);
 t3("hiding an unknown sight is rejected",
    (await hide({ voter: "Emily", sightId: "nope" })).status === 400);
 t3("showing an unknown sight is rejected",
@@ -499,7 +542,7 @@ t4("an end with no start is rejected",
 t4("a malformed time is rejected",
    (await planSet({ voter: "E", sightId: "tate-modern", day: "2026-09-12", start: "25:99" })).status === 400);
 t4("planning needs a name",
-   (await planSet({ voter: "", sightId: "tate-modern", day: "2026-09-12" })).status === 400);
+   (await planSet({ voter: "", sightId: "tate-modern", day: "2026-09-12" })).status === 401);
 t4("planning an unknown sight is rejected",
    (await planSet({ voter: "E", sightId: "nope", day: "2026-09-12" })).status === 400);
 
@@ -554,7 +597,7 @@ t4("an end before the start is rejected",
 t4("an end with no start is rejected",
    (await noteAdd({ voter: "E", label: "x", day: "2026-09-11", end: "10:00" })).status === 400);
 t4("adding one needs a name",
-   (await noteAdd({ voter: "", label: "x", day: "2026-09-11" })).status === 400);
+   (await noteAdd({ voter: "", label: "x", day: "2026-09-11" })).status === 401);
 
 // A place can come in with the entry, so the add form doesn't have to be
 // followed by a second trip through the address form.
@@ -591,7 +634,7 @@ t4("anyone can remove one, not just whoever added it",
 t4("a sight id is not accepted as an entry id",
    (await noteRm({ voter: "E", id: "tower-of-london" })).status === 400);
 t4("removing one needs a name",
-   (await noteRm({ voter: "", id: "note-whatever" })).status === 400);
+   (await noteRm({ voter: "", id: "note-whatever" })).status === 401);
 
 // --- your own entries can be routed to as well
 const noteAddr = (b) => call("/api/plan/note/address", { method: "POST", body: JSON.stringify(b) });
@@ -640,7 +683,7 @@ t4("an impossible longitude is refused",
 t4("an entry that is gone gives a 404",
    (await noteAddr({ voter: "E", id: "note-nope", lat: 51.5, lon: -0.1 })).status === 404);
 t4("setting one needs a name",
-   (await noteAddr({ voter: "", id: dinner.id, lat: 51.5, lon: -0.1 })).status === 400);
+   (await noteAddr({ voter: "", id: dinner.id, lat: 51.5, lon: -0.1 })).status === 401);
 t4("an over-long address is refused",
    (await noteAddr({ voter: "E", id: dinner.id, address: "x".repeat(201),
                      lat: 51.5, lon: -0.1 })).status === 400);
@@ -679,7 +722,7 @@ const noteUpdate = (b) => call("/api/plan/note/update", { method: "POST", body: 
   t4("a sight id is refused", (await noteUpdate({ voter: "M", id: "tower-of-london" })).status === 400);
   t4("an entry that is gone gives a 404",
      (await noteUpdate({ voter: "M", id: "note-nope", start: "10:00" })).status === 404);
-  t4("editing needs a name", (await noteUpdate({ voter: "", id: made.id })).status === 400);
+  t4("editing needs a name", (await noteUpdate({ voter: "", id: made.id })).status === 401);
   t4("an over-long name is refused",
      (await noteUpdate({ voter: "M", id: made.id, label: "x".repeat(81) })).status === 400);
 
@@ -709,7 +752,7 @@ t4("and set again", tb.trip.base.lat === 51.5116);
 t4("half a coordinate is refused", (await setBase({ voter: "E", lat: 51.5 })).status === 400);
 t4("an impossible latitude is refused",
    (await setBase({ voter: "E", lat: 999, lon: 0 })).status === 400);
-t4("changing it needs a name", (await setBase({ voter: "", lat: 51.5, lon: -0.1 })).status === 400);
+t4("changing it needs a name", (await setBase({ voter: "", lat: 51.5, lon: -0.1 })).status === 401);
 t4("an over-long address is refused",
    (await setBase({ voter: "E", name: "x".repeat(201), lat: 51.5, lon: -0.1 })).status === 400);
 
@@ -758,7 +801,7 @@ t4("an absurdly long trip is refused",
    (await tripSet({ voter: "E", startDate: "2027-01-01", endDate: "2028-01-01" })).status === 400);
 t4("a malformed date is refused",
    (await tripSet({ voter: "E", startDate: "02/04/2027" })).status === 400);
-t4("changing the trip needs a name", (await tripSet({ voter: "", name: "x" })).status === 400);
+t4("changing the trip needs a name", (await tripSet({ voter: "", name: "x" })).status === 401);
 
 // only what is sent changes
 tr = await (await tripSet({ voter: "Emily", checkIn: "15:00", checkOut: "11:00" })).json();
@@ -787,7 +830,7 @@ t4("but their votes stay, because a list is not a ledger",
    (mb.votes["tower-of-london"] ?? []).some(v => v.toLowerCase() === "lena"));
 
 t4("a nameless member is refused", (await memberAdd({ voter: "E", name: "" })).status === 400);
-t4("adding needs a name of your own", (await memberAdd({ voter: "", name: "X" })).status === 400);
+t4("adding needs a name of your own", (await memberAdd({ voter: "", name: "X" })).status === 401);
 t4("removing something that is not a member is refused",
    (await memberRm({ voter: "E", id: "custom-x" })).status === 400);
 
@@ -820,7 +863,7 @@ t4("a malformed time is refused",
 t4("a malformed date is refused",
    (await travelSet({ voter: "E", direction: "out", date: "11/09/2026" })).status === 400);
 t4("recording travel needs a name",
-   (await travelSet({ voter: "", direction: "out" })).status === 400);
+   (await travelSet({ voter: "", direction: "out" })).status === 401);
 
 {
   const st = await (await call("/api/state")).json();
@@ -1106,9 +1149,10 @@ t5("and trip 1 does not see trip 2's rows",
 
   const me = await (await call("/api/auth/me", { headers: { cookie } })).json();
   t5("with the cookie, /me knows who you are", me.user?.email === "emily@example.com" && me.user.displayName === "Emily");
+  const emilyId = db.prepare("SELECT id FROM users WHERE email = 'emily@example.com'").get().id;
   t5("the session id is stored hashed",
      db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE id_hash = ?").get(cookie.split("=")[1]).n === 0 &&
-     db.prepare("SELECT COUNT(*) AS n FROM sessions").get().n === 1);
+     db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").get(emilyId).n === 1);
 
   t5("the link works once", (await call(link.pathname + link.search, { redirect: "manual" })).status === 400);
   t5("a made-up token is refused", (await call("/auth?token=" + "x".repeat(40), { redirect: "manual" })).status === 400);
@@ -1119,8 +1163,8 @@ t5("and trip 1 does not see trip 2's rows",
   const l2 = new URL(d.devLink);
   const r2 = await call(l2.pathname + l2.search, { redirect: "manual" });
   t5("signing in again finds the same user",
-     db.prepare("SELECT COUNT(*) AS n FROM users").get().n === 1 &&
-     db.prepare("SELECT COUNT(*) AS n FROM sessions").get().n === 2);
+     db.prepare("SELECT COUNT(*) AS n FROM users WHERE email = 'emily@example.com'").get().n === 1 &&
+     db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = ?").get(emilyId).n === 2);
   t5("with no next, the link lands on the front page", r2.headers.get("location").endsWith("/"));
 
   // an expired link
@@ -1168,6 +1212,71 @@ t5("and trip 1 does not see trip 2's rows",
      (await worker.fetch(new Request("https://x/api/auth/request", { method: "POST",
         body: JSON.stringify({ email: "roswitha@example.com" }) }), keyed)).status === 502);
   globalThis.fetch = realFetch;
+}
+
+// --- Phase 2, step 6: an account claims its name on the trip
+{
+  const anon = await (await call("/api/t/1/me")).json();
+  t5("anonymous: no user, no member", anon.user === null && anon.member === null);
+
+  const fresh = asUser("newcomer@test");
+  const me0 = await (await call("/api/t/1/me", { headers: fresh })).json();
+  t5("signed in but unclaimed: a user, no member", me0.user?.email === "newcomer@test" && me0.member === null);
+
+  t5("an unclaimed account cannot vote",
+     (await call("/api/vote", { method: "POST", headers: fresh,
+        body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 403);
+  t5("nor change the trip",
+     (await call("/api/trip/settings", { method: "POST", headers: fresh, body: JSON.stringify({ name: "x" }) })).status === 403);
+  t5("and a stranger cannot vote at all",
+     (await call("/api/vote", { method: "POST", body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).status === 401);
+  t5("the body's voter is ignored, not trusted",
+     (await call("/api/vote", { method: "POST", headers: fresh,
+        body: JSON.stringify({ sightId: "tower-of-london", wanted: true, voter: "Manuel" }) })).status === 403);
+
+  const snap = await (await call("/api/sights")).json();
+  const roswitha = snap.members.find(m => m.key === "roswitha"), emily = snap.members.find(m => m.key === "emily");
+  t5("members say whether they are claimed", roswitha?.claimed === false && emily?.claimed === true);
+
+  // a name nobody has claimed yet
+  db.prepare("INSERT INTO trip_members (id, trip_id, name, name_key, added_by, created_at) VALUES ('m-free', 1, 'Supervote', 'supervote', 'setup', 0)").run();
+  const claimed = await (await call("/api/claim", { method: "POST", headers: fresh, body: JSON.stringify({ memberId: "m-free" }) })).json();
+  t5("claiming a free name works", claimed.ok === true && claimed.member?.name === "Supervote");
+  t5("and the snapshot now shows it claimed", claimed.members.find(m => m.id === "m-free").claimed === true);
+  const me1 = await (await call("/api/t/1/me", { headers: fresh })).json();
+  t5("/me knows the name now", me1.member?.name === "Supervote");
+
+  const voted = await (await call("/api/vote", { method: "POST", headers: fresh,
+    body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) })).json();
+  t5("votes are cast under the claimed name", voted.votes["tower-of-london"].includes("Supervote"));
+
+  t5("one name per account on a trip",
+     (await call("/api/claim", { method: "POST", headers: fresh, body: JSON.stringify({ name: "Another" }) })).status === 409);
+  const second = asUser("second@test");
+  t5("a claimed name cannot be taken by someone else",
+     (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ memberId: "m-free" }) })).status === 409);
+  t5("nor by typing it", (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ name: "supervote" }) })).status === 409);
+  t5("a made-up member id is a 404", (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ memberId: "m-nope" }) })).status === 404);
+  t5("claiming needs a sign-in", (await call("/api/claim", { method: "POST", body: JSON.stringify({ name: "Ghost" }) })).status === 401);
+
+  const named = await (await call("/api/claim", { method: "POST", headers: second, body: JSON.stringify({ name: " Nadja " }) })).json();
+  t5("a new name creates the member and claims it", named.member?.name === "Nadja" &&
+     db.prepare("SELECT user_id FROM trip_members WHERE trip_id = 1 AND name_key = 'nadja'").get().user_id === "u-second@test");
+  t5("the same account is a different member on another trip",
+     (await (await call("/api/t/2/me", { headers: second })).json()).member === null);
+  const onTwo = await (await call("/api/t/2/claim", { method: "POST", headers: second, body: JSON.stringify({ name: "Nadja" }) })).json();
+  t5("and can claim there separately", onTwo.member?.name === "Nadja" &&
+     db.prepare("SELECT COUNT(*) AS n FROM trip_members WHERE user_id = 'u-second@test'").get().n === 2);
+
+  // an old name with history: claiming it inherits the votes
+  const before = (await (await call("/api/sights")).json()).votes["tower-of-london"];
+  db.prepare("UPDATE trip_members SET user_id = NULL WHERE trip_id = 1 AND name_key = 'anna'").run();
+  const anna = asUser("anna.new@example.org");
+  await call("/api/claim", { method: "POST", headers: anna, body: JSON.stringify({ name: "Anna" }) });
+  const unvoted = await (await call("/api/vote", { method: "POST", headers: anna,
+    body: JSON.stringify({ sightId: "tower-of-london", wanted: false }) })).json();
+  t5("claiming a name with history acts on that history",
+     before.includes("Anna") && !unvoted.votes["tower-of-london"].includes("Anna"));
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
