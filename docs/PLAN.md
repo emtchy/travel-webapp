@@ -277,7 +277,15 @@ happening, on a phone, possibly without signal.
       switch picks the hotel instead. (Both maps apps read a route with no
       start as "from my current location", so the app never has to ask the
       browser for a position.)
-- [ ] **Step 21 — offline.** A snapshot of what matters when signal is gone:
+- [x] **Step 21 — offline.** *(2026-09-25.)* Built as described below:
+      `public/sw.js`, network-first with the last answer kept and stamped;
+      the shell shows "Offline · showing the plan as of …" when it is served
+      a stamped answer and a plain message when a write cannot go out;
+      "Save for offline" on Details fetches the pages, the answers and the
+      photos now and remembers when. Photos are cached on first sight.
+      Checked in a headless browser: plan, bookings and home render offline
+      from the snapshot, a write offline says so, the banner goes when the
+      network is back. A snapshot of what matters when signal is gone:
       the plan (every day, every stop, times, addresses, coordinates), the
       bookings with their references and slots, the hotel with check-in
       details and phone, the journeys there and back, the notes. Two parts:
@@ -586,6 +594,14 @@ Setting one is a convenience for a device you use every day. Removing it is
 always possible, the link always works, and nothing — not an invitation, not
 a trip — ever asks for a password. That keeps the promise the privacy note
 makes and means a forgotten password is never a locked-out account.
+
+**2026-09-25 — Offline is network-first with the last answer kept.**
+No cache versions, no expiry: online, every answer is live and replaces the
+kept one; offline, the kept one is served, stamped with its time so the page
+can say how old it is. That is the same freshness as before for everyone
+online, and a snapshot as recent as the last look for anyone without signal.
+Writes are refused offline rather than queued — a plan edited blind by two
+people and merged later is worse than a plan you cannot edit for an hour.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

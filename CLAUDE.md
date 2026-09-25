@@ -27,6 +27,7 @@ public/plan.html      Plan      /t/<trip>/plan      a column per day, maps route
 public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, sign-in and claim sheets, language, toast, api(), maps preference
 public/route.js       Google / Apple Maps links for a day or a stop
+public/sw.js          the service worker: network-first, last answer kept for offline, photos cached
 src/worker.js         the API, page routing, and the static-asset fallthrough
 src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
 src/invites.js        invites: create, list, revoke, and the /invite link that joins a trip
@@ -119,6 +120,9 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
   locally first. `CREATE TABLE IF NOT EXISTS` cannot add a column.
 - **Place ids are the vote key.** Changing an id resets that row's votes. Places
   are rows in `items` (`source` = builtin | added); nothing reads `sights.js` live.
+- **Offline is a snapshot, never a queue.** The service worker keeps the last
+  GET answers and stamps them; the shell shows the banner from that stamp.
+  Writes offline fail with a message. Don't add a write queue.
 - **Every POST is rate-limited** (`limited()` in `src/limits.js`); a missing
   binding limits nothing. Hourly caps are counts over `created_at`.
 - **Bind D1 parameters by number.** `?1`, `?2` are positional *by number*.

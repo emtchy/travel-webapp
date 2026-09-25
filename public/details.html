@@ -129,6 +129,15 @@
   </div>
 </section>
 
+<section class="card panel" id="offline-panel">
+  <div class="card-head"><span class="ico" data-ico="locate"></span><h2 id="h-offline">Offline</h2></div>
+  <div class="card-body">
+    <p class="hint" id="offline-hint" style="margin-bottom:12px"></p>
+    <div class="spread"><button class="btn btn-quiet" type="button" id="save-offline"></button><span class="hint" id="saved-when"></span></div>
+    <p class="hint" id="offline-maps" style="margin-top:10px"></p>
+  </div>
+</section>
+
 <section class="card panel" id="manage">
   <div class="card-head"><span class="ico" data-ico="trash"></span><h2 id="h-manage">This trip</h2></div>
   <div class="card-body" id="manage-body"></div>
@@ -149,7 +158,7 @@
 
 <script type="module">
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, roleOf, roleLabel, onName } from "/shell.js";
+         setStatus, setTrip, tripKicker, roleOf, roleLabel, onName, saveForOffline } from "/shell.js";
 
 const T = {
   en: {
@@ -173,6 +182,10 @@ const T = {
     delConfirm: (n) => `Delete "${n}" for everyone? This cannot be undone.`,
     delType: (n) => `To confirm, type the trip's name: ${n}`, delNo: "That's not the name. Nothing was deleted.",
     left: "You've left the trip.", deleted: "The trip is gone.",
+    hOffline: "Offline", offlineHint: "Every visit while online keeps the latest plan on this device. Save now to be sure the photos are here too before you lose signal.",
+    saveOffline: "Save for offline", saving: "Saving…", savedAt: (w) => `Saved ${w}`, savedNever: "Not saved on this device yet.",
+    savedResult: (ok, failed) => failed ? `Saved ${ok} things; ${failed} couldn't be fetched.` : `Saved. ${ok} things kept on this device.`,
+    offlineMaps: "Maps: download the area in Google or Apple Maps beforehand; the route buttons still open them.",
     stayNone: "No address set yet.", stayPh: "Address, place name, maps link or coordinates",
     find: "Find", clear: "Remove", cancel: "Cancel", pick: "Pick one:",
     noHits: "Nothing found. Open it in Maps, copy the link, and paste that here.",
@@ -218,6 +231,10 @@ const T = {
     delConfirm: (n) => `„${n}“ für alle löschen? Das lässt sich nicht rückgängig machen.`,
     delType: (n) => `Zur Bestätigung den Namen der Reise eintippen: ${n}`, delNo: "Das ist nicht der Name. Nichts wurde gelöscht.",
     left: "Du hast die Reise verlassen.", deleted: "Die Reise ist weg.",
+    hOffline: "Offline", offlineHint: "Jeder Besuch mit Verbindung behält den aktuellen Plan auf diesem Gerät. Jetzt speichern, damit auch die Fotos da sind, bevor das Netz weg ist.",
+    saveOffline: "Für offline speichern", saving: "Speichert…", savedAt: (w) => `Gespeichert ${w}`, savedNever: "Auf diesem Gerät noch nicht gespeichert.",
+    savedResult: (ok, failed) => failed ? `${ok} Dinge gespeichert; ${failed} ließen sich nicht laden.` : `Gespeichert. ${ok} Dinge auf diesem Gerät.`,
+    offlineMaps: "Karten: die Gegend vorher in Google oder Apple Maps herunterladen; die Routen-Buttons öffnen sie weiterhin.",
     stayNone: "Noch keine Adresse hinterlegt.", stayPh: "Adresse, Ortsname, Maps-Link oder Koordinaten",
     find: "Suchen", clear: "Entfernen", cancel: "Abbrechen", pick: "Auswählen:",
     noHits: "Nichts gefunden. In Maps öffnen, Link kopieren und hier einfügen.",
@@ -371,6 +388,7 @@ function render() {
   const L = t();
   for (const [id, key] of [["headline","headline"],["lede","lede"],["foot","foot"],
     ["h-trip","hTrip"],["h-stay","hStay"],["h-travel","hTravel"],["h-people","hPeople"],["h-notes","hNotes"],["h-manage","hManage"],
+    ["h-offline","hOffline"],["offline-hint","offlineHint"],["save-offline","saveOffline"],["offline-maps","offlineMaps"],
     ["l-name","fName"],["l-dest","fDest"],["l-start","fStart"],["l-end","fLast"],
     ["l-in","fIn"],["l-out","fOut"],["l-ref","fRef"],["l-phone","fPhone"],
     ["l-newname","fPerson"],["l-newnote","fPersonNote"]])
@@ -408,7 +426,32 @@ function render() {
   renderTravel();
   renderPeople();
   renderManage();
+  paintSaved();
 }
+
+const SAVED_KEY = () => `trip-offline-saved-${location.pathname.split("/")[2]}`;
+function paintSaved() {
+  const L = t();
+  let at = null; try { at = Number(localStorage.getItem(SAVED_KEY())) || null; } catch {}
+  $("#saved-when").textContent = at
+    ? L.savedAt(new Date(at).toLocaleString(getLang() === "de" ? "de-DE" : "en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" }))
+    : L.savedNever;
+}
+
+$("#save-offline").addEventListener("click", async () => {
+  const L = t();
+  const btn = $("#save-offline");
+  btn.disabled = true; btn.textContent = L.saving;
+  try {
+    let photos = [];
+    try { photos = Object.values((await api("/api/photos")).photos || {}); } catch {}
+    const r = await saveForOffline(photos);
+    try { localStorage.setItem(SAVED_KEY(), String(r.at)); } catch {}
+    setStatus(L.savedResult(r.ok, r.failed), r.failed ? "err" : "");
+    paintSaved();
+  } catch (err) { setStatus(err.message, "err"); }
+  finally { btn.disabled = false; btn.textContent = L.saveOffline; }
+});
 
 /** Cancel (owner), leave (anyone but the last owner), delete (owner). */
 function renderManage() {

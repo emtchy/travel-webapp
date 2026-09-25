@@ -100,6 +100,15 @@ owner can mark a trip cancelled, which files it under past trips, or delete
 it outright; deleting asks twice, the second time for the trip's name, and
 removes everything under it.
 
+## Without signal
+
+Every visit while online keeps that trip's pages, answers and photos on the
+device. Without signal the pages still open and show the last snapshot, with
+a bar saying when it was made; the route buttons still open the maps app,
+which has its own offline maps if you download the area beforehand. Changes
+need a connection and say so. **Save for offline** on a trip's Details page
+fetches everything now, photos included, and shows when it last did.
+
 ## Your account
 
 The button with your name opens your account: your display name, your

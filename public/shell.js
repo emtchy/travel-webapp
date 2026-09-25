@@ -132,6 +132,8 @@ const NAV = {
         delAcct: "Delete account", delAcctHint: "Ends your sessions and removes your address and settings. Trips you are the only owner of must be handed over or deleted first.",
         delAcctConfirm: "Delete your account? This cannot be undone.", delAcctType: (e) => `To confirm, type your email address: ${e}`,
         delAcctNo: "That's not your address. Nothing was deleted.",
+        offline: (when) => `Offline · showing the plan as of ${when}`, offlineNoSave: "You're offline. Changes need a connection.",
+        offlineWrite: "You're offline — changes need a connection.",
         usePw: "Use a password instead", useLink: "Email me a link instead", pw: "Password", pwSignIn: "Sign in",
         pwSection: "Password", pwNone: "None set. You sign in by email link.", pwSet: "Set. You can sign in with it or with a link.",
         pwNew: "New password", pwCurrent: "Current password", pwHint: "At least 10 characters. The email link always works too, and is how you get back in if you forget it.",
@@ -161,6 +163,8 @@ const NAV = {
         delAcct: "Konto löschen", delAcctHint: "Beendet deine Sitzungen und entfernt Adresse und Einstellungen. Reisen, die du allein verwaltest, musst du zuerst übergeben oder löschen.",
         delAcctConfirm: "Dein Konto löschen? Das lässt sich nicht rückgängig machen.", delAcctType: (e) => `Zur Bestätigung deine E-Mail-Adresse eintippen: ${e}`,
         delAcctNo: "Das ist nicht deine Adresse. Nichts wurde gelöscht.",
+        offline: (when) => `Offline · Stand ${when}`, offlineNoSave: "Du bist offline. Änderungen brauchen eine Verbindung.",
+        offlineWrite: "Du bist offline – Änderungen brauchen eine Verbindung.",
         usePw: "Lieber mit Passwort", useLink: "Lieber per E-Mail-Link", pw: "Passwort", pwSignIn: "Anmelden",
         pwSection: "Passwort", pwNone: "Keins gesetzt. Du meldest dich per E-Mail-Link an.", pwSet: "Gesetzt. Du kannst dich damit oder per Link anmelden.",
         pwNew: "Neues Passwort", pwCurrent: "Aktuelles Passwort", pwHint: "Mindestens 10 Zeichen. Der E-Mail-Link funktioniert immer – auch, falls du es vergisst.",
@@ -215,6 +219,7 @@ if (mount) {
 
 function paintNav() {
   const L = NAV[lang];
+  paintOffline();
   const home = $("#home-link");
   if (home) { home.querySelector("span:last-child").textContent = L.home; home.title = L.home; }
   if (HOME) { const b = $("#brand-name"); if (b) b.textContent = L.home; }
@@ -608,16 +613,76 @@ export async function api(path, options) {
   // Accounts are not part of any trip, so /api/auth/… is left as it is.
   const scoped = !HOME && path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
     ? `/api/t/${TRIP}${path.slice(4)}` : path;
-  const res = await fetch(scoped, {
-    ...options,
-    headers: {
-      "content-type": "application/json",
-      ...(options?.headers || {}),
-    },
-  });
+  let res;
+  try {
+    res = await fetch(scoped, {
+      ...options,
+      headers: {
+        "content-type": "application/json",
+        ...(options?.headers || {}),
+      },
+    });
+  } catch (err) {
+    // No network at all, and nothing saved: a write says so plainly.
+    if (options?.method && options.method !== "GET") throw new Error(NAV[lang].offlineWrite);
+    throw err;
+  }
+  // The service worker stamps an answer it served from its cache; that is
+  // how the page knows it is looking at a snapshot.
+  const at = res.headers.get("x-snapshot-at");
+  if (at && (!options?.method || options.method === "GET")) noteOffline(Number(at)); else if (!at) noteOffline(null);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+/* ------------------------------------------------------------- offline */
+/* The service worker (sw.js) keeps the pages and each trip's last answer.
+   When it serves a stored answer it stamps it, and the bar below says so
+   with the time the snapshot was made. */
+
+let snapshotAt = null;
+function noteOffline(at) {
+  if (at === snapshotAt) return;
+  snapshotAt = at;
+  paintOffline();
+}
+function paintOffline() {
+  const L = NAV[lang];
+  let bar = $("#offline-bar");
+  if (!snapshotAt) { if (bar) bar.hidden = true; return; }
+  if (!bar) {
+    bar = document.createElement("div"); bar.id = "offline-bar"; bar.className = "banner";
+    bar.style.cssText = "border-radius:0;text-align:center;font-size:13.5px;padding:8px 16px;background:var(--amber-soft);color:var(--amber)";
+    document.querySelector(".nav")?.after(bar);
+  }
+  bar.hidden = false;
+  const when = new Date(snapshotAt).toLocaleString(locale(), { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  bar.textContent = L.offline(when);
+}
+window.addEventListener("online", () => noteOffline(null));
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch(() => {});
+}
+
+/**
+ * Save everything this trip needs offline, now: its pages, its answers and
+ * its photos. Resolves with { ok, failed, at } from the worker.
+ */
+export function saveForOffline(extraUrls = []) {
+  return new Promise(async (resolve, reject) => {
+    const sw = (await navigator.serviceWorker?.ready.catch(() => null))?.active;
+    if (!sw) return reject(new Error("This browser can't save pages for offline."));
+    const base = HOME ? [] : [pageHref("/"), pageHref("/plan"), pageHref("/bookings"), pageHref("/details"),
+      `/api/t/${TRIP}/sights`, `/api/t/${TRIP}/state`, `/api/t/${TRIP}/me`, `/api/t/${TRIP}/photos`];
+    const urls = ["/app.css", "/shell.js", "/route.js", "/home.html", "/index.html", "/plan.html", "/bookings.html", "/details.html",
+      "/api/auth/me", ...base, ...extraUrls];
+    const onMsg = (e) => { if (e.data?.type === "saved") { navigator.serviceWorker.removeEventListener("message", onMsg); resolve(e.data); } };
+    navigator.serviceWorker.addEventListener("message", onMsg);
+    sw.postMessage({ type: "save", urls });
+    setTimeout(() => { navigator.serviceWorker.removeEventListener("message", onMsg); reject(new Error("Saving took too long.")); }, 60000);
+  });
 }
 
 /* ------------------------------------------------------------- maps */

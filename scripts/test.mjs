@@ -1688,5 +1688,12 @@ t5("and trip 1 does not see trip 2's rows",
   t5("guesses are rate-limited per address", (await tryLogin()).status === 401 && (await tryLogin()).status === 401 && (await tryLogin()).status === 429);
 }
 
+// --- Phase 5, step 21: offline
+{
+  t5("the service worker is served from the root", (await (await raw("/sw.js")).text()) === "static /sw.js");
+  t5("and the pages it falls back to exist under their file names",
+     (await (await raw("/plan.html")).text()) === "static /plan.html" && (await (await raw("/home.html")).text()) === "static /home.html");
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);
