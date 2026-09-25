@@ -259,6 +259,13 @@ safe to leave running.
 
 Phase 4 is done. What is left on the plan is the optional password (step 9).
 
+### Polish
+
+- [x] **Badges under the facts, not among them.** *(2026-09-25, Emily.)* On
+      the trip cards the "no dates yet", "cancelled" and role tags sat inside
+      the date line and the facts line, which made both hard to read. They
+      are on a row of their own now, below name, when-and-where, and facts.
+
 ---
 
 ## 4. Migration rules

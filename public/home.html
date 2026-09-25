@@ -107,8 +107,8 @@ details.year > .trips{padding:4px 0 8px}
 .trip:hover{text-decoration:none;transform:translateY(-1px);box-shadow:0 0 0 1px var(--hair-2),var(--shadow-2)}
 .trip .name{font-size:17px;font-weight:600;letter-spacing:-.01em}
 .trip .when{font-size:13px;color:var(--text-2)}
-.trip .meta{display:flex;gap:6px;align-items:center;margin-top:6px;font-size:12px;color:var(--text-3)}
-.trip .meta .tag{margin-left:auto}
+.trip .meta{margin-top:2px;font-size:12px;color:var(--text-3)}
+.trip .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
 .signin-card{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:18px 20px}
 .signin-card .ico{width:40px;height:40px;border-radius:50%;background:var(--tint-soft);color:var(--tint);display:grid;place-items:center;flex:none}
 .signin-card .ico svg{width:18px;height:18px}
@@ -318,12 +318,22 @@ function paint() {
   $("#si-ico").innerHTML = ICONS.person; $("#pv-ico").innerHTML = ICONS.check;
 
   const when = (tr) => tr.startDate ? `${esc(dayShort(tr.startDate))} – ${esc(dayShort(tr.endDate))}` : "";
-  const card = (tr, role, opts = {}) => `<a class="trip card${tr.status === "cancelled" ? " cancelled" : ""}" href="/t/${tr.id}/">
+  // Name, then when and where, then the facts, then the badges on a row of
+  // their own — a tag in the middle of a line of text is hard to read.
+  const card = (tr, role, opts = {}) => {
+    const place = tr.destination && tr.destination !== tr.name ? esc(tr.destination) : "";
+    const facts = [tr.days ? esc(L.days(tr.days)) : "", tr.memberName ? esc(L.as(tr.memberName)) : ""].filter(Boolean).join(" · ");
+    const tags = [
+      opts.undated && !tr.startDate ? `<span class="tag tag-sm tag-coral">${esc(L.noDates)}</span>` : "",
+      tr.status === "cancelled" ? `<span class="tag tag-sm tag-neutral">${esc(L.cancelled)}</span>` : "",
+      role ? `<span class="tag tag-sm tag-neutral">${esc(roleLabel(role))}</span>` : "",
+    ].filter(Boolean).join("");
+    return `<a class="trip card${tr.status === "cancelled" ? " cancelled" : ""}" href="/t/${tr.id}/">
       <span class="name">${esc(tr.name || tr.destination || "Trip")}</span>
-      <span class="when">${when(tr) || (opts.undated ? `<span class="tag tag-sm tag-coral">${esc(L.noDates)}</span>` : "")}${tr.destination && tr.destination !== tr.name ? `${when(tr) ? " · " : ""}${esc(tr.destination)}` : ""}</span>
-      <span class="meta">${tr.days ? `<span>${esc(L.days(tr.days))}</span>` : ""}${tr.memberName ? `<span>· ${esc(L.as(tr.memberName))}</span>` : ""}
-        ${tr.status === "cancelled" ? `<span class="tag tag-sm tag-neutral">${esc(L.cancelled)}</span>` : ""}
-        ${role ? `<span class="tag tag-sm tag-neutral">${esc(roleLabel(role))}</span>` : ""}</span></a>`;
+      ${when(tr) || place ? `<span class="when">${[when(tr), place].filter(Boolean).join(" · ")}</span>` : ""}
+      ${facts ? `<span class="meta">${facts}</span>` : ""}
+      ${tags ? `<span class="tags">${tags}</span>` : ""}</a>`;
+  };
 
   $("#mine").hidden = !user;
   // Someone signed in knows how it works: their trips come first.

@@ -1220,9 +1220,11 @@ t5("and trip 1 does not see trip 2's rows",
   t5("in the asked-for language", sentMail.body.subject === "Dein Anmeldelink" && /\/auth\?token=/.test(sentMail.body.text));
   t5("and the link is not in the answer", sent.ok === true && sent.sent === true && !sent.devLink);
   globalThis.fetch = async () => new Response("nope", { status: 500 });
+  const quiet = console.error; console.error = () => {};   // the Worker logs the failure on purpose; not noise in a test run
   t5("a failed send is reported, not swallowed",
      (await worker.fetch(new Request("https://x/api/auth/request", { method: "POST",
         body: JSON.stringify({ email: "roswitha@example.com" }) }), keyed)).status === 502);
+  console.error = quiet;
   globalThis.fetch = realFetch;
 }
 
