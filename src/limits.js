@@ -40,7 +40,7 @@ export const SECURITY_HEADERS = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "strict-origin-when-cross-origin",
   "x-frame-options": "DENY",
-  "permissions-policy": "geolocation=(self), camera=(), microphone=(), payment=()",
+  "permissions-policy": "geolocation=(), camera=(), microphone=(), payment=()",
   "content-security-policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",

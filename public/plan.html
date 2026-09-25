@@ -201,8 +201,8 @@ const T = {
     dayEmpty: "Nothing planned yet.",
     stops: (n) => `${n} ${n === 1 ? "stop" : "stops"}`,
     noTime: "any time",
-    routeGoogle: "Google Maps", routeApple: "Apple Maps",
-    routeFromHere: "Route from here",
+    routeDay: "Route the day", routeFromHere: "Route from here",
+    stBookedTag: "booked", stToBook: "not yet booked", stFree: "free", stSkippedTag: "not booking",
     routeSkipped: (n) => `${n} without a location left out`,
     routeCapped: "Google's link takes the first 9 stops.",
     routeNone: "Nothing here has a location to route to.",
@@ -235,12 +235,10 @@ const T = {
     apNone: "Everything is already on the plan.",
     apPick: "Pick a sight…",
     addNew: "Add to the plan", addClose: "Close",
-    startLbl: "Start", startBase: "Hotel", startMe: "Me", startNone: "—",
-    startBaseTitle: "Start routes where we're staying",
-    startMeTitle: "Start routes from where I am now",
-    startNoneTitle: "No starting point — the app you open decides",
-    locAsking: "Asking your browser…", locDenied: "Your browser wouldn't share it.",
-    locFrom: "from you", baseFrom: "from the hotel",
+    startLbl: "Routes start", startBase: "at the hotel", startNone: "where I am",
+    startBaseTitle: "Routes start where we're staying",
+    startNoneTitle: "Routes start from wherever you are when you open them",
+    locFrom: "from where you are", baseFrom: "from the hotel",
     baseEdit: "Change where the days start", baseNone: "No address set for where we're staying.",
     basePh: "Hotel address, maps link or coordinates",
     modeSight: "One of the sights", modeOwn: "Something of my own",
@@ -269,8 +267,8 @@ const T = {
     dayEmpty: "Noch nichts geplant.",
     stops: (n) => `${n} ${n === 1 ? "Stopp" : "Stopps"}`,
     noTime: "egal wann",
-    routeGoogle: "Google Maps", routeApple: "Apple Maps",
-    routeFromHere: "Route ab hier",
+    routeDay: "Route für den Tag", routeFromHere: "Route ab hier",
+    stBookedTag: "gebucht", stToBook: "noch nicht gebucht", stFree: "kostenlos", stSkippedTag: "buchen wir nicht",
     routeSkipped: (n) => `${n} ohne Ort nicht enthalten`,
     routeCapped: "Der Google-Link nimmt die ersten 9 Stopps.",
     routeNone: "Nichts hier hat einen Ort für eine Route.",
@@ -303,12 +301,10 @@ const T = {
     apNone: "Alles ist schon im Plan.",
     apPick: "Ort wählen…",
     addNew: "In den Plan eintragen", addClose: "Schließen",
-    startLbl: "Start", startBase: "Hotel", startMe: "Ich", startNone: "—",
-    startBaseTitle: "Routen bei der Unterkunft starten",
-    startMeTitle: "Routen bei meinem Standort starten",
-    startNoneTitle: "Kein Startpunkt – die geöffnete App entscheidet",
-    locAsking: "Browser wird gefragt…", locDenied: "Der Browser hat den Standort nicht geteilt.",
-    locFrom: "ab dir", baseFrom: "ab der Unterkunft",
+    startLbl: "Routen starten", startBase: "an der Unterkunft", startNone: "wo ich bin",
+    startBaseTitle: "Routen starten bei der Unterkunft",
+    startNoneTitle: "Routen starten dort, wo du gerade bist, wenn du sie öffnest",
+    locFrom: "von dort, wo du bist", baseFrom: "ab der Unterkunft",
     baseEdit: "Startpunkt der Tage ändern", baseNone: "Für die Unterkunft ist keine Adresse hinterlegt.",
     basePh: "Adresse der Unterkunft, Maps-Link oder Koordinaten",
     modeSight: "Ein Ort von der Liste", modeOwn: "Etwas Eigenes",
@@ -332,13 +328,13 @@ let pendingPlace = null;     // { label, lat, lon } | null
 let addMode = "sight";       // which half of the add panel is showing
 let openedOnce = false;      // so an empty plan opens the adder once, not on every render
 let sheetFor = null;         // { id, source } of the stop whose detail sheet is open
-// Where you are. Kept in memory only: it is nobody else's business, least of
-// all the shared plan's.
-let myPos = null;
-// "base" | "me" | "none". The hotel is the sensible default: it is where every
-// morning starts. Personal to this browser — it changes links, not the plan.
+// "none" | "base". A route with no start is read by both maps apps as "from
+// where I am now", which is what you want on the road — so that is the
+// default, and the app never has to ask the browser for a position. The hotel
+// is the alternative for planning the morning. Personal to this browser.
 const START_KEY = "trip-plan-start";
-let startFrom = localStorage.getItem(START_KEY) || localStorage.getItem("london-plan-start") || "base";
+let startFrom = localStorage.getItem(START_KEY) || "none";
+if (startFrom === "me") startFrom = "none";
 let editingBase = false;
 let source = "all";       // all | booked | hand | own
 
@@ -373,7 +369,6 @@ const byClock = (a, b) => (a.start ?? "99:99").localeCompare(b.start ?? "99:99")
 
 /** The origin the links should use right now, or null for none. */
 function originNow() {
-  if (startFrom === "me") return myPos;
   if (startFrom === "base") return TRIP.base ?? null;
   return null;
 }
@@ -407,12 +402,20 @@ function stopHTML(p, i, stops) {
   const L = t();
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
-  // Just this place, in whichever maps app this device prefers. The route on
-  // from here lives in the sheet, one tap further in.
-  const here = hasPlace(placeOf(p)) ? routeLinks([placeOf(p)], "transit", null) : null;
   const votes = own ? 0 : (VOTES[p.id] ?? []).length;
   const label = own ? p.label : title(s);
-  const srcLabel = { booked: L.srcBooked, hand: L.srcHand, own: L.srcOwn }[p.source];
+
+  // One word about booking: booked, not yet booked, free. Who added it, the
+  // address and the maps links are in the sheet, one tap further in.
+  let booking = "";
+  if (s) {
+    const st = STATUS.find((b) => b.id === p.id)?.status ?? null;
+    const bookable = (s.custom ? !!s.costs : s.cost !== "free") || !!s.bookingRequired;
+    booking = st === "booked" ? `<span class="tag tag-sm tag-green">${esc(L.stBookedTag)}</span>`
+      : st === "skipped" ? `<span class="tag tag-sm tag-neutral">${esc(L.stSkippedTag)}</span>`
+      : bookable ? `<span class="tag tag-sm tag-coral">${esc(L.stToBook)}</span>`
+      : `<span class="tag tag-sm tag-green">${esc(L.stFree)}</span>`;
+  }
 
   return `<li class="stop" data-stop="${esc(p.id)}" data-src="${esc(p.source)}">
     <div class="when${p.start ? "" : " open"}">
@@ -422,15 +425,10 @@ function stopHTML(p, i, stops) {
     <div>
       <div class="sname">${esc(label)}</div>
       <div class="smeta">
-        ${p.source === "booked" ? `<span class="tag tag-sm ${SRC_TAG[p.source]}">${esc(srcLabel)}</span>` : ""}
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
-        <span>${esc(p.source === "booked" ? L.bookedBy : L.addedBy)} ${esc(p.who)}</span>
+        ${booking}
         ${needsPlace(p) ? `<span class="tag tag-sm tag-coral">${esc(L.noLocation)}</span>` : ""}
       </div>
-      ${here ? `<div class="stopact">
-        <a class="btn btn-sm btn-tint" href="${esc(mapLink(here))}" target="_blank" rel="noopener"
-           >${ICONS.pin}${esc(L.shMap)}</a>
-      </div>` : ""}
     </div>
     <span class="chev">${ICONS.chevron}</span>
   </li>`;
@@ -453,9 +451,8 @@ function dayRouteHTML(stops) {
   if (!r) return `<div class="dayroute"><span class="routenote">${esc(L.routeNone)}</span></div>`;
 
   return `<div class="dayroute">
-    <a class="btn btn-sm btn-tint" href="${esc(r.google)}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeGoogle)}</a>
-    <a class="btn btn-sm btn-tint" href="${esc(r.apple)}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeApple)}</a>
-    ${r.from ? `<span class="tag tag-sm tag-green">${esc(startFrom === "me" ? L.locFrom : L.baseFrom)}</span>` : ""}
+    <a class="btn btn-sm btn-primary" href="${esc(mapLink(r))}" target="_blank" rel="noopener">${ICONS.route}${esc(L.routeDay)}</a>
+    <span class="tag tag-sm ${r.from ? "tag-neutral" : "tag-green"}">${esc(r.from ? L.baseFrom : L.locFrom)}</span>
     ${r.skipped ? `<span class="routenote">${esc(L.routeSkipped(r.skipped))}</span>` : ""}
     ${r.capped ? `<span class="routenote">${esc(L.routeCapped)}</span>` : ""}
   </div>`;
@@ -533,9 +530,8 @@ function renderFilters() {
     `<div class="chips"><span class="lbl">${esc(L.fVotes)}</span>${votesBtns}${manual}</div>` +
     `<div class="chips"><span class="lbl">${esc(L.fSource)}</span>${sources}</div>` +
     `<div class="chips"><span class="lbl">${esc(L.startLbl)}</span>` +
-    [["base", L.startBase, L.startBaseTitle, ICONS.home],
-     ["me", L.startMe, L.startMeTitle, ICONS.locate],
-     ["none", L.startNone, L.startNoneTitle, ""]].map(([k, label, title, icon]) =>
+    [["none", L.startNone, L.startNoneTitle, ICONS.locate],
+     ["base", L.startBase, L.startBaseTitle, ICONS.home]].map(([k, label, title, icon]) =>
       `<button class="chip" type="button" data-start="${k}" aria-pressed="${startFrom === k}"
                title="${esc(title)}">${icon}${esc(label)}</button>`).join("") +
     `<button type="button" class="chip icon-chip" id="baseedit" title="${esc(L.baseEdit)}"
@@ -938,22 +934,8 @@ document.addEventListener("click", (ev) => {
 
   const st = ev.target.closest("[data-start]");
   if (st) {
-    startFrom = st.dataset.start;
+    startFrom = st.dataset.start === "base" ? "base" : "none";
     localStorage.setItem(START_KEY, startFrom);
-    // Only "me" needs permission, and only the first time.
-    if (startFrom === "me" && !myPos) {
-      if (!navigator.geolocation) { setStatus(t().locDenied, "err"); return void render(); }
-      setStatus(t().locAsking, "sticky");
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          myPos = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-          setStatus("");
-          render();
-        },
-        () => { setStatus(t().locDenied, "err"); render(); },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 120000 },
-      );
-    }
     return void render();
   }
 

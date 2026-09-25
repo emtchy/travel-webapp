@@ -217,22 +217,18 @@ outside to close.
 
 ### Routes
 
-Every day with somewhere to go carries **Route · Google** and **Route · Apple**
-links covering the whole day in order.
+A stop on a day shows its time, its name, the votes it has, and one word
+about booking: **booked**, **not yet booked**, or **free**. Everything else —
+who added it, the address, **Open in Maps** — is in the sheet that opens when
+you tap the stop.
 
-**Start** beside the **+** decides where a route begins:
-
-- **Hotel** — wherever you're staying. The default, because that is where every
-  morning starts. The pencil next to it changes the address; it is stored, so
-  the whole group gets the same one.
-- **Me** — your phone's actual position. The browser asks permission the first
-  time. It stays in memory for that visit only, never sent to the app or
-  stored, because where you are standing is nobody else's business.
-- **—** — no starting point. Apple reads that as your current location, Google
-  leaves the field blank for you to fill.
-
-Which one you pick is remembered in your browser, so four people can each start
-routes their own way from the same plan.
+Every day with somewhere to go ends with one button, **Route the day**, which
+opens the whole day in order in the maps app you prefer (see "Your account").
+By default the route starts from wherever you are when you open it: both
+Google and Apple Maps read a route with no start as "from my current
+location", so the app never asks the browser for your position. **Routes
+start** above the days switches to **at the hotel** instead — the address
+comes from Details and is shared, the choice is remembered in your browser.
 
 **Already done the first two stops?** Every stop from the second onward has a
 **Route from here** link covering that stop and the rest of the day. No ticking

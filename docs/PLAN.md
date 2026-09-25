@@ -264,6 +264,45 @@ safe to leave running.
 Phase 4 is done, and with step 9 the plan as written is complete. What
 comes next is whatever the next real trip asks for.
 
+### Phase 5 — on the road
+
+Asked for on 2026-09-25: what the app needs to be while the trip is
+happening, on a phone, possibly without signal.
+
+- [x] **Step 20 — calmer plan rows.** *(2026-09-25.)* A stop on a day shows
+      its time, its name, the votes, and one word about booking — *booked*,
+      *not yet booked*, or *free* — and nothing else. Who added it and Open
+      in Maps live in the stop's sheet. The day's foot has one button, *Route
+      the day*, in the maps app you prefer, from where you are; the *Start*
+      switch picks the hotel instead. (Both maps apps read a route with no
+      start as "from my current location", so the app never has to ask the
+      browser for a position.)
+- [ ] **Step 21 — offline.** A snapshot of what matters when signal is gone:
+      the plan (every day, every stop, times, addresses, coordinates), the
+      bookings with their references and slots, the hotel with check-in
+      details and phone, the journeys there and back, the notes. Two parts:
+
+      *How.* A service worker caches the app's pages and files on first
+      visit, and each trip's snapshot (`/api/t/<id>/sights`, `/photos`) the
+      last time it was fetched. Offline, the pages load from the cache and
+      show the last snapshot with a banner: "Offline · as of Tuesday 14:32".
+      Writes are refused with a clear message rather than queued — a plan
+      edited blind by two people and merged later is worse than a plan you
+      cannot edit for an hour. Maps links still open the maps app, which has
+      its own offline maps if downloaded beforehand; a hint says so.
+
+      *How often.* Automatically, every time a trip page loads while online
+      — so it is as fresh as the last look, with no button to remember. Plus
+      a "Save for offline" line on Details that refetches everything now,
+      including the photos, and says when it last did. The snapshot is small
+      (tens of kilobytes; photos a few megabytes) so refreshing on every
+      load costs nothing. Sessions last thirty days, so a cached page still
+      knows who you are.
+
+      Needs: `sw.js` at the root, a cache version tied to the deploy, the
+      shell to register it and show the banner, and the pages to accept a
+      stale snapshot. No server change. A couple of days' work.
+
 ### Polish
 
 - [x] **The front page is called Home.** *(2026-09-25, Emily.)* The brand on
