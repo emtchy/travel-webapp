@@ -1,0 +1,13 @@
+# Wrangler installs a ~135 MB workerd binary here. GitHub rejects files that
+# large, so this must never be committed. See the warning in README.md.
+node_modules/
+
+# Local wrangler state, including the local D1 database.
+.wrangler/
+
+.DS_Store
+*.log
+
+# Editor
+.idea/
+.vscode/
