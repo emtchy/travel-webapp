@@ -215,6 +215,48 @@ async function stillToDo(env, trip, role) {
   return out;
 }
 
+/**
+ * POST /api/auth/delete  { confirm } — your account, gone. `confirm` must be
+ * your address, typed. Refused while you are the only owner of any trip:
+ * hand it over or delete it first, so no trip is left with nobody running
+ * it. Leaves each trip the way leave() does — what you did stays under your
+ * name — then removes sessions, open sign-in links and invitations to your
+ * address, and the account itself. The cookie is cleared in the answer.
+ */
+async function handleAccountDelete(request, env, url) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const user = await currentUser(request, env);
+  if (!user) return bad("Sign in first.", 401);
+  const typed = typeof body?.confirm === "string" ? body.confirm.trim().toLowerCase() : "";
+  if (typed !== user.email) return bad("Type your email address to confirm.");
+
+  const { results } = await env.DB.prepare(
+    `SELECT t.name FROM trip_members m JOIN trips t ON t.id = m.trip_id
+      WHERE m.user_id = ?1 AND m.role = 'owner'
+        AND (SELECT COUNT(*) FROM trip_members o WHERE o.trip_id = m.trip_id AND o.role = 'owner') = 1`
+  ).bind(user.id).all();
+  const alone = (results ?? []).map((r) => r.name);
+  if (alone.length)
+    return bad(`You're the only owner of ${alone.map((n) => `"${n}"`).join(", ")}. Make someone else an owner, or delete it, first.`, 409);
+
+  for (const sql of [
+    "DELETE FROM trip_members WHERE user_id = ?1",
+    "DELETE FROM sessions WHERE user_id = ?1",
+    "DELETE FROM users WHERE id = ?1",
+  ]) await env.DB.prepare(sql).bind(user.id).run();
+  for (const sql of [
+    "DELETE FROM login_tokens WHERE email = ?1",
+    "DELETE FROM invites WHERE email = ?1 AND accepted_at IS NULL",
+  ]) await env.DB.prepare(sql).bind(user.email).run();
+
+  return new Response(JSON.stringify({ ok: true, deleted: true }), {
+    status: 200,
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store",
+      "set-cookie": `trip_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${url.protocol === "https:" ? "; Secure" : ""}` },
+  });
+}
+
 /** POST /api/auth/pin  { tripId | null } — the trip to show first, or none. */
 async function handlePin(request, env) {
   let body;
@@ -351,9 +393,10 @@ async function servePage(request, env, url) {
     return asset(PAGES[sub]);
   }
 
-  // The front page. The other old page paths still redirect to trip 1, so
-  // the links the London group has keep working.
+  // The front page and the privacy note. The other old page paths still
+  // redirect to trip 1, so the links the London group has keep working.
   if (path === "/") return asset("/home.html");
+  if (path === "/privacy" || path === "/privacy/") return asset("/privacy.html");
   if (PAGES[path]) return Response.redirect(`${url.origin}/t/1${path}${url.search}`, 302);
   return env.ASSETS.fetch(request);
 }
@@ -1763,6 +1806,8 @@ async function route(request, env) {
     if (url.pathname === "/api/trips" && method === "GET") return handleTripList(request, env);
     if (url.pathname === "/api/trips" && method === "POST") return handleTripCreate(request, env);
     if (url.pathname === "/api/auth/pin" && method === "POST") return handlePin(request, env);
+    if (url.pathname === "/api/auth/delete" && method === "POST") return handleAccountDelete(request, env, url);
+    if (url.pathname === "/api/meta" && method === "GET") return json({ contact: env.CONTACT_EMAIL || null });
     if (url.pathname === "/api/templates" && method === "GET")
       return json({ templates: templatesFor(url.searchParams.get("destination")) });
     if (url.pathname === "/api/examples" && method === "GET") return json({ examples: await publicTrips(env) });

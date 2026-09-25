@@ -364,6 +364,15 @@ sir-john-soane-s-museum          3  Manuel, Anna, Lena
 
 Or just open the page and hit the **Most wanted** filter.
 
+## Privacy
+
+`/privacy` says, in plain words, what the app stores and who else sees any
+of it. It is linked from the front page, the sign-in sheet and your account.
+Set `CONTACT_EMAIL` in `wrangler.toml` to put an address on it. From the
+account sheet you can delete your account: it asks for your address, refuses
+while you are the only owner of a trip, and otherwise removes your account
+and sessions while leaving what you did on trips under your name.
+
 ## Limits
 
 Sign-in and invitation mails are limited to five a minute per address, address

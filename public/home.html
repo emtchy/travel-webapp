@@ -196,7 +196,7 @@ details.year > .trips{padding:4px 0 8px}
 
 <div class="card private"><span class="ico" id="pv-ico"></span><p id="pv-p"></p></div>
 
-<footer class="page-foot"><span id="foot"></span></footer>
+<footer class="page-foot"><span id="foot"></span> · <a href="/privacy" id="foot-privacy"></a></footer>
 </main>
 
 <div class="sheet-back" id="nt-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="nt-title">
@@ -250,7 +250,7 @@ const T = {
     invites: (n) => `${n} ${n === 1 ? "invitation" : "invitations"} open`, allSet: "Nothing left to do before it starts.",
     upcoming: "Upcoming", noDates: "no dates yet", past: "Past trips", cancelled: "cancelled",
     seeExample: "See an example trip",
-    foot: "Built for a group of friends and their London trip. Now for any trip.",
+    foot: "Built for a group of friends and their London trip. Now for any trip.", privacy: "Privacy",
   },
   de: {
     title: "Eine Reise gemeinsam planen.",
@@ -280,7 +280,7 @@ const T = {
     invites: (n) => `${n} ${n === 1 ? "Einladung" : "Einladungen"} offen`, allSet: "Vor dem Start ist nichts mehr zu tun.",
     upcoming: "Demnächst", noDates: "noch ohne Datum", past: "Frühere Reisen", cancelled: "abgesagt",
     seeExample: "Eine Beispielreise ansehen",
-    foot: "Gebaut für eine Gruppe Freunde und ihre Londonreise. Jetzt für jede Reise.",
+    foot: "Gebaut für eine Gruppe Freunde und ihre Londonreise. Jetzt für jede Reise.", privacy: "Datenschutz",
   },
 };
 const t = () => T[getLang()];
@@ -305,6 +305,7 @@ function paint() {
     ["si-h","siH"],["si-p","siP"],["si-btn","ctaIn"],["pv-p","privacy"],["foot","foot"],["mine-h","mine"],["ex-h","examples"],["ex-lede","exLede"]])
     $("#" + id).textContent = L[key];
   $("#m1-like").innerHTML = `${ICONS.heartFill}${esc(L.m1like)}`;
+  $("#foot-privacy").textContent = L.privacy;
   $("#new-trip").innerHTML = `${ICONS.plus}${esc(L.newTrip)}`;
   $("#nt-title").textContent = L.ntTitle; $("#nt-close").innerHTML = ICONS.close;
   $("#nt-l-name").textContent = L.ntName; $("#nt-name").placeholder = L.ntNamePh;

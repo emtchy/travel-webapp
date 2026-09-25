@@ -42,6 +42,9 @@ simple = { limit = 60, period = 60 }
 # Who sign-in emails come from. Resend's test sender can only reach the
 # address the Resend account was made with; a verified domain reaches anyone.
 MAIL_FROM = "Trip <onboarding@resend.dev>"
+# Shown on /privacy as the address to write to. Empty = the page says to ask
+# whoever invited you.
+CONTACT_EMAIL = ""
 
 # Secrets, set once with `npx wrangler secret put <NAME>`, never in this file:
 #   RESEND_API_KEY   sign-in emails go through Resend. Unset locally, which

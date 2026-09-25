@@ -128,7 +128,10 @@ const NAV = {
         sDisplay: "Display name", sDisplayHint: "What a trip calls you when you join without a name of your own there.",
         sLang: "Language", sMaps: "Open in Maps means", sAuto: "Automatic",
         sMapsHint: "Automatic picks Apple Maps on Apple devices and Google Maps elsewhere.",
-        save: "Save", saved: "Saved" },
+        save: "Save", saved: "Saved", privacy: "Privacy",
+        delAcct: "Delete account", delAcctHint: "Ends your sessions and removes your address and settings. Trips you are the only owner of must be handed over or deleted first.",
+        delAcctConfirm: "Delete your account? This cannot be undone.", delAcctType: (e) => `To confirm, type your email address: ${e}`,
+        delAcctNo: "That's not your address. Nothing was deleted." },
   de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
         name: "Dein Name", lang: "Sprache", home: "Reisen", front: "Zur Startseite",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
@@ -149,7 +152,10 @@ const NAV = {
         sDisplay: "Anzeigename", sDisplayHint: "So heißt du auf einer Reise, wenn du dort ohne eigenen Namen dazukommst.",
         sLang: "Sprache", sMaps: "„In Maps öffnen“ bedeutet", sAuto: "Automatisch",
         sMapsHint: "Automatisch wählt Apple Maps auf Apple-Geräten und sonst Google Maps.",
-        save: "Speichern", saved: "Gespeichert" },
+        save: "Speichern", saved: "Gespeichert", privacy: "Datenschutz",
+        delAcct: "Konto löschen", delAcctHint: "Beendet deine Sitzungen und entfernt Adresse und Einstellungen. Reisen, die du allein verwaltest, musst du zuerst übergeben oder löschen.",
+        delAcctConfirm: "Dein Konto löschen? Das lässt sich nicht rückgängig machen.", delAcctType: (e) => `Zur Bestätigung deine E-Mail-Adresse eintippen: ${e}`,
+        delAcctNo: "Das ist nicht deine Adresse. Nichts wurde gelöscht." },
 };
 
 const PAGES = [
@@ -270,7 +276,11 @@ function paintAuthSheet() {
         <div class="sfoot"><button class="btn btn-primary" type="submit" id="s-save">${esc(L.save)}</button>
           <span class="saved" id="s-saved" hidden>${esc(L.saved)}</span>
           <button class="btn btn-ghost right" type="button" id="auth-logout">${esc(L.signOut)}</button></div>
-      </form>`;
+      </form>
+      <div class="spread" style="padding-top:14px;border-top:1px solid var(--hair);margin-top:4px">
+        <button class="btn btn-sm btn-ghost danger" type="button" id="acct-delete">${esc(L.delAcct)}</button>
+        <a class="footnote right" href="/privacy">${esc(L.privacy)}</a></div>
+      <p class="note" style="margin-top:-6px">${esc(L.delAcctHint)}</p>`;
     return;
   }
   if (authView === "sent") {
@@ -285,7 +295,8 @@ function paintAuthSheet() {
       <label class="field"><span>${esc(L.email)}</span>
         <input class="input" id="auth-email" type="email" required autocomplete="email" inputmode="email" placeholder="you@example.com"></label>
       <p class="err" id="auth-err" hidden></p>
-      <div><button class="btn btn-primary" type="submit" id="auth-send">${esc(L.sendLink)}</button></div>
+      <div class="spread"><button class="btn btn-primary" type="submit" id="auth-send">${esc(L.sendLink)}</button>
+        <a class="footnote right" href="/privacy">${esc(L.privacy)}</a></div>
     </form>`;
 }
 
@@ -396,6 +407,17 @@ document.addEventListener("submit", async (e) => {
     err.textContent = ex.message || L.sendFail; err.hidden = false;
     send.disabled = false; send.textContent = L.sendLink;
   }
+});
+
+document.addEventListener("click", async (e) => {
+  if (!e.target.closest("#acct-delete") || !user) return;
+  const L = NAV[lang];
+  if (!window.confirm(L.delAcctConfirm)) return;
+  const typed = window.prompt(L.delAcctType(user.email));
+  if (typed == null) return;
+  if (typed.trim().toLowerCase() !== user.email) { setStatus(L.delAcctNo, "err"); return; }
+  try { await api("/api/auth/delete", { method: "POST", body: JSON.stringify({ confirm: typed }) }); location.href = "/"; }
+  catch (ex) { setStatus(ex.message, "err"); }
 });
 
 document.addEventListener("click", async (e) => {

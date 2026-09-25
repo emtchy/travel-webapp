@@ -68,7 +68,7 @@ Identity is still a typed name. That is the thing Phase 2 replaces.
 | 1 | **Trips and items in the database** — `trips`, `items`, `trip_id` on everything | ✅ done 2026-09-25 |
 | 2 | **Accounts** — email-link sign-in, invites, roles, settings | ✅ done 2026-09-25 (password optional, step 9, open) |
 | 3 | **The front door** — a real `/`, example trips, your trips organised, new trip, leave/delete/cancel | ✅ done 2026-09-25 |
-| **4** | Public hardening: rate limiting, abuse handling, geocoding cache, server-side image cache | ⬜ next |
+| 4 | Public hardening: rate limits and headers, caches, a privacy note, delete my account | ✅ done 2026-09-25 |
 
 Phases 1 and 2 are cut into steps small enough to ship one at a time against
 the live database, each with a migration and a test.
@@ -243,12 +243,21 @@ safe to leave running.
       share the cache by title. The browser no longer talks to Wikipedia, and
       `connect-src` is `'self'` alone. The Sights page keeps its two sources:
       the local manifest first, then this.
-- [ ] **Step 18 — a privacy note and a way to write in.** `/privacy`: what
-      is stored (address, display name, what you do on a trip), the cookie,
-      Resend as the mail carrier, how to leave and delete. A contact address.
-- [ ] **Step 19 — delete my account.** From the settings sheet: leaves every
-      trip (an owner must hand over or delete first), removes sessions and the
-      user row. Asks for the address typed.
+- [x] **Step 18 — a privacy note and a way to write in.** *(2026-09-25)*
+      `/privacy`, in both languages: what is stored, how signing in works,
+      who else sees anything (Cloudflare, Resend, Nominatim, Wikipedia), how
+      long, your choices. Linked from the front page's footer, the sign-in
+      sheet and the account sheet. The contact address is `CONTACT_EMAIL` in
+      `wrangler.toml` (empty until Emily sets one; the page then says to ask
+      whoever invited you).
+- [x] **Step 19 — delete my account.** *(2026-09-25)* From the account
+      sheet, asking twice, the second time for the address typed and checked
+      on the server. Refused while you are the only owner of any trip, naming
+      them. Otherwise leaves every trip the way leave does — what you did
+      stays under your name — and removes sessions, open sign-in links,
+      pending invitations to the address, and the account.
+
+Phase 4 is done. What is left on the plan is the optional password (step 9).
 
 ---
 
@@ -508,6 +517,14 @@ would mean creating a namespace, a binding, and a second store to reason
 about. The volume here is a few hundred rows; a table each in the database
 that already exists does the job and shows up in the same backups and the
 same migrations.
+
+**2026-09-25 — Deleting an account keeps the trip's record.**
+The same rule as leaving: a trip is a shared record, and one person going
+must not rewrite what the group decided. The account, its sessions and its
+seats go; votes, comments and bookings stay under the name. Anyone who wants
+their contributions gone as well can remove them first, while signed in.
+The only owner of a trip cannot delete their account, so no trip is ever
+left with nobody running it.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

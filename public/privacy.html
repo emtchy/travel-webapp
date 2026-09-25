@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Privacy</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
+<style>
+.doc{max-width:680px;padding-top:40px}
+.doc h1{margin-bottom:6px}
+.doc .lede{color:var(--text-2);font-size:16px;margin-bottom:28px}
+.doc h2{font-size:17px;font-weight:600;letter-spacing:-.01em;margin:26px 0 8px}
+.doc p,.doc li{font-size:15px;line-height:1.6;color:var(--text)}
+.doc ul{padding-left:20px;margin:6px 0 0}
+.doc li{margin:4px 0}
+.doc .muted{color:var(--text-2)}
+</style>
+</head>
+<body>
+
+<div id="shell" data-page="home"></div>
+
+<main class="page doc" id="doc"></main>
+
+<script type="module">
+import { $, esc, api, getLang, onLang } from "/shell.js";
+
+const T = {
+  en: {
+    title: "Privacy",
+    lede: "This is a small app for planning trips with the people who are coming. Here is exactly what it keeps, and why.",
+    s: [
+      ["What is stored about you", [
+        "Your email address, because it is how you sign in, and a display name, which starts as the first part of that address and you can change.",
+        "Your settings: language and which maps app you prefer, if you set them.",
+        "On each trip you are on: the name you go by there, your role, and what you do — votes, comments, places you add, bookings you record, entries you put on the plan. All of it is visible to the other people on that trip; that is the point of the trip.",
+      ]],
+      ["Signing in", [
+        "There is no password. A one-time link is sent to your address; only a hash of the token in it is stored, it works once and expires after fifteen minutes.",
+        "Once you are in, one cookie holds your session for thirty days on that device. It is used for nothing else. There is no tracking, no analytics, no advertising.",
+      ]],
+      ["Who else sees anything", [
+        "Cloudflare runs the app and stores its data.",
+        "Resend delivers the sign-in and invitation emails, so it sees the address they go to.",
+        "When someone looks up an address on a trip, the text they typed goes to OpenStreetMap's Nominatim service. Nothing about who asked goes with it, and answers are kept so the same address is not asked twice.",
+        "Photos of places come from Wikipedia, fetched by the app itself — your browser never contacts Wikipedia, only the image files it points to.",
+      ]],
+      ["How long", [
+        "Sign-in links: fifteen minutes. Invitations: seven days. Sessions: thirty days from last use.",
+        "A trip and everything under it: until its owner deletes it. When you leave a trip, what you did there stays under your name so the plan still makes sense to the others.",
+      ]],
+      ["Your choices", [
+        "Leave any trip from its Details page. If you own a trip, you can make it private again, cancel it, or delete it and everything under it.",
+        "Delete your account from the account sheet: it ends your sessions and removes your address and settings. You must first hand over or delete any trip you are the only owner of.",
+      ]],
+    ],
+    contact: "Questions, or something to report",
+    contactLede: (e) => e ? `Write to ${e}.` : "Ask whoever invited you to the trip.",
+    back: "Back to the front page",
+  },
+  de: {
+    title: "Datenschutz",
+    lede: "Das ist eine kleine App, um Reisen mit den Leuten zu planen, die mitkommen. Hier steht genau, was sie speichert und warum.",
+    s: [
+      ["Was über dich gespeichert wird", [
+        "Deine E-Mail-Adresse, weil du dich damit anmeldest, und ein Anzeigename – zu Beginn der erste Teil der Adresse, änderbar.",
+        "Deine Einstellungen: Sprache und welche Karten-App du bevorzugst, falls du sie setzt.",
+        "Auf jeder Reise, auf der du bist: dein Name dort, deine Rolle und was du tust – Stimmen, Kommentare, Orte, die du einträgst, Buchungen, die du festhältst, Einträge im Plan. All das sehen die anderen auf dieser Reise; dafür ist die Reise da.",
+      ]],
+      ["Anmelden", [
+        "Es gibt kein Passwort. Ein einmaliger Link geht an deine Adresse; gespeichert wird nur ein Hash des Tokens darin, er funktioniert einmal und läuft nach fünfzehn Minuten ab.",
+        "Danach hält ein Cookie deine Sitzung dreißig Tage auf diesem Gerät. Er dient zu nichts anderem. Kein Tracking, keine Analyse, keine Werbung.",
+      ]],
+      ["Wer sonst etwas sieht", [
+        "Cloudflare betreibt die App und speichert ihre Daten.",
+        "Resend stellt die Anmelde- und Einladungs-E-Mails zu und sieht daher die Adresse, an die sie gehen.",
+        "Wenn jemand auf einer Reise eine Adresse sucht, geht der eingegebene Text an den Nominatim-Dienst von OpenStreetMap. Wer gefragt hat, geht nicht mit; Antworten werden behalten, damit dieselbe Adresse nicht zweimal gefragt wird.",
+        "Fotos von Orten kommen von Wikipedia, abgerufen von der App selbst – dein Browser kontaktiert Wikipedia nie, nur die Bilddateien, auf die sie zeigt.",
+      ]],
+      ["Wie lange", [
+        "Anmeldelinks: fünfzehn Minuten. Einladungen: sieben Tage. Sitzungen: dreißig Tage ab letzter Nutzung.",
+        "Eine Reise und alles darunter: bis die Verwaltung sie löscht. Wenn du eine Reise verlässt, bleibt, was du dort getan hast, unter deinem Namen, damit der Plan für die anderen weiter Sinn ergibt.",
+      ]],
+      ["Deine Möglichkeiten", [
+        "Jede Reise auf ihrer Details-Seite verlassen. Wenn du eine Reise verwaltest, kannst du sie wieder privat machen, absagen oder samt allem darunter löschen.",
+        "Dein Konto im Konto-Blatt löschen: das beendet deine Sitzungen und entfernt Adresse und Einstellungen. Zuvor musst du Reisen, die du allein verwaltest, übergeben oder löschen.",
+      ]],
+    ],
+    contact: "Fragen, oder etwas zu melden",
+    contactLede: (e) => e ? `Schreib an ${e}.` : "Frag, wer dich zur Reise eingeladen hat.",
+    back: "Zur Startseite",
+  },
+};
+
+let contact = null;
+function paint() {
+  const L = T[getLang()];
+  document.title = L.title;
+  $("#doc").innerHTML = `<h1 class="large-title">${esc(L.title)}</h1><p class="lede">${esc(L.lede)}</p>
+    ${L.s.map(([h, items]) => `<h2>${esc(h)}</h2><ul>${items.map((i) => `<li>${esc(i)}</li>`).join("")}</ul>`).join("")}
+    <h2>${esc(L.contact)}</h2><p>${contact ? esc(L.contactLede(contact)).replace(esc(contact), `<a href="mailto:${esc(contact)}">${esc(contact)}</a>`) : esc(L.contactLede(null))}</p>
+    <p style="margin-top:28px"><a href="/">${esc(L.back)}</a></p>`;
+}
+onLang(paint);
+api("/api/meta").then((m) => { contact = m.contact ?? null; paint(); }).catch(() => {});
+</script>
+</body>
+</html>

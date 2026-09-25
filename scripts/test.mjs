@@ -1606,5 +1606,40 @@ t5("and trip 1 does not see trip 2's rows",
      !/wikipedia/.test((await raw("/")).headers.get("content-security-policy")) && /img-src 'self' https:/.test((await raw("/")).headers.get("content-security-policy")));
 }
 
+// --- Phase 4, steps 18 and 19: the privacy note, and deleting an account
+{
+  t5("/privacy is a page", (await (await raw("/privacy")).text()) === "static /privacy.html");
+  t5("with no contact set, /api/meta says so", (await (await raw("/api/meta")).json()).contact === null);
+  t5("with one set, it is given", (await (await worker.fetch(new Request("https://x/api/meta"), { ...env, CONTACT_EMAIL: "hi@example.org" })).json()).contact === "hi@example.org");
+
+  const del = (b, h) => raw("/api/auth/delete", { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("deleting an account needs a sign-in", (await del({ confirm: "x" })).status === 401);
+
+  // Solo owns a trip alone: refused until it is handed over
+  const solo = asUser("solo@example.org");
+  const made = await (await raw("/api/trips", { method: "POST", headers: solo, body: JSON.stringify({ name: "Solo trip" }) })).json();
+  t5("the address must be typed", (await del({ confirm: "nope" }, solo)).status === 400);
+  const r = await del({ confirm: "Solo@Example.org" }, solo);
+  t5("the only owner of a trip cannot delete their account", r.status === 409 && /Solo trip/.test((await r.json()).error));
+  await raw(`/api/t/${made.id}/trip/delete`, { method: "POST", headers: solo, body: JSON.stringify({ confirm: "Solo trip" }) });
+
+  // and as a plain member of London, with history there
+  const inv = await (await call("/api/invite", { method: "POST", body: JSON.stringify({ email: "solo@example.org", role: "editor", voter: "Emily" }) })).json();
+  const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+  const soloNow = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+  await raw("/api/t/1/vote", { method: "POST", headers: soloNow, body: JSON.stringify({ sightId: "tower-of-london", wanted: true }) });
+  await raw("/api/auth/request", { method: "POST", body: JSON.stringify({ email: "solo@example.org" }) });
+  const gone = await del({ confirm: "solo@example.org" }, soloNow);
+  t5("otherwise the account goes, and the cookie with it", gone.status === 200 && /Max-Age=0/.test(gone.headers.get("set-cookie") || ""));
+  t5("user, sessions, seats and open sign-in links are removed",
+     !db.prepare("SELECT 1 FROM users WHERE email = 'solo@example.org'").get() &&
+     db.prepare("SELECT COUNT(*) AS n FROM sessions WHERE user_id = 'u-solo@example.org'").get().n === 0 &&
+     db.prepare("SELECT COUNT(*) AS n FROM trip_members WHERE user_id = 'u-solo@example.org'").get().n === 0 &&
+     db.prepare("SELECT COUNT(*) AS n FROM login_tokens WHERE email = 'solo@example.org'").get().n === 0);
+  t5("but what they did on the trip stays under their name",
+     db.prepare("SELECT 1 FROM votes WHERE sight_id = 'tower-of-london' AND voter_key = 'solo'").get() != null);
+  t5("and the old cookie no longer signs anyone in", (await (await raw("/api/auth/me", { headers: soloNow })).json()).user === null);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);
