@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS trips (
   updated_at    INTEGER,
   created_at    INTEGER NOT NULL DEFAULT 0,
   visibility    TEXT    NOT NULL DEFAULT 'private', -- 'public' = anyone may read
-  status        TEXT    NOT NULL DEFAULT 'planned'  -- 'cancelled' = never happened
+  status        TEXT    NOT NULL DEFAULT 'planned', -- 'cancelled' = never happened
+  currency      TEXT    NOT NULL DEFAULT 'EUR'      -- ISO 4217, for expenses
 );
 
 -- One row per (sight, voter). Toggling a vote off deletes the row.
@@ -241,6 +242,22 @@ CREATE TABLE IF NOT EXISTS invites (
 
 CREATE INDEX IF NOT EXISTS idx_invites_trip ON invites (trip_id, created_at);
 
+-- Expenses: what was paid, how much (minor units), by whom, for whom.
+CREATE TABLE IF NOT EXISTS expenses (
+  id         TEXT    PRIMARY KEY,
+  trip_id    INTEGER NOT NULL,
+  label      TEXT    NOT NULL,
+  amount     INTEGER NOT NULL,
+  paid_by    TEXT    NOT NULL,
+  for_keys   TEXT,
+  day        TEXT,
+  item_id    TEXT,
+  added_by   TEXT    NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_trip ON expenses (trip_id, created_at);
+
 -- What the Worker fetches from outside, kept: address lookups and photos.
 CREATE TABLE IF NOT EXISTS geocode_cache (
   key        TEXT    PRIMARY KEY,
@@ -278,7 +295,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-015-home.sql', 0),
   ('migrate-016-tidy.sql', 0),
   ('migrate-017-caches.sql', 0),
-  ('migrate-018-password.sql', 0);
+  ('migrate-018-password.sql', 0),
+  ('migrate-019-money.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.
@@ -291,3 +309,4 @@ INSERT OR IGNORE INTO trips
 VALUES (1, 'London 2026', 'London', '2026-09-11', '2026-09-16',
         'Leonardo Royal Hotel London City, 8–14 Cooper''s Row, EC3N 2BQ',
         51.5116, -0.0773, 51.5074, -0.1278, 'setup', 0, 0);
+UPDATE trips SET currency = 'GBP' WHERE id = 1;

@@ -1695,5 +1695,55 @@ t5("and trip 1 does not see trip 2's rows",
      (await (await raw("/plan.html")).text()) === "static /plan.html" && (await (await raw("/home.html")).text()) === "static /home.html");
 }
 
+// --- Step 22: costs and money
+{
+  const { toMinor, balances, settleUp } = await import("../src/money.js");
+  t5("amounts are read as minor units", toMinor("12.50", "EUR") === 1250 && toMinor("12,5", "EUR") === 1250 && toMinor(7, "GBP") === 700 && toMinor("1200", "JPY") === 1200);
+  t5("nonsense amounts are refused", toMinor("abc", "EUR") === null && toMinor("0", "EUR") === null && toMinor("-3", "EUR") === null && toMinor("1.234", "EUR") === null);
+  const ppl = [{ key: "a", name: "A" }, { key: "b", name: "B" }, { key: "c", name: "C" }];
+  const b = balances([{ amount: 1000, paidBy: "a", forKeys: null }, { amount: 100, paidBy: "b", forKeys: ["b", "c"] }], ppl);
+  t5("shares add up to the amount, remainder to the first", b.people.map(p => p.share).reduce((x, y) => x + y) === 1100 && b.people[0].share === 334 && b.people[2].share === 383);
+  t5("balances are paid minus share", b.people.find(p => p.key === "a").balance === 666 && b.people.find(p => p.key === "b").balance === 100 - 383 && b.people.find(p => p.key === "c").balance === -383);
+  t5("settling up clears every balance with the fewest payments", b.settle.length === 2 && b.settle.every(s => s.to === "a") && b.settle.reduce((n, s) => n + s.amount, 0) === 666);
+  t5("an even group settles nothing", settleUp([{ key: "a", balance: 0 }, { key: "b", balance: 0 }]).length === 0);
+
+  const em = { cookie: cookieFor("Emily", 1) };
+  const add = (b, h = em) => raw("/api/t/1/expense/add", { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("the London trip is in pounds", (await (await raw("/api/t/1/money", { headers: em })).json()).currency === "GBP");
+  t5("a stranger sees no money", (await raw("/api/t/1/money")).status === 401);
+  t5("a label is required", (await add({ amount: "10" })).status === 400);
+  t5("an amount is required", (await add({ label: "Taxi" })).status === 400);
+  t5("the payer must be on the trip", (await add({ label: "Taxi", amount: "10", paidBy: "Zorro Nobody Knows" })).status === 400);
+  t5("so must everyone it was for", (await add({ label: "Taxi", amount: "10", forKeys: ["emily", "ghost"] })).status === 400);
+  t5("a day must be a day of the trip", (await add({ label: "Taxi", amount: "10", day: "2030-01-01" })).status === 400);
+  let d = await (await add({ label: "Taxi from the airport", amount: "42,00", day: "2026-09-11" })).json();
+  const taxi = d.expenses.find(x => x.label === "Taxi from the airport");
+  t5("an expense is recorded, paid by me, for everyone", taxi && taxi.amount === 4200 && taxi.paidBy === "emily" && taxi.forKeys === null && taxi.day === "2026-09-11");
+  d = await (await add({ label: "Pub", amount: "30", paidBy: "Maya", forKeys: ["maya", "emily"] })).json();
+  const pub = d.expenses.find(x => x.label === "Pub");
+  t5("another, paid by someone else, for some", pub?.paidBy === "maya" && pub.forKeys.length === 2);
+  const m = await (await raw("/api/t/1/money", { headers: em })).json();
+  t5("the money page has totals, people and a settle-up", m.total === 7200 && m.people.length >= 4 && Array.isArray(m.settle) && m.people.find(p => p.key === "emily").paid === 4200);
+  t5("the snapshot carries the expenses", (await (await raw("/api/t/1/state", { headers: em })).json()).expenses.length === 2);
+
+  const upd = await (await raw("/api/t/1/expense/update", { method: "POST", headers: em, body: JSON.stringify({ id: pub.id, label: "Pub round", amount: "36", paidBy: "Maya", forKeys: ["maya", "emily"] }) })).json();
+  t5("an expense can be changed", upd.expenses.find(x => x.id === pub.id).label === "Pub round" && upd.expenses.find(x => x.id === pub.id).amount === 3600);
+  {
+    const inv = await (await raw("/api/t/1/invite", { method: "POST", headers: em, body: JSON.stringify({ email: "viewer2@example.org", role: "viewer" }) })).json();
+    const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+    const V = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+    t5("a viewer can see the money page but not add to it",
+       (await raw("/api/t/1/money", { headers: V })).status === 200 && (await add({ label: "x", amount: "1" }, V)).status === 403);
+  }
+  const rm = await (await raw("/api/t/1/expense/remove", { method: "POST", headers: em, body: JSON.stringify({ id: pub.id }) })).json();
+  t5("and removed", !rm.expenses.some(x => x.id === pub.id));
+
+  const cur = await (await raw("/api/t/1/trip/settings", { method: "POST", headers: em, body: JSON.stringify({ currency: "EUR" }) })).json();
+  t5("the owner can change the currency", cur.trip.currency === "EUR");
+  t5("to one the app knows", (await raw("/api/t/1/trip/settings", { method: "POST", headers: em, body: JSON.stringify({ currency: "XYZ" }) })).status === 400);
+  await raw("/api/t/1/trip/settings", { method: "POST", headers: em, body: JSON.stringify({ currency: "GBP" }) });
+  t5("/t/1/money is a page", (await (await raw("/t/1/money")).text()) === "static /money.html");
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

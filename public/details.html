@@ -83,6 +83,9 @@
       <label class="field"><span id="l-dest">Destination</span><input class="input" id="t-dest" maxlength="80"></label>
       <label class="field"><span id="l-start">First day</span><input class="input" id="t-start" type="date"></label>
       <label class="field"><span id="l-end">Last day</span><input class="input" id="t-end" type="date"></label>
+      <label class="field"><span id="l-cur">Currency</span>
+        <select class="select" id="t-cur">${["EUR","GBP","USD","CHF","SEK","NOK","DKK","CZK","PLN","HUF","JPY","AUD","CAD"].map((c) => `<option>${c}</option>`).join("")}</select>
+        <span class="hint" id="l-cur-h"></span></label>
     </div>
     <label class="check" id="l-public" style="margin-top:14px;align-items:flex-start;gap:10px">
       <input type="checkbox" id="t-public" style="margin-top:2px">
@@ -172,6 +175,7 @@ const T = {
     fName: "Trip name", fDest: "Destination", fStart: "First day", fLast: "Last day",
     save: "Save", add: "Add",
     tripHint: "The dates decide which days the plan and the booking dates offer.",
+    fCurrency: "Currency", fCurrencyHint: "For the Money page. Amounts already recorded are not converted.",
     fPublic: "Anyone with the link can look at this trip", fPublicHint: "Only members can change it. Public trips appear as examples on the front page.",
     hManage: "This trip", cancelled: "Cancelled", cancelHint: "A cancelled trip stays as it is, but is filed under past trips and never shown first.",
     markCancelled: "Mark as cancelled", unCancel: "It's on again",
@@ -221,6 +225,7 @@ const T = {
     fName: "Name der Reise", fDest: "Ziel", fStart: "Erster Tag", fLast: "Letzter Tag",
     save: "Speichern", add: "Hinzufügen",
     tripHint: "Die Daten bestimmen, welche Tage Plan und Buchungen anbieten.",
+    fCurrency: "Währung", fCurrencyHint: "Für die Geld-Seite. Bereits erfasste Beträge werden nicht umgerechnet.",
     fPublic: "Jeder mit dem Link kann diese Reise anschauen", fPublicHint: "Ändern können sie nur die, die dabei sind. Öffentliche Reisen erscheinen als Beispiele auf der Startseite.",
     hManage: "Diese Reise", cancelled: "Abgesagt", cancelHint: "Eine abgesagte Reise bleibt, wie sie ist, wird aber bei den früheren Reisen abgelegt und nie zuerst gezeigt.",
     markCancelled: "Als abgesagt markieren", unCancel: "Findet doch statt",
@@ -409,6 +414,7 @@ function render() {
   $("#t-end").value = TRIP.endDate ?? "";
   $("#t-notes").value = TRIP.notes ?? "";
   $("#t-public").checked = TRIP.visibility === "public";
+  $("#t-cur").value = TRIP.currency || "EUR"; $("#l-cur").textContent = L.fCurrency; $("#l-cur-h").textContent = L.fCurrencyHint;
   $("#l-public-t").textContent = L.fPublic; $("#l-public-h").textContent = L.fPublicHint;
   $("#l-public").hidden = roleOf() !== "owner";
 
@@ -490,6 +496,7 @@ $("#t-save").addEventListener("click", () => mutate("/api/trip/settings", {
   name: $("#t-name").value || null, destination: $("#t-dest").value || null,
   startDate: $("#t-start").value || null, endDate: $("#t-end").value || null,
   visibility: $("#t-public").checked ? "public" : "private",
+  currency: $("#t-cur").value,
 }));
 
 $("#stay-save").addEventListener("click", () => mutate("/api/trip/settings", {

@@ -5,6 +5,7 @@ import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, 
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
 import { TEMPLATES, ITEM_COLUMNS as TEMPLATE_COLUMNS, templatesFor } from "./templates.js";
 import { limited, ip, withHeaders } from "./limits.js";
+import { getExpenses, balances, handleExpenseAdd, handleExpenseUpdate, handleExpenseRemove, CURRENCIES } from "./money.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -82,6 +83,7 @@ async function handleTripDelete(request, env, trip) {
     "DELETE FROM booking_status WHERE trip_id = ?1", "DELETE FROM plan_entries WHERE trip_id = ?1",
     "DELETE FROM plan_notes WHERE trip_id = ?1", "DELETE FROM items WHERE trip_id = ?1",
     "DELETE FROM trip_travel WHERE trip_id = ?1", "DELETE FROM invites WHERE trip_id = ?1",
+    "DELETE FROM expenses WHERE trip_id = ?1",
     "DELETE FROM trip_members WHERE trip_id = ?1",
     "UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1",
     "DELETE FROM trips WHERE id = ?1",
@@ -359,6 +361,7 @@ const PAGES = {
   "/": "/index.html",
   "/plan": "/plan.html",
   "/bookings": "/bookings.html",
+  "/money": "/money.html",
   "/details": "/details.html",
 };
 
@@ -398,7 +401,7 @@ async function servePage(request, env, url) {
   // redirect to trip 1, so the links the London group has keep working.
   if (path === "/") return asset("/home.html");
   if (path === "/privacy" || path === "/privacy/") return asset("/privacy.html");
-  if (PAGES[path]) return Response.redirect(`${url.origin}/t/1${path}${url.search}`, 302);
+  if (PAGES[path] && path !== "/money") return Response.redirect(`${url.origin}/t/1${path}${url.search}`, 302);
   return env.ASSETS.fetch(request);
 }
 
@@ -439,7 +442,7 @@ async function getTrip(env, trip) {
   const row = await env.DB.prepare(
     `SELECT name, destination, start_date, end_date,
             base_name, base_lat, base_lon, base_checkin, base_checkout,
-            base_ref, base_phone, near_lat, near_lon, notes, set_by, visibility, status
+            base_ref, base_phone, near_lat, near_lon, notes, set_by, visibility, status, currency
        FROM trips WHERE id = ?1`
   ).bind(trip).first();
 
@@ -449,6 +452,7 @@ async function getTrip(env, trip) {
     id: trip,
     visibility: row?.visibility === "public" ? "public" : "private",
     status: row?.status === "cancelled" ? "cancelled" : "planned",
+    currency: row?.currency || "EUR",
     name: row?.name ?? FALLBACK_TRIP.name,
     destination: row?.destination ?? FALLBACK_TRIP.destination,
     startDate: row?.start_date ?? null,
@@ -722,6 +726,7 @@ const snapshot = async (env, trip) => ({
   trip: await getTrip(env, trip),
   members: await getMembers(env, trip),
   travel: await getTravel(env, trip),
+  expenses: await getExpenses(env, trip),
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -1339,6 +1344,8 @@ async function handleTripSettings(request, env, trip) {
     return bad("Visibility must be public or private.");
   if (status != null && status !== "planned" && status !== "cancelled")
     return bad("Status must be planned or cancelled.");
+  const { currency } = body ?? {};
+  if (currency != null && !CURRENCIES.includes(currency)) return bad("That currency isn't one the app knows.");
 
   // Only what was sent changes; COALESCE keeps the rest.
   await env.DB.prepare(
@@ -1358,11 +1365,12 @@ async function handleTripSettings(request, env, trip) {
        notes         = COALESCE(excluded.notes, trips.notes),
        visibility    = COALESCE(?15, trips.visibility),
        status        = COALESCE(?16, trips.status),
+       currency      = COALESCE(?17, trips.currency),
        set_by = excluded.set_by, updated_at = excluded.updated_at`
   )
     .bind(trip, name, destination, startDate || null, endDate || null,
           checkIn, checkOut, reference, phone, notes, who, Date.now(), Date.now(),
-          visibility ?? null, visibility ?? null, status ?? null)
+          visibility ?? null, visibility ?? null, status ?? null, currency ?? null)
     .run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -1828,6 +1836,7 @@ async function route(request, env) {
 
     // Everything from here is for members of the trip.
     const ctx = { actor, cleanName, voterKey, tripName: async (env, t) => (await getTrip(env, t)).name };
+    const mctx = { actor, cleanText, voterKey, getTrip, getMembers, isKnownSight, snapshot };
 
     if (pathname === "/api/sights" && method === "GET") {
       const { member, error } = await reader(request, env, trip);
@@ -1844,6 +1853,16 @@ async function route(request, env) {
 
     if (pathname === "/api/photos" && method === "GET")
       return handlePhotos(request, env, trip);
+
+    if (pathname === "/api/money" && method === "GET") {
+      const { error } = await reader(request, env, trip);
+      if (error) return error;
+      const [expenses, members, info] = await Promise.all([getExpenses(env, trip), getMembers(env, trip), getTrip(env, trip)]);
+      return json({ currency: info.currency, expenses, members, ...balances(expenses, members) });
+    }
+    if (pathname === "/api/expense/add" && method === "POST") return handleExpenseAdd(request, env, trip, mctx);
+    if (pathname === "/api/expense/update" && method === "POST") return handleExpenseUpdate(request, env, trip, mctx);
+    if (pathname === "/api/expense/remove" && method === "POST") return handleExpenseRemove(request, env, trip, mctx);
 
     if (pathname === "/api/invite" && method === "POST")
       return handleInviteCreate(request, env, trip, ctx);

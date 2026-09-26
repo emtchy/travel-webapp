@@ -30,6 +30,16 @@ scripts/migrate.mjs        applies each migration below once, recording it in sc
 scripts/migrate-NNN-*.sql  the migrations, in numbered order
 ```
 
+## Money
+
+Each trip has a currency, set on Details. The **Money** tab is where anyone
+who edits records what they paid: what it was, how much, who paid, and who it
+was for — everyone by default, or some of the group. Every expense is split
+equally among the people it was for. The page shows, per person, what they
+paid, what their share of everything is, and what that leaves them owed or
+owing, plus the shortest list of payments that settles it all. Nothing is
+converted between currencies.
+
 ## Signing in
 
 **Sign in** in the bar asks for an email address and sends a link. Opening the

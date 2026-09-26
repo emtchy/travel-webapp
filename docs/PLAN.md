@@ -311,6 +311,31 @@ happening, on a phone, possibly without signal.
       shell to register it and show the banner, and the pages to accept a
       stale snapshot. No server change. A couple of days' work.
 
+### Phase 6 — the essentials still missing
+
+Listed on 2026-09-25 when the original plan was complete; in the order Emily
+took them.
+
+- [x] **Step 22 — costs and money.** *(2026-09-26.)* A trip has a currency
+      (Details, owner; London is in pounds) and a **Money** tab: expenses —
+      what, how much, who paid, who it was for, optionally which day — split
+      equally among the people it was for, everyone by default. Per person:
+      paid, share, balance; a settle-up that clears every balance with the
+      fewest payments. Amounts are whole minor units, never floats; shares
+      round to the minor unit with the remainder to the first people, so
+      they always add up. Editors add and change, viewers see. Migration 019;
+      `src/money.js`, `public/money.html`.
+- [ ] **Step 23 — times that add up.** A rough visit length per place and a
+      warning when a day's stops overrun or overlap.
+- [ ] **Step 24 — attachments.** The PDF ticket or the confirmation on the
+      booking. Needs file storage (R2).
+- [ ] **Step 25 — notes on a stop and on a day.**
+- [ ] **Step 26 — notifications.** A daily digest by email of what changed,
+      and a reminder the day before a booking.
+- [ ] **Step 27 — dates that shift.** Moving a trip's dates moves the plan
+      with them; a stop whose day falls off is shown, not lost.
+- [ ] **Step 28 — a map of the day.**
+
 ### Polish
 
 - [x] **The front page is called Home.** *(2026-09-25, Emily.)* The brand on
@@ -602,6 +627,14 @@ can say how old it is. That is the same freshness as before for everyone
 online, and a snapshot as recent as the last look for anyone without signal.
 Writes are refused offline rather than queued — a plan edited blind by two
 people and merged later is worse than a plan you cannot edit for an hour.
+
+**2026-09-26 — Money is minor units and equal splits.**
+Amounts are stored as whole cents or pence and only ever formatted for
+display, so nothing drifts. An expense is split equally among the people it
+was for, with the remainder of the division going to the first of them —
+shares always add up to the amount, and nobody is owed half a cent. Unequal
+splits, percentages and "I paid for my own" are not modelled; naming who an
+expense was for covers the common cases, and the rest is a note.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

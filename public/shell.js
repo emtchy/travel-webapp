@@ -103,12 +103,13 @@ export const ICONS = {
   home: I(`<path d="M4 11l8-6.5L20 11v8a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 19z"/><path d="M10 20.5v-6h4v6"/>`),
   locate: I(`<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="7.5"/>`),
   minus: I(`<path d="M5 12h14"/>`),
+  coins: I(`<circle cx="9" cy="9" r="5.5"/><path d="M13.5 8.2a5.5 5.5 0 1 1-5.3 7.3"/><path d="M9 6.5v5M7.5 9h3"/>`),
 };
 
 /* ------------------------------------------------------------- the bar */
 
 const NAV = {
-  en: { details: "Details", sights: "Sights", bookings: "Bookings", plan: "Plan",
+  en: { details: "Details", sights: "Sights", bookings: "Bookings", plan: "Plan", money: "Money",
         name: "Your name", lang: "Language", home: "Home", front: "Back to Home",
         signIn: "Sign in", signOut: "Sign out", account: "Account",
         signInTitle: "Sign in", signInLede: "Enter your email and we'll send you a link. No password to remember.",
@@ -139,7 +140,7 @@ const NAV = {
         pwNew: "New password", pwCurrent: "Current password", pwHint: "At least 10 characters. The email link always works too, and is how you get back in if you forget it.",
         pwSave: "Set password", pwChange: "Change password", pwRemove: "Remove password", pwSaved: "Password set", pwRemoved: "Password removed",
         pwRemoveConfirm: "Remove your password? You'll sign in by email link only." },
-  de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan",
+  de: { details: "Details", sights: "Orte", bookings: "Buchungen", plan: "Plan", money: "Geld",
         name: "Dein Name", lang: "Sprache", home: "Home", front: "Zurück zu Home",
         signIn: "Anmelden", signOut: "Abmelden", account: "Konto",
         signInTitle: "Anmelden", signInLede: "E-Mail-Adresse eingeben, wir schicken dir einen Link. Kein Passwort nötig.",
@@ -177,6 +178,7 @@ const PAGES = [
   ["sights", "/", "compass"],
   ["bookings", "/bookings", "ticket"],
   ["plan", "/plan", "calendar"],
+  ["money", "/money", "coins"],
 ];
 
 const mount = document.getElementById("shell");

@@ -23,6 +23,7 @@ public/details.html   Details   /t/<trip>/details   the trip itself
 public/index.html     Sights    /t/<trip>/          vote, comment, add places, put one on a day
 public/bookings.html  Bookings  /t/<trip>/bookings  still to book / booked / not booking
 public/plan.html      Plan      /t/<trip>/plan      a column per day, maps routes, a detail sheet
+public/money.html     Money     /t/<trip>/money     expenses, balances, settle-up
                       (the Worker maps these to the files; /, /plan… redirect to trip 1)
 public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, sign-in and claim sheets, language, toast, api(), maps preference
@@ -33,6 +34,7 @@ src/auth.js           sign-in by email link: tokens, sessions, the /auth callbac
 src/invites.js        invites: create, list, revoke, and the /invite link that joins a trip
 src/http.js           json() and bad()
 src/limits.js         rate limits (the RL_* bindings in wrangler.toml) and the security headers
+src/money.js          expenses: minor units, equal splits, balances, settle-up
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
@@ -81,6 +83,8 @@ outside it may change.
 | POST | `/api/trip/settings` · `/base` · `/travel` · `/member/add` · `/member/remove` | the trip |
 | POST | `/api/geocode` | name, address, maps link or coordinates → places (Nominatim, cached a month in `geocode_cache`) |
 | GET | `/api/t/<trip>/photos` | `{ id: url }` — Wikipedia lead images for the trip's places, cached in `photo_cache`; readers only |
+| GET | `/api/t/<trip>/money` | `{ currency, expenses, members, people, total, settle }` — readers |
+| POST | `/api/t/<trip>/expense/add` · `/update` · `/remove` | editors: `{ label, amount, paidBy?, forKeys?, day?, itemId? }` |
 | GET | `/api/trips?today=` | signed in: `{ user, trips, featured, examples }` — your trips with role, status, pinned; the featured one with today's stops or a countdown and to-dos |
 | POST | `/api/auth/pin` | `{ tripId \| null }` — the trip shown first on the front page |
 | GET | `/api/examples` | the public trips, for the front page; open to anyone |

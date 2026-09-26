@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#F5F5F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0B0B0D" media="(prefers-color-scheme: dark)">
+<title>Money</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='24' fill='%230A66E0'/><path d='M50 18l9.6 23.3 25.2 2.1-19.2 16.5 5.9 24.6L50 71.5 28.5 84.5l5.9-24.6L15.2 43.4l25.2-2.1z' fill='white'/></svg>">
+<link rel="stylesheet" href="/app.css">
+<style>
+.people{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));margin-top:20px}
+.person{padding:14px 16px;display:grid;gap:6px}
+.person .name{font-weight:600;font-size:15px}
+.person .nums{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px;color:var(--text-2)}
+.person .nums b{display:block;color:var(--text);font-variant-numeric:tabular-nums;font-size:15px}
+.person .bal{margin-top:4px;font-weight:600;font-variant-numeric:tabular-nums}
+.person .bal.plus{color:var(--green)}
+.person .bal.minus{color:var(--coral)}
+.person .bal.even{color:var(--text-3)}
+.settle{margin-top:24px}
+.settle .row .arrow{color:var(--text-3)}
+.settle .amount{font-weight:600;font-variant-numeric:tabular-nums;margin-left:auto}
+.xlist{margin-top:24px}
+.x .amt{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.x .meta .tag{max-width:100%}
+.x.clickable .chev{opacity:0}
+.x.clickable:hover .chev{opacity:1}
+.adder{margin-top:18px}
+.apbody{padding:14px 18px 18px;display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.apbody .field{flex:1 1 140px}
+.apbody .field.what{flex:2 1 220px}
+.apbody .field.amt{flex:0 1 130px}
+.who{display:flex;gap:8px;flex-wrap:wrap;flex-basis:100%}
+.who .check{font-size:13.5px}
+.aphint{flex-basis:100%;font-size:12.5px;color:var(--text-3);margin:0}
+@media (max-width:560px){
+  .apbody .field,.apbody .field.what,.apbody .field.amt{flex:1 1 100%}
+  .apbody > .btn{width:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="shell" data-page="money"></div>
+
+<main class="page">
+<header class="page-head">
+  <p class="eyebrow" id="kicker"></p>
+  <h1 class="large-title" id="headline"></h1>
+  <p class="subtitle" id="lede"></p>
+</header>
+
+<div class="stat-row" id="stats"></div>
+<div class="toolbar" id="toolbar"></div>
+
+<div class="card adder" id="adder" hidden>
+  <form class="apbody" id="x-form">
+    <input type="hidden" id="x-id">
+    <label class="field what"><span id="l-what"></span><input class="input" id="x-label" maxlength="80" required></label>
+    <label class="field amt"><span id="l-amt"></span><input class="input" id="x-amount" inputmode="decimal" placeholder="12.50" required></label>
+    <label class="field"><span id="l-paid"></span><select class="select" id="x-paid"></select></label>
+    <label class="field"><span id="l-day"></span><select class="select" id="x-day"></select></label>
+    <div class="who" id="x-who"></div>
+    <button class="btn btn-primary" type="submit" id="x-save"></button>
+    <button class="btn btn-ghost" type="button" id="x-cancel"></button>
+    <button class="btn btn-ghost danger right" type="button" id="x-delete" hidden></button>
+    <p class="aphint" id="x-hint"></p>
+  </form>
+</div>
+
+<div class="people" id="people"></div>
+
+<section class="settle" id="settle" hidden>
+  <p class="eyebrow" id="settle-h" style="margin-bottom:10px"></p>
+  <div class="card rows" id="settle-list"></div>
+</section>
+
+<section class="xlist">
+  <p class="eyebrow" id="x-h" style="margin-bottom:10px"></p>
+  <div class="card rows" id="x-list"></div>
+  <p class="empty" id="x-empty" hidden></p>
+</section>
+
+<footer class="page-foot"><span id="foot"></span></footer>
+</main>
+
+<script type="module">
+import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers, nameKey,
+         setStatus, setTrip, tripKicker, dayShort, weekdayShort, dayLong, roleOf, onName } from "/shell.js";
+
+const T = {
+  en: {
+    pageTitle: "Money", headline: "Money",
+    lede: "Who paid what, and who owes whom. Add what you pay as you go; the balances and the settle-up take care of themselves.",
+    statTotal: "spent so far", statCount: "expenses", statEach: "per person", statMine: "your balance",
+    add: "Add an expense", close: "Close", what: "What", amount: "Amount", paidBy: "Paid by", day: "Day", noDay: "no particular day",
+    forWhom: "For", everyone: "everyone", save: "Add", update: "Save changes", remove: "Remove", cancel: "Cancel",
+    hint: "Split equally among the people it was for. Leave everyone ticked for a shared cost.",
+    paid: "paid", share: "share", owes: (a) => `owes ${a}`, owed: (a) => `is owed ${a}`, even: "settled",
+    settle: "To settle up", pays: "pays", nothing: "Nothing to settle — everyone is even.",
+    list: "Expenses", none: "No expenses yet. Add the first one when someone pays for something.",
+    paidByLbl: (n) => `paid by ${n}`, forN: (n) => `for ${n}`, forAll: "for everyone",
+    viewerNote: "Only editors and owners can add expenses.",
+    removeConfirm: (l) => `Remove "${l}"?`,
+    foot: "Amounts are in the trip's currency, set on the Details page. Nothing is converted.",
+  },
+  de: {
+    pageTitle: "Geld", headline: "Geld",
+    lede: "Wer was bezahlt hat und wer wem was schuldet. Trag ein, was du zahlst; Salden und Ausgleich ergeben sich von selbst.",
+    statTotal: "bisher ausgegeben", statCount: "Ausgaben", statEach: "pro Person", statMine: "dein Saldo",
+    add: "Ausgabe eintragen", close: "Schließen", what: "Wofür", amount: "Betrag", paidBy: "Bezahlt von", day: "Tag", noDay: "kein bestimmter Tag",
+    forWhom: "Für", everyone: "alle", save: "Eintragen", update: "Änderungen speichern", remove: "Entfernen", cancel: "Abbrechen",
+    hint: "Gleichmäßig unter denen aufgeteilt, für die es war. Für gemeinsame Kosten alle angehakt lassen.",
+    paid: "bezahlt", share: "Anteil", owes: (a) => `schuldet ${a}`, owed: (a) => `bekommt ${a}`, even: "ausgeglichen",
+    settle: "Zum Ausgleich", pays: "zahlt an", nothing: "Nichts auszugleichen – alle sind quitt.",
+    list: "Ausgaben", none: "Noch keine Ausgaben. Trag die erste ein, wenn jemand etwas bezahlt.",
+    paidByLbl: (n) => `bezahlt von ${n}`, forN: (n) => `für ${n}`, forAll: "für alle",
+    viewerNote: "Nur Bearbeiten und Verwaltung können Ausgaben eintragen.",
+    removeConfirm: (l) => `„${l}“ entfernen?`,
+    foot: "Beträge in der Währung der Reise, gesetzt auf der Details-Seite. Nichts wird umgerechnet.",
+  },
+};
+const t = () => T[getLang()];
+
+let TRIP = { days: [], currency: "EUR" }, MEMBERS = [], EXPENSES = [], PEOPLE = [], SETTLE = [], TOTAL = 0;
+let editing = null;   // expense id being edited, or null
+
+const money = (minor) => {
+  const cur = TRIP.currency || "EUR";
+  try { return new Intl.NumberFormat(getLang() === "de" ? "de-DE" : "en-GB", { style: "currency", currency: cur }).format(minor / (["JPY", "HUF"].includes(cur) ? 1 : 100)); }
+  catch { return `${(minor / 100).toFixed(2)} ${cur}`; }
+};
+const nameOfKey = (k) => MEMBERS.find((m) => m.key === k)?.name ?? k;
+const canEdit = () => ["editor", "owner"].includes(roleOf());
+
+function render() {
+  const L = t();
+  setTrip(TRIP, L.pageTitle);
+  $("#kicker").textContent = tripKicker(TRIP); $("#kicker").hidden = !$("#kicker").textContent;
+  $("#headline").textContent = L.headline; $("#lede").textContent = L.lede; $("#foot").textContent = L.foot;
+
+  const me = PEOPLE.find((p) => p.key === nameKey(nameOf()));
+  $("#stats").innerHTML = [
+    [money(TOTAL), L.statTotal],
+    [EXPENSES.length, L.statCount],
+    [money(MEMBERS.length ? Math.round(TOTAL / MEMBERS.length) : 0), L.statEach],
+    [me ? money(Math.abs(me.balance)) : "–", L.statMine],
+  ].map(([v, k]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("");
+
+  const open = !$("#adder").hidden;
+  $("#toolbar").innerHTML = canEdit()
+    ? `<button class="btn btn-sm ${open ? "btn-quiet" : "btn-primary"}" id="add" type="button">${open ? ICONS.close : ICONS.plus}${esc(open ? L.close : L.add)}</button>`
+    : `<span class="note">${esc(L.viewerNote)}</span>`;
+
+  $("#people").innerHTML = PEOPLE.map((p) => `<div class="card person">
+      <div class="name">${esc(p.name)}</div>
+      <div class="nums"><div>${esc(L.paid)}<b>${esc(money(p.paid))}</b></div><div>${esc(L.share)}<b>${esc(money(p.share))}</b></div></div>
+      <div class="bal ${p.balance > 0 ? "plus" : p.balance < 0 ? "minus" : "even"}">${
+        p.balance > 0 ? esc(L.owed(money(p.balance))) : p.balance < 0 ? esc(L.owes(money(-p.balance))) : esc(L.even)}</div>
+    </div>`).join("");
+
+  $("#settle").hidden = !EXPENSES.length;
+  $("#settle-h").textContent = L.settle;
+  $("#settle-list").innerHTML = SETTLE.length ? SETTLE.map((s) => `<div class="row">
+      <span class="name">${esc(nameOfKey(s.from))}</span><span class="arrow">${esc(L.pays)}</span><span class="name">${esc(nameOfKey(s.to))}</span>
+      <span class="amount">${esc(money(s.amount))}</span></div>`).join("")
+    : `<div class="row"><span class="note">${esc(L.nothing)}</span></div>`;
+
+  $("#x-h").textContent = L.list;
+  $("#x-list").innerHTML = EXPENSES.slice().reverse().map((x) => `<div class="row x${canEdit() ? " clickable" : ""}" data-x="${esc(x.id)}">
+      <div class="grow"><div class="name">${esc(x.label)}</div>
+        <div class="meta">${x.day ? `<span>${esc(dayShort(x.day))}</span>` : ""}<span>${esc(L.paidByLbl(nameOfKey(x.paidBy)))}</span>
+          <span class="tag tag-sm tag-neutral">${esc(x.forKeys ? L.forN(x.forKeys.map(nameOfKey).join(", ")) : L.forAll)}</span></div></div>
+      <span class="amt">${esc(money(x.amount))}</span>${canEdit() ? `<span class="chev">${ICONS.chevron}</span>` : ""}</div>`).join("");
+  $("#x-empty").hidden = EXPENSES.length > 0; $("#x-empty").textContent = L.none;
+  renderForm();
+}
+
+function renderForm() {
+  const L = t();
+  const x = editing ? EXPENSES.find((e) => e.id === editing) : null;
+  $("#l-what").textContent = L.what; $("#l-amt").textContent = L.amount; $("#l-paid").textContent = L.paidBy; $("#l-day").textContent = L.day;
+  $("#x-hint").textContent = L.hint; $("#x-cancel").textContent = L.cancel; $("#x-delete").textContent = L.remove;
+  $("#x-save").textContent = x ? L.update : L.save; $("#x-delete").hidden = !x;
+  $("#x-id").value = x?.id ?? "";
+  $("#x-label").value = x?.label ?? $("#x-label").value;
+  if (x) $("#x-amount").value = (x.amount / (["JPY", "HUF"].includes(TRIP.currency) ? 1 : 100)).toFixed(["JPY", "HUF"].includes(TRIP.currency) ? 0 : 2);
+  const meKey = nameKey(nameOf());
+  $("#x-paid").innerHTML = MEMBERS.map((m) => `<option value="${esc(m.key)}"${(x ? x.paidBy : meKey) === m.key ? " selected" : ""}>${esc(m.name)}</option>`).join("");
+  $("#x-day").innerHTML = `<option value="">${esc(L.noDay)}</option>` + TRIP.days.map((d) =>
+    `<option value="${esc(d)}"${x?.day === d ? " selected" : ""}>${esc(weekdayShort(d))} ${esc(dayLong(d))}</option>`).join("");
+  const chosen = x?.forKeys ? new Set(x.forKeys) : null;
+  $("#x-who").innerHTML = `<span class="note" style="align-self:center">${esc(L.forWhom)}</span>` + MEMBERS.map((m) =>
+    `<label class="check"><input type="checkbox" name="for" value="${esc(m.key)}"${!chosen || chosen.has(m.key) ? " checked" : ""}><span>${esc(m.name)}</span></label>`).join("");
+}
+
+function openForm(id = null) { editing = id; $("#adder").hidden = false; if (!id) { $("#x-label").value = ""; $("#x-amount").value = ""; } render(); $("#x-label").focus(); }
+function closeForm() { editing = null; $("#adder").hidden = true; render(); }
+
+async function mutate(path, body) {
+  if (!nameOf()) { askName(); return; }
+  setStatus(t().save, "sticky");
+  try {
+    const d = await api(path, { method: "POST", body: JSON.stringify(body) });
+    apply(d); await loadMoney(); closeForm(); setStatus("");
+  } catch (err) { setStatus(err.message, "err"); }
+}
+function apply(d) { if (d.trip) TRIP = d.trip; if (d.members) MEMBERS = d.members; if (d.expenses) EXPENSES = d.expenses; fillMembers(d.members); }
+async function loadMoney() {
+  const m = await api("/api/money");
+  EXPENSES = m.expenses; MEMBERS = m.members; PEOPLE = m.people; SETTLE = m.settle; TOTAL = m.total;
+}
+
+$("#x-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const body = { label: $("#x-label").value, amount: $("#x-amount").value, paidBy: $("#x-paid").value, day: $("#x-day").value || null,
+    forKeys: [...document.querySelectorAll('input[name="for"]:checked')].map((i) => i.value) };
+  const id = $("#x-id").value;
+  mutate(id ? "/api/expense/update" : "/api/expense/add", id ? { id, ...body } : body);
+});
+document.addEventListener("click", (e) => {
+  if (e.target.closest("#add")) return void ($("#adder").hidden ? openForm() : closeForm());
+  if (e.target.closest("#x-cancel")) return void closeForm();
+  if (e.target.closest("#x-delete")) {
+    const x = EXPENSES.find((z) => z.id === editing);
+    if (x && window.confirm(t().removeConfirm(x.label))) mutate("/api/expense/remove", { id: x.id });
+    return;
+  }
+  const row = e.target.closest(".x.clickable");
+  if (row) openForm(row.dataset.x);
+});
+
+onLang(render);
+onName(render);
+(async () => {
+  try {
+    const d = await api("/api/sights");
+    apply(d); await loadMoney(); render();
+  } catch (err) { setStatus(err.message, "err"); }
+})();
+</script>
+</body>
+</html>
