@@ -318,8 +318,10 @@ npm run migrate          # the local dev database
 npm run migrate:remote   # the live one
 ```
 
-**Run `npm run migrate:remote` before every deploy.** Forgetting one leaves the
-Worker querying a column that isn't there.
+**Ship with `npm run release`.** It migrates the live database and deploys
+only if that succeeded. Deploying with a migration still pending leaves the
+Worker querying a column that isn't there, and every page fails until the
+migration is applied.
 
 They are numbered because they are ordered — 004 alters a table 002 creates.
 A new one goes in as `scripts/migrate-NNN-name.sql`; the runner refuses to

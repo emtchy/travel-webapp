@@ -51,7 +51,8 @@ npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a 
 npm test                # 277 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
-npm run deploy          # only when asked — a push to main does NOT deploy
+npm run release         # only when asked: migrate the live database, and deploy ONLY if that succeeded
+npm run deploy          # deploy alone — never when a new migration is pending; a push to main does NOT deploy
 npx wrangler secret put RESEND_API_KEY   # once; sign-in mail. Unset locally = link returned, not mailed
 ```
 
@@ -117,8 +118,11 @@ Every write returns the full snapshot, so a page never re-fetches after a click.
   inventing page-specific ones; a colour must mean what the colour concept says.
 - **Never deploy or touch the remote database unprompted.** No build is
   connected to the repo, so a push to `main` changes nothing live; only
-  `npm run deploy` does, and it, `npm run migrate:remote` and `npm run db:remote`
-  run only when asked. Live: https://travel-webapp.emily-gombocz.workers.dev
+  `npm run release` / `npm run deploy` do, and they, `npm run migrate:remote`
+  and `npm run db:remote` run only when asked. **Ship with `npm run release`**,
+  never a hand-made chain: twice a transient API error failed the migration,
+  a pipe hid the exit code, the deploy went out and every read threw 1101
+  until the migration was retried. Live: https://travel-webapp.emily-gombocz.workers.dev
 - **Commits in Emily's name only.** No co-author trailers.
 - **Schema changes are numbered migrations** in `scripts/`, additive, applied
   locally first. `CREATE TABLE IF NOT EXISTS` cannot add a column.
