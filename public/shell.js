@@ -678,7 +678,7 @@ export function saveForOffline(extraUrls = []) {
     if (!sw) return reject(new Error("This browser can't save pages for offline."));
     const base = HOME ? [] : [pageHref("/"), pageHref("/plan"), pageHref("/bookings"), pageHref("/details"),
       `/api/t/${TRIP}/sights`, `/api/t/${TRIP}/state`, `/api/t/${TRIP}/me`, `/api/t/${TRIP}/photos`];
-    const urls = ["/app.css", "/shell.js", "/route.js", "/home.html", "/index.html", "/plan.html", "/bookings.html", "/details.html",
+    const urls = ["/app.css", "/shell.js", "/route.js", "/times.js", "/home.html", "/index.html", "/plan.html", "/bookings.html", "/details.html",
       "/api/auth/me", ...base, ...extraUrls];
     const onMsg = (e) => { if (e.data?.type === "saved") { navigator.serviceWorker.removeEventListener("message", onMsg); resolve(e.data); } };
     navigator.serviceWorker.addEventListener("message", onMsg);

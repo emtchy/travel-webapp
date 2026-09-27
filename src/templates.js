@@ -24,7 +24,7 @@ export const TEMPLATES = [
       s.cost ?? "free", s.priceLabel ?? null, s.priceLabel_de ?? null,
       JSON.stringify(s.openOn ?? []), s.bookingRequired ? 1 : 0,
       JSON.stringify(s.flags ?? []), s.url ?? null, s.wiki ?? null,
-      s.lat ?? null, s.lon ?? null, "template", "template", now,
+      s.lat ?? null, s.lon ?? null, "template", "template", now, s.durationMin ?? null,
     ]),
   },
 ];
@@ -33,7 +33,7 @@ export const ITEM_COLUMNS = [
   "id", "trip_id", "source", "rank", "tier", "name", "name_de", "summary", "summary_de",
   "categories", "area", "station", "cost", "price_label", "price_label_de", "open_on",
   "booking_required", "flags", "url", "wiki", "lat", "lon", "added_by", "added_by_key",
-  "created_at",
+  "created_at", "duration_min",
 ];
 
 /** The templates that fit a destination, for the new-trip form. */

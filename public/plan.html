@@ -78,6 +78,7 @@ li.stop:hover .chev{opacity:1}
 .sfields .field.wide{flex:1 1 110px}
 .sfields input[type=time]{width:104px;flex:none;text-align:center}
 .sfields .select{max-width:190px;min-width:0}
+.sfields select[data-f=dur]{max-width:112px}
 .svoters{display:flex;gap:6px;flex-wrap:wrap}
 .slinks{display:flex;gap:8px;flex-wrap:wrap}
 .sfoot .right{margin-left:auto}
@@ -181,6 +182,7 @@ li.stop:hover .chev{opacity:1}
 
 <script type="module">
 import { routeLinks, routeFrom, hasPlace } from "/route.js";
+import { dayTimes, fromMin } from "/times.js";
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
          setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink, onPrefs } from "/shell.js";
 
@@ -249,7 +251,17 @@ const T = {
     srcOwn: "yours", fOwn: "Your own",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "booked by", addedBy: "added by",
-    foot: "No routes and no travel times here — just what happens when. Times are what you enter, not what anything works out.",
+    shTakes: "Takes about", shTakesNone: "—",
+    dur: (m) => m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60}` : `${m / 60} h`,
+    tOverlap: "overlaps the stop before",
+    tTight: (t) => `tight · ~${t} to get here`,
+    tOverrun: (m) => `about ${m} min short`,
+    tImpliedTitle: "Worked out from the visit length",
+    daySum: (v, tr) => tr ? `about ${v} of visits, ~${tr} getting around` : `about ${v} of visits`,
+    dayUnknown: (n) => `${n} without a length`,
+    shEnds: (t) => `Ends about ${t}`,
+    shTravel: (t) => `~${t} from the stop before`,
+    foot: "Route the day opens your maps app. An end marked ~ and every warning are worked out from rough visit lengths and rough ways between stops — hints, never rules.",
   },
   de: {
     pageTitle: "Plan",
@@ -315,7 +327,17 @@ const T = {
     srcOwn: "eigener", fOwn: "Eigene",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "gebucht von", addedBy: "eingetragen von",
-    foot: "Keine Routen und keine Fahrtzeiten – nur was wann passiert. Die Zeiten sind die, die du einträgst.",
+    shTakes: "Dauert etwa", shTakesNone: "—",
+    dur: (m) => m < 60 ? `${m} Min.` : m % 60 ? `${Math.floor(m / 60)} Std. ${m % 60}` : `${m / 60} Std.`,
+    tOverlap: "überschneidet sich mit dem Stopp davor",
+    tTight: (t) => `knapp · ~${t} Weg hierher`,
+    tOverrun: (m) => `etwa ${m} Min. zu kurz`,
+    tImpliedTitle: "Aus der Besuchsdauer errechnet",
+    daySum: (v, tr) => tr ? `etwa ${v} vor Ort, ~${tr} unterwegs` : `etwa ${v} vor Ort`,
+    dayUnknown: (n) => `${n} ohne Dauer`,
+    shEnds: (t) => `Endet etwa ${t}`,
+    shTravel: (t) => `~${t} vom Stopp davor`,
+    foot: "Route für den Tag öffnet deine Karten-App. Ein Ende mit ~ und jede Warnung sind aus groben Besuchsdauern und groben Wegen errechnet – Hinweise, keine Regeln.",
   },
 };
 const t = () => T[getLang()];
@@ -398,7 +420,22 @@ function locatable(p) {
 
 const SRC_TAG = { booked: "tag-green", hand: "tag-tint", own: "tag-violet" };
 
-function stopHTML(p, i, stops) {
+/**
+ * The clock arithmetic for one day's stops, in the order shown. A length is
+ * a fact about the place, so your own entries — which are not places — have
+ * none and only ever contribute the slot you entered.
+ */
+const timesOf = (stops) => dayTimes(stops.map((p) => ({
+  start: p.start, end: p.end,
+  durationMin: p.source === "own" ? null : byId(p.id)?.durationMin ?? null,
+  place: placeOf(p),
+})));
+
+/** The one sentence a flag turns into. */
+const flagText = (L, ti) =>
+  ti.flag === "overlap" ? L.tOverlap : ti.flag === "tight" ? L.tTight(L.dur(ti.by)) : L.tOverrun(ti.by);
+
+function stopHTML(p, i, stops, ti = null) {
   const L = t();
   const own = p.source === "own";
   const s = own ? null : byId(p.id);
@@ -420,7 +457,8 @@ function stopHTML(p, i, stops) {
   return `<li class="stop" data-stop="${esc(p.id)}" data-src="${esc(p.source)}">
     <div class="when${p.start ? "" : " open"}">
       ${p.start ? esc(p.start) : esc(L.noTime)}
-      ${p.end ? `<em>${esc(p.end)}</em>` : ""}
+      ${p.end ? `<em>${esc(p.end)}</em>`
+        : ti?.implied ? `<em title="${esc(L.tImpliedTitle)}">~${esc(fromMin(ti.endMin))}</em>` : ""}
     </div>
     <div>
       <div class="sname">${esc(label)}</div>
@@ -428,6 +466,7 @@ function stopHTML(p, i, stops) {
         ${votes ? `<span>${esc(L.votesShort(votes))}</span>` : ""}
         ${booking}
         ${needsPlace(p) ? `<span class="tag tag-sm tag-coral">${esc(L.noLocation)}</span>` : ""}
+        ${ti?.flag ? `<span class="tag tag-sm tag-coral">${esc(flagText(L, ti))}</span>` : ""}
       </div>
     </div>
     <span class="chev">${ICONS.chevron}</span>
@@ -637,10 +676,16 @@ function render() {
 
   const list = planned();
   const shown = list.filter(passes);
-  const days = TRIP.days.map((d) => ({
-    date: d,
-    stops: shown.filter((p) => p.day === d).sort(byClock),
-  }));
+  const days = TRIP.days.map((d) => {
+    const stops = shown.filter((p) => p.day === d).sort(byClock);
+    return { date: d, stops, times: timesOf(stops) };
+  });
+  const daySumHTML = (tm) => {
+    if (!tm.visits && !tm.travel) return "";
+    const parts = [L.daySum(L.dur(tm.visits), tm.travel ? L.dur(tm.travel) : null)];
+    if (tm.unknown) parts.push(L.dayUnknown(tm.unknown));
+    return `<span class="routenote">${esc(parts.join(" · "))}</span>`;
+  };
 
   $("#stats").innerHTML = [
     [list.length, L.statPlanned],
@@ -656,9 +701,10 @@ function render() {
       <span class="wd">${esc(weekday(d.date))}</span>
       <h2>${esc(dayLong(d.date))}</h2>
       ${d.stops.length ? `<span class="n">${esc(L.stops(d.stops.length))}</span>` : ""}
+      ${daySumHTML(d.times)}
     </header>
     ${d.stops.length
-      ? `<ol class="stops">${d.stops.map((p, i) => stopHTML(p, i, d.stops)).join("")}</ol>`
+      ? `<ol class="stops">${d.stops.map((p, i) => stopHTML(p, i, d.stops, d.times.stops[i])).join("")}</ol>`
       : `<p class="dayempty">${esc(L.dayEmpty)}</p>`}
     ${dayRouteHTML(d.stops)}
   </section>`).join("");
@@ -704,6 +750,18 @@ function sheetHTML(x) {
   const dayStops = planned().filter(passes).filter((q) => q.day === x.day).sort(byClock);
   const idx = dayStops.findIndex((q) => q.id === x.id && q.source === x.source);
   const onward = idx >= 0 ? routeFrom(dayStops.map(placeOf), idx, "transit", originNow()) : null;
+  const ti = idx >= 0 ? timesOf(dayStops).stops[idx] : null;
+
+  // The length as a coarse choice: it is a rough figure, and a select says so
+  // better than a box for minutes. A figure set another way is still offered.
+  const cur = x.sight?.durationMin ?? null;
+  const steps = [...new Set([15, 30, 45, 60, 90, 120, 150, 180, 240, 300, 360, 480, ...(cur ? [cur] : [])])].sort((a, b) => a - b);
+  const durOpts = `<option value=""${cur ? "" : " selected"}>${esc(L.shTakesNone)}</option>` +
+    steps.map((m) => `<option value="${m}"${m === cur ? " selected" : ""}>${esc(L.dur(m))}</option>`).join("");
+  const worked = [];
+  if (ti?.implied) worked.push(L.shEnds(fromMin(ti.endMin)));
+  if (ti?.travel != null && ti.flag !== "tight") worked.push(L.shTravel(L.dur(ti.travel)));
+  if (ti?.flag) worked.push(flagText(L, ti));
 
   return `
   <div class="srow">
@@ -720,7 +778,9 @@ function sheetHTML(x) {
       <label class="field"><span>${esc(L.shDay)}</span><select class="select" data-f="day">${dayOpts}</select></label>
       <label class="field" data-half><span>${esc(L.shFrom)}</span><input class="input" type="time" data-f="start" value="${esc(x.start ?? "")}"></label>
       <label class="field" data-half><span>${esc(L.shTo)}</span><input class="input" type="time" data-f="end" value="${esc(x.end ?? "")}"></label>
+      ${x.own ? "" : `<label class="field" data-half><span>${esc(L.shTakes)}</span><select class="select" data-f="dur">${durOpts}</select></label>`}
     </div>
+    ${worked.length ? `<span class="sval muted">${esc(worked.join(" · "))}</span>` : ""}
   </div>
 
   <div class="srow">
@@ -783,13 +843,23 @@ function renderSheet() {
 function closeSheet() { sheetFor = null; const b = $("#sheet"); if (b) b.hidden = true; }
 
 /** Save through whichever endpoint owns this kind of stop. */
-function saveSheet() {
+async function saveSheet() {
   const p = stopFor(sheetFor);
   if (!p) return closeSheet();
   const box = $("#sheet-body");
   const f = (k) => box.querySelector(`[data-f="${k}"]`)?.value || null;
   const day = f("day"), start = f("start"), end = f("end"), label = f("label");
+  const dur = f("dur");
   closeSheet();
+
+  // The length is a fact about the place, so it goes to the place first —
+  // and only when it changed, so an ordinary slot edit is still one write.
+  // If it fails, the slot stays as it was and the message says why.
+  if (p.source !== "own") {
+    const want = Number(dur) || null;
+    if (want !== (byId(p.id)?.durationMin ?? null) &&
+        !(await mutate("/api/sights/duration", { id: p.id, durationMin: want }))) return;
+  }
 
   if (p.source === "own")
     return void mutate("/api/plan/note/update", { id: p.id, label, day, start, end });
@@ -845,6 +915,7 @@ async function mutate(path, body) {
     // Every one of these can change on any mutation — a booking places a
     // sight, an address changes a route. Missing one leaves the page showing
     // something the server no longer believes.
+    SIGHTS = d.sights ?? SIGHTS;
     CUSTOM = d.custom ?? CUSTOM;
     VOTES = d.votes ?? VOTES;
     STATUS = d.bookings ?? [];
@@ -855,6 +926,7 @@ async function mutate(path, body) {
     render();
     renderSheet();
     setStatus(t().saved);
+    return d;
   } catch (err) { setStatus(err.message, "err"); }
 }
 

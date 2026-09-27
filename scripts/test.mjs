@@ -1745,5 +1745,80 @@ t5("and trip 1 does not see trip 2's rows",
   t5("/t/1/money is a page", (await (await raw("/t/1/money")).text()) === "static /money.html");
 }
 
+// --- Step 23: times that add up
+{
+  const { travelMinutes } = await import("../public/route.js");
+  const { dayTimes, toMin, fromMin, SLACK } = await import("../public/times.js");
+
+  // the way between stops: rough, but the right order of magnitude
+  t5("no way between a place and itself", travelMinutes(A, A) === 0);
+  const ac = travelMinutes(A, C);
+  t5("a kilometre is a walk of a quarter of an hour or so", ac >= 12 && ac <= 25);
+  t5("no way without a location", travelMinutes(A, NOWHERE) === null && travelMinutes(null, A) === null);
+  const kew = travelMinutes({ lat: 51.478, lon: -0.295 }, A);
+  t5("across town is transit, and longer", kew > 40 && kew > ac);
+
+  // the clock
+  t5("clocks read and write", toMin("09:05") === 545 && fromMin(785) === "13:05" && toMin(null) === null && toMin("25:00") === null && fromMin(1450) === "00:10");
+
+  const at = (start, end, durationMin, place = A) => ({ start, end, durationMin, place });
+  const walk = () => 19;
+
+  const one = dayTimes([at("10:00", null, 180)]);
+  t5("a start and a length give an end, marked as worked out",
+     one.stops[0].endMin === 780 && one.stops[0].implied === true && one.stops[0].flag === null && one.visits === 180 && one.travel === 0 && one.unknown === 0);
+
+  const ov = dayTimes([at("10:00", null, 180), at("11:00", null, 60)], walk);
+  t5("a stop that starts before the one before ends overlaps it", ov.stops[1].flag === "overlap" && ov.stops[1].by === 120);
+
+  const en = dayTimes([at("10:00", "11:00", 180)]);
+  t5("an entered end wins, and a slot shorter than the visit overruns",
+     en.stops[0].endMin === 660 && en.stops[0].implied === false && en.stops[0].flag === "overrun" && en.stops[0].by === 120 && en.visits === 60);
+  t5("a few minutes short is not worth a warning", dayTimes([at("10:00", "10:55", 60)]).stops[0].flag === null && SLACK === 10);
+
+  const tight = dayTimes([at("10:00", "12:00", null), at("12:05", null, 60, C)], walk);
+  t5("five minutes for a nineteen-minute walk is tight", tight.stops[1].flag === "tight" && tight.stops[1].by === 19 && tight.stops[1].travel === 19 && tight.travel === 19);
+  t5("forty minutes is not", dayTimes([at("10:00", "12:00", null), at("12:40", null, 60, C)], walk).stops[1].flag === null);
+
+  t5("a stop without a start says nothing", dayTimes([at("10:00", null, 180), at(null, null, 60)], walk).stops[1].flag === null);
+  t5("neither an end nor a length on the one before: nothing to compare", dayTimes([at("10:00", null, null), at("10:05", null, 60)], walk).stops[1].flag === null);
+  const noloc = dayTimes([at("10:00", "12:00", null, NOWHERE), at("12:05", null, 60, C)]);
+  t5("no location: no way, so not tight", noloc.stops[1].flag === null && noloc.stops[1].travel === null);
+  t5("but an overlap needs no location", dayTimes([at("10:00", "12:00", null, NOWHERE), at("11:30", null, 60, C)]).stops[1].flag === "overlap");
+  t5("one flag per stop, the overlap first", dayTimes([at("10:00", "12:00", null), at("11:30", "11:45", 60, C)], walk).stops[1].flag === "overlap");
+
+  const sums = dayTimes([at("10:00", "11:00", 180), at("12:00", null, 45, C), at("14:00", null, null, B)], walk);
+  t5("the day sums its slots, its ways and what it cannot tell",
+     sums.visits === 105 && sums.travel === 38 && sums.unknown === 1);
+
+  // the endpoint
+  const em = { cookie: cookieFor("Emily", 1) };
+  const dur = (b, h = em) => raw("/api/t/1/sights/duration", { method: "POST", headers: h, body: JSON.stringify(b) });
+  t5("the London places come with a length", list.sights.every(s => Number.isInteger(s.durationMin) && s.durationMin >= 15));
+  t5("and so do the template's copies", db.prepare("SELECT COUNT(*) AS n FROM items WHERE id LIKE 'tower-of-london-t%'").get().n > 0 &&
+     db.prepare("SELECT COUNT(*) AS n FROM items WHERE id LIKE '%-t%' AND source = 'builtin' AND duration_min IS NULL").get().n === 0);
+  t5("a stranger cannot set one", (await dur({ id: "tower-of-london", durationMin: 90 }, {})).status === 401);
+  {
+    const inv = await (await raw("/api/t/1/invite", { method: "POST", headers: em, body: JSON.stringify({ email: "viewer3@example.org", role: "viewer" }) })).json();
+    const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+    const V = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+    t5("nor can a viewer", (await dur({ id: "tower-of-london", durationMin: 90 }, V)).status === 403);
+  }
+  t5("a length is whole minutes between 5 and 720",
+     (await dur({ id: "tower-of-london", durationMin: 3 })).status === 400 && (await dur({ id: "tower-of-london", durationMin: 721 })).status === 400 &&
+     (await dur({ id: "tower-of-london", durationMin: 1.5 })).status === 400 && (await dur({ id: "tower-of-london", durationMin: "60" })).status === 400);
+  t5("of a place on the trip", (await dur({ id: "nowhere-at-all", durationMin: 60 })).status === 400);
+  let d = await (await dur({ id: "tower-of-london", durationMin: 90 })).json();
+  t5("an editor sets a built-in place's length", d.sights.find(s => s.id === "tower-of-london").durationMin === 90);
+  const added = await (await raw("/api/t/1/sights/add", { method: "POST", headers: em, body: JSON.stringify({ name: "A long lunch", costs: false }) })).json();
+  const lunch = added.custom.find(c => c.name === "A long lunch");
+  d = await (await dur({ id: lunch.id, durationMin: 45 })).json();
+  t5("and an added one's", d.custom.find(c => c.id === lunch.id).durationMin === 45);
+  d = await (await dur({ id: lunch.id, durationMin: null })).json();
+  t5("nothing means unknown again", d.custom.find(c => c.id === lunch.id).durationMin === null);
+  t5("the snapshot carries a length for every place", d.sights.every(s => "durationMin" in s) && d.custom.every(c => "durationMin" in c));
+  await dur({ id: "tower-of-london", durationMin: 180 });
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

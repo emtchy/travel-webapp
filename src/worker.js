@@ -92,6 +92,28 @@ async function handleTripDelete(request, env, trip) {
   return json({ ok: true, deleted: trip });
 }
 
+/**
+ * POST /api/t/<trip>/sights/duration  { id, durationMin | null }
+ * How long a visit takes, roughly, in minutes. Any place, by an editor. Null
+ * means unknown again. The plan uses it to work out when a stop ends when
+ * only a start was given, and to say when a day does not add up. Answers
+ * with the sights as well as the snapshot, since the length is on the place.
+ */
+async function handleDuration(request, env, trip) {
+  let body;
+  try { body = await request.json(); } catch { return bad("Body must be JSON."); }
+  const { error } = await actor(request, env, trip, "edit");
+  if (error) return error;
+  const { id, durationMin } = body ?? {};
+  if (typeof id !== "string" || !(await isKnownSight(env, id, trip))) return bad("Unknown place.");
+  if (durationMin !== null && !(Number.isInteger(durationMin) && durationMin >= 5 && durationMin <= 720))
+    return bad("A visit length between 5 minutes and 12 hours, or nothing.");
+  await env.DB.prepare("UPDATE items SET duration_min = ?1 WHERE id = ?2 AND trip_id = ?3").bind(durationMin, id, trip).run();
+  // The length lives on the place, and a built-in place is not in the
+  // snapshot, so the list of sights comes back too — the page keeps both.
+  return json({ ok: true, sights: await getSights(env, trip), ...(await snapshot(env, trip)) });
+}
+
 /** POST /api/t/<trip>/member/role  { id, role } — owner only. */
 async function handleMemberRole(request, env, trip) {
   let body;
@@ -606,7 +628,7 @@ const parseList = (text) => {
 
 const ITEM_COLUMNS = `id, source, rank, tier, name, name_de, summary, summary_de,
   categories, area, station, cost, price_label, price_label_de, open_on,
-  booking_required, flags, url, wiki, address, lat, lon, added_by, created_at`;
+  booking_required, flags, url, wiki, address, lat, lon, added_by, created_at, duration_min`;
 
 function builtinOf(row) {
   return {
@@ -630,6 +652,7 @@ function builtinOf(row) {
     priceLabel_de: row.price_label_de,
     lat: row.lat,
     lon: row.lon,
+    durationMin: row.duration_min ?? null,
   };
 }
 
@@ -647,6 +670,7 @@ function addedOf(row) {
     address: row.address,
     lat: row.lat,
     lon: row.lon,
+    durationMin: row.duration_min ?? null,
     custom: true,
   };
 }
@@ -1906,6 +1930,9 @@ async function route(request, env) {
 
     if (pathname === "/api/trip/travel" && method === "POST")
       return handleTravel(request, env, trip);
+
+    if (pathname === "/api/sights/duration" && method === "POST")
+      return handleDuration(request, env, trip);
 
     if (pathname === "/api/sights/edit" && method === "POST")
       return handleEditSight(request, env, trip);

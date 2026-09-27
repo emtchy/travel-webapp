@@ -3,6 +3,7 @@
 export const SIGHTS = [
   {
     "id": "tower-of-london",
+    "durationMin": 180,
     "rank": 1,
     "tier": "unmissable",
     "name": "Tower of London",
@@ -38,6 +39,7 @@ export const SIGHTS = [
   },
   {
     "id": "british-museum",
+    "durationMin": 150,
     "rank": 2,
     "tier": "unmissable",
     "name": "The British Museum",
@@ -71,6 +73,7 @@ export const SIGHTS = [
   },
   {
     "id": "the-painted-hall-old-royal-naval-college",
+    "durationMin": 60,
     "rank": 3,
     "tier": "unmissable",
     "name": "The Painted Hall, Old Royal Naval College",
@@ -107,6 +110,7 @@ export const SIGHTS = [
   },
   {
     "id": "sir-john-soane-s-museum",
+    "durationMin": 60,
     "rank": 4,
     "tier": "unmissable",
     "name": "Sir John Soane's Museum",
@@ -139,6 +143,7 @@ export const SIGHTS = [
   },
   {
     "id": "westminster-abbey-diamond-jubilee-galleries",
+    "durationMin": 120,
     "rank": 5,
     "tier": "unmissable",
     "name": "Westminster Abbey + Diamond Jubilee Galleries",
@@ -173,6 +178,7 @@ export const SIGHTS = [
   },
   {
     "id": "st-paul-s-cathedral-the-dome-climb",
+    "durationMin": 120,
     "rank": 6,
     "tier": "unmissable",
     "name": "St Paul's Cathedral — the dome climb",
@@ -208,6 +214,7 @@ export const SIGHTS = [
   },
   {
     "id": "national-gallery",
+    "durationMin": 120,
     "rank": 7,
     "tier": "unmissable",
     "name": "The National Gallery",
@@ -241,6 +248,7 @@ export const SIGHTS = [
   },
   {
     "id": "horizon-22",
+    "durationMin": 45,
     "rank": 8,
     "tier": "unmissable",
     "name": "Horizon 22",
@@ -274,6 +282,7 @@ export const SIGHTS = [
   },
   {
     "id": "leadenhall-market-the-lloyd-s-building",
+    "durationMin": 45,
     "rank": 9,
     "tier": "unmissable",
     "name": "Leadenhall Market & the Lloyd's building",
@@ -310,6 +319,7 @@ export const SIGHTS = [
   },
   {
     "id": "victoria-and-albert-museum",
+    "durationMin": 150,
     "rank": 10,
     "tier": "unmissable",
     "name": "Victoria and Albert Museum",
@@ -346,6 +356,7 @@ export const SIGHTS = [
   },
   {
     "id": "warner-bros-studio-tour-the-making-of-harry-potter",
+    "durationMin": 240,
     "rank": 11,
     "tier": "unmissable",
     "name": "Warner Bros. Studio Tour — The Making of Harry Potter",
@@ -381,6 +392,7 @@ export const SIGHTS = [
   },
   {
     "id": "borough-market-the-south-bank-walk",
+    "durationMin": 120,
     "rank": 12,
     "tier": "unmissable",
     "name": "Borough Market & the South Bank walk",
@@ -415,6 +427,7 @@ export const SIGHTS = [
   },
   {
     "id": "big-ben-westminster-bridge",
+    "durationMin": 30,
     "rank": 13,
     "tier": "unmissable",
     "name": "Big Ben & Westminster Bridge",
@@ -448,6 +461,7 @@ export const SIGHTS = [
   },
   {
     "id": "tate-modern",
+    "durationMin": 120,
     "rank": 14,
     "tier": "popular",
     "name": "Tate Modern",
@@ -481,6 +495,7 @@ export const SIGHTS = [
   },
   {
     "id": "eltham-palace",
+    "durationMin": 120,
     "rank": 15,
     "tier": "exceptional",
     "name": "Eltham Palace",
@@ -517,6 +532,7 @@ export const SIGHTS = [
   },
   {
     "id": "two-temple-place",
+    "durationMin": 45,
     "rank": 16,
     "tier": "exceptional",
     "name": "Two Temple Place",
@@ -547,6 +563,7 @@ export const SIGHTS = [
   },
   {
     "id": "hampstead-the-heath-and-kenwood-house",
+    "durationMin": 180,
     "rank": 17,
     "tier": "exceptional",
     "name": "Hampstead, the Heath and Kenwood House",
@@ -581,6 +598,7 @@ export const SIGHTS = [
   },
   {
     "id": "kew-gardens-the-palm-house",
+    "durationMin": 180,
     "rank": 18,
     "tier": "exceptional",
     "name": "Kew Gardens — the Palm House",
@@ -617,6 +635,7 @@ export const SIGHTS = [
   },
   {
     "id": "sky-garden",
+    "durationMin": 60,
     "rank": 19,
     "tier": "exceptional",
     "name": "Sky Garden",
@@ -650,6 +669,7 @@ export const SIGHTS = [
   },
   {
     "id": "natural-history-museum-hintze-hall",
+    "durationMin": 120,
     "rank": 20,
     "tier": "exceptional",
     "name": "Natural History Museum — Hintze Hall",
@@ -683,6 +703,7 @@ export const SIGHTS = [
   },
   {
     "id": "highgate-cemetery",
+    "durationMin": 90,
     "rank": 21,
     "tier": "exceptional",
     "name": "Highgate Cemetery",
@@ -718,6 +739,7 @@ export const SIGHTS = [
   },
   {
     "id": "the-wallace-collection",
+    "durationMin": 90,
     "rank": 22,
     "tier": "exceptional",
     "name": "The Wallace Collection",
@@ -753,6 +775,7 @@ export const SIGHTS = [
   },
   {
     "id": "st-dunstan-in-the-east",
+    "durationMin": 20,
     "rank": 23,
     "tier": "exceptional",
     "name": "St Dunstan-in-the-East",
@@ -787,6 +810,7 @@ export const SIGHTS = [
   },
   {
     "id": "guildhall-roman-amphitheatre",
+    "durationMin": 30,
     "rank": 24,
     "tier": "exceptional",
     "name": "Guildhall Roman Amphitheatre",
@@ -821,6 +845,7 @@ export const SIGHTS = [
   },
   {
     "id": "columbia-road-flower-market",
+    "durationMin": 60,
     "rank": 25,
     "tier": "exceptional",
     "name": "Columbia Road Flower Market",
@@ -851,6 +876,7 @@ export const SIGHTS = [
   },
   {
     "id": "tower-bridge-and-the-engine-rooms",
+    "durationMin": 75,
     "rank": 26,
     "tier": "exceptional",
     "name": "Tower Bridge and the Engine Rooms",
@@ -884,6 +910,7 @@ export const SIGHTS = [
   },
   {
     "id": "hampton-court-palace",
+    "durationMin": 210,
     "rank": 27,
     "tier": "exceptional",
     "name": "Hampton Court Palace",
@@ -921,6 +948,7 @@ export const SIGHTS = [
   },
   {
     "id": "imperial-war-museum-london",
+    "durationMin": 120,
     "rank": 28,
     "tier": "exceptional",
     "name": "Imperial War Museum London",
@@ -956,6 +984,7 @@ export const SIGHTS = [
   },
   {
     "id": "barbican-conservatory",
+    "durationMin": 45,
     "rank": 29,
     "tier": "exceptional",
     "name": "Barbican Conservatory",
@@ -988,6 +1017,7 @@ export const SIGHTS = [
   },
   {
     "id": "buckingham-palace-state-rooms",
+    "durationMin": 150,
     "rank": 30,
     "tier": "exceptional",
     "name": "Buckingham Palace State Rooms",
@@ -1024,6 +1054,7 @@ export const SIGHTS = [
   },
   {
     "id": "changing-of-the-guard",
+    "durationMin": 60,
     "rank": 31,
     "tier": "popular",
     "name": "Changing of the Guard",
@@ -1057,6 +1088,7 @@ export const SIGHTS = [
   },
   {
     "id": "platform-9-3-4",
+    "durationMin": 20,
     "rank": 32,
     "tier": "popular",
     "name": "Platform 9¾, King's Cross",
@@ -1090,6 +1122,7 @@ export const SIGHTS = [
   },
   {
     "id": "house-of-minalima",
+    "durationMin": 45,
     "rank": 33,
     "tier": "popular",
     "name": "House of MinaLima",
@@ -1123,6 +1156,7 @@ export const SIGHTS = [
   },
   {
     "id": "millennium-bridge",
+    "durationMin": 15,
     "rank": 34,
     "tier": "popular",
     "name": "Millennium Bridge",
@@ -1156,6 +1190,7 @@ export const SIGHTS = [
   },
   {
     "id": "st-pancras-international",
+    "durationMin": 30,
     "rank": 35,
     "tier": "popular",
     "name": "St Pancras International",
@@ -1189,6 +1224,7 @@ export const SIGHTS = [
   },
   {
     "id": "rangers-house-bridgerton",
+    "durationMin": 60,
     "rank": 36,
     "tier": "popular",
     "name": "Ranger's House — the Bridgerton house",
@@ -1220,6 +1256,7 @@ export const SIGHTS = [
   },
   {
     "id": "royal-observatory-greenwich",
+    "durationMin": 90,
     "rank": 37,
     "tier": "popular",
     "name": "Royal Observatory, Greenwich",
@@ -1252,6 +1289,7 @@ export const SIGHTS = [
   },
   {
     "id": "shakespeares-globe",
+    "durationMin": 90,
     "rank": 38,
     "tier": "popular",
     "name": "Shakespeare's Globe",
@@ -1285,6 +1323,7 @@ export const SIGHTS = [
   },
   {
     "id": "london-eye",
+    "durationMin": 60,
     "rank": 39,
     "tier": "popular",
     "name": "London Eye",
@@ -1320,6 +1359,7 @@ export const SIGHTS = [
   },
   {
     "id": "view-from-the-shard",
+    "durationMin": 75,
     "rank": 40,
     "tier": "popular",
     "name": "The View from The Shard",
@@ -1354,6 +1394,7 @@ export const SIGHTS = [
   },
   {
     "id": "trafalgar-square",
+    "durationMin": 30,
     "rank": 41,
     "tier": "popular",
     "name": "Trafalgar Square",
@@ -1386,6 +1427,7 @@ export const SIGHTS = [
   },
   {
     "id": "covent-garden-piazza",
+    "durationMin": 60,
     "rank": 42,
     "tier": "popular",
     "name": "Covent Garden Piazza",
@@ -1419,6 +1461,7 @@ export const SIGHTS = [
   },
   {
     "id": "neal-s-yard-seven-dials-and-cecil-court",
+    "durationMin": 60,
     "rank": 43,
     "tier": "exceptional",
     "name": "Neal's Yard, Seven Dials and Cecil Court",
@@ -1453,6 +1496,7 @@ export const SIGHTS = [
   },
   {
     "id": "piccadilly-circus",
+    "durationMin": 20,
     "rank": 44,
     "tier": "popular",
     "name": "Piccadilly Circus",
@@ -1485,6 +1529,7 @@ export const SIGHTS = [
   },
   {
     "id": "camden-market",
+    "durationMin": 120,
     "rank": 45,
     "tier": "popular",
     "name": "Camden Market",
@@ -1518,6 +1563,7 @@ export const SIGHTS = [
   },
   {
     "id": "notting-hill-portobello",
+    "durationMin": 120,
     "rank": 46,
     "tier": "popular",
     "name": "Notting Hill & Portobello Road",
@@ -1547,6 +1593,7 @@ export const SIGHTS = [
   },
   {
     "id": "abbey-road-crossing",
+    "durationMin": 30,
     "rank": 47,
     "tier": "popular",
     "name": "Abbey Road crossing",
@@ -1580,6 +1627,7 @@ export const SIGHTS = [
   },
   {
     "id": "richmond-park-in-rut-season",
+    "durationMin": 150,
     "rank": 48,
     "tier": "exceptional",
     "name": "Richmond Park in rut season",
@@ -1616,6 +1664,7 @@ export const SIGHTS = [
   },
   {
     "id": "regent-s-canal-little-venice-to-camden",
+    "durationMin": 120,
     "rank": 49,
     "tier": "exceptional",
     "name": "Regent's Canal: Little Venice to Camden",
@@ -1649,6 +1698,7 @@ export const SIGHTS = [
   },
   {
     "id": "museum-of-the-home",
+    "durationMin": 75,
     "rank": 50,
     "tier": "exceptional",
     "name": "Museum of the Home",
@@ -1682,6 +1732,7 @@ export const SIGHTS = [
   },
   {
     "id": "postman-s-park",
+    "durationMin": 20,
     "rank": 51,
     "tier": "exceptional",
     "name": "Postman's Park",
@@ -1715,6 +1766,7 @@ export const SIGHTS = [
   },
   {
     "id": "royal-courts-of-justice",
+    "durationMin": 45,
     "rank": 52,
     "tier": "exceptional",
     "name": "Royal Courts of Justice",
@@ -1749,6 +1801,7 @@ export const SIGHTS = [
   },
   {
     "id": "battersea-power-station",
+    "durationMin": 90,
     "rank": 53,
     "tier": "exceptional",
     "name": "Battersea Power Station",
@@ -1783,6 +1836,7 @@ export const SIGHTS = [
   },
   {
     "id": "hyde-park-kensington-gardens",
+    "durationMin": 90,
     "rank": 54,
     "tier": "popular",
     "name": "Hyde Park & Kensington Gardens",
@@ -1815,6 +1869,7 @@ export const SIGHTS = [
   },
   {
     "id": "liberty-and-the-arcades",
+    "durationMin": 60,
     "rank": 55,
     "tier": "popular",
     "name": "Liberty & the Piccadilly arcades",

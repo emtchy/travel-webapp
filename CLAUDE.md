@@ -27,7 +27,8 @@ public/money.html     Money     /t/<trip>/money     expenses, balances, settle-u
                       (the Worker maps these to the files; /, /plan… redirect to trip 1)
 public/app.css        the design system: tokens, colour concept, components
 public/shell.js       the shared shell: nav + tab bar, sign-in and claim sheets, language, toast, api(), maps preference
-public/route.js       Google / Apple Maps links for a day or a stop
+public/route.js       Google / Apple Maps links for a day or a stop, and a rough way between two
+public/times.js       the clock arithmetic of a day: worked-out ends, overlaps, tight ways, sums
 public/sw.js          the service worker: network-first, last answer kept for offline, photos cached
 src/worker.js         the API, page routing, and the static-asset fallthrough
 src/auth.js           sign-in by email link: tokens, sessions, the /auth callback, Resend
@@ -39,7 +40,7 @@ src/sights.js         the London template; scripts/build-items-seed.mjs turns it
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
-schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (016 so far)
+schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (020 so far)
 scripts/migrate.mjs   applies every migration, skipping done ones
 scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 ```
@@ -48,7 +49,7 @@ scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 
 ```bash
 npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a local D1)
-npm test                # 277 checks against the Worker with an in-memory SQLite
+npm test                # 581 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
 npm run release         # only when asked: migrate the live database, and deploy ONLY if that succeeded
@@ -77,6 +78,7 @@ outside it may change.
 | GET | `/api/state` | the snapshot: custom, votes, comments, bookings, plan, notes, trip, members, travel |
 | POST | `/api/vote` | toggle one vote |
 | POST | `/api/sights/add` · `/edit` · `/remove` · `/address` | added places |
+| POST | `/api/sights/duration` | editors: `{ id, durationMin \| null }` — a rough visit length, 5 min to 12 h, on any place; answers with the sights too |
 | POST | `/api/comments/add` · `/remove` | comments on a place |
 | POST | `/api/bookings/status` | booked / skipped / clear, with an optional date and times |
 | POST | `/api/plan/set` · `/remove` | put a place on a day, take it off |

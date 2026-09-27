@@ -77,7 +77,8 @@ CREATE TABLE IF NOT EXISTS items (
   lon              REAL,
   added_by         TEXT    NOT NULL,      -- as typed; 'setup' for an import
   added_by_key     TEXT    NOT NULL,      -- lowercased; only they can remove an added one
-  created_at       INTEGER NOT NULL
+  created_at       INTEGER NOT NULL,
+  duration_min     INTEGER                -- a rough visit length; NULL = unknown
 );
 
 CREATE INDEX IF NOT EXISTS idx_items_trip ON items (trip_id, source, rank, created_at);
@@ -296,7 +297,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-016-tidy.sql', 0),
   ('migrate-017-caches.sql', 0),
   ('migrate-018-password.sql', 0),
-  ('migrate-019-money.sql', 0);
+  ('migrate-019-money.sql', 0),
+  ('migrate-020-durations.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

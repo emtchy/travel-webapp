@@ -3,7 +3,7 @@
 Living document. Tick the status boxes as work lands, and **append** to the
 decision log rather than rewriting it.
 
-Last updated: 2026-09-25
+Last updated: 2026-09-27
 
 ---
 
@@ -325,8 +325,18 @@ took them.
       round to the minor unit with the remainder to the first people, so
       they always add up. Editors add and change, viewers see. Migration 019;
       `src/money.js`, `public/money.html`.
-- [ ] **Step 23 — times that add up.** A rough visit length per place and a
-      warning when a day's stops overrun or overlap.
+- [x] **Step 23 — times that add up.** *(2026-09-27.)* A rough visit length
+      per place: migration 020 adds `duration_min` to `items`, the London 55
+      carry one, and an editor sets it in a stop's sheet under *Takes about*
+      (`POST /api/sights/duration`). On the plan, a stop with only a start
+      shows an end marked ~, worked out from the length; a stop gets one coral
+      tag when it overlaps the one before, is tight to reach (the gap is
+      shorter than a rough way there), or has a slot shorter than its length;
+      the day's head sums the visits and the getting around, and says how
+      many stops have no length. `public/times.js` does the sums;
+      `travelMinutes` in `route.js` guesses the way between stops, on foot
+      up to 1.5 km and by transit beyond. Ten minutes of grace on the
+      estimate-based checks; nothing here blocks a save.
 - [ ] **Step 24 — attachments.** The PDF ticket or the confirmation on the
       booking. Needs file storage (R2).
 - [ ] **Step 25 — notes on a stop and on a day.**
@@ -359,6 +369,8 @@ The remote database holds real data. Every schema change is a numbered
   drops anything;
 - keep every existing id — sight ids are the vote key;
 - leave the app working between the migration and the deploy that uses it.
+- keep any `LIKE` pattern under 50 bytes — D1 refuses longer ones as "too
+  complex" (found by migration 020 on the local database; `substr()` instead).
 
 ---
 
@@ -636,6 +648,18 @@ shares always add up to the amount, and nobody is owed half a cent. Unequal
 splits, percentages and "I paid for my own" are not modelled; naming who an
 expense was for covers the common cases, and the rest is a note.
 
+**2026-09-27 — A visit length belongs to the place, and the sums are rough on purpose.**
+The length is a fact about the Tower, not about Tuesday, so it lives on the
+item and every stop of that place shares it; a stop that needs a different
+slot enters From and To, which always win. Travel time is straight-line
+distance with a detour factor — on foot up to 1.5 km, a city-average transit
+speed beyond, no roads, no timetables — because the question it answers is
+"does this day add up?", not "which train". So the warnings are one tag on the
+stop and one line on the day, with ten minutes' grace, and none of them
+stops a save: the plan is the group's, the arithmetic is a hint. The length
+is edited in the stop's sheet and nowhere else: it only does anything once
+the place is on a day.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -659,6 +683,10 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - **Per-row translations for user content.** `name_de` / `summary_de` exist
   only because the London 55 were authored. User content is one language; i18n
   stays for UI chrome.
+- **Editing a visit length from the Sights card**, and showing "about 2 h"
+  there or on the Home page's today card. The length only does anything once
+  the place is on a day, so the stop's sheet is the place; the read-only
+  hints are a later nicety.
 - ~~**Passwords.** Magic link only.~~ Reconsidered 2026-09-25: an optional
   password per account, alongside the link — Phase 2 step 9.
 
