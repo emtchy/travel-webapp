@@ -345,6 +345,35 @@ took them.
 - [ ] **Step 27 — dates that shift.** Moving a trip's dates moves the plan
       with them; a stop whose day falls off is shown, not lost.
 - [ ] **Step 28 — a map of the day.**
+- [ ] **Step 29 — a tap becomes an expense.** *(Asked for 2026-09-27.)* Pay
+      with Apple Pay in the destination and the phone asks: "Add to the trip
+      as a shared expense?" — with *not now* and *don't suggest this
+      merchant again on this trip*. Not from Wallet itself: no web app and no
+      third-party native app can read Wallet's history (FinanceKit covers
+      Apple Card only, by entitlement, US only). Instead the **Shortcuts
+      "Transaction" automation** (iOS 17+) fires on every Apple Pay payment
+      with the merchant, amount, card and time, may run without asking, and
+      can show a menu and call a URL. The app's part:
+
+      - *A personal token* for the shortcut, since it cannot send the session
+        cookie. Shown once in account settings, revocable there.
+      - *An ask-first endpoint*: the shortcut posts merchant, amount,
+        currency and time; the Worker picks the current trip (dates, else the
+        pin), checks the trip's switch, the account's switch and the mute
+        list, and answers *suggest* with the trip and a label, or *quiet* —
+        so a coffee at home never pops up.
+      - *The menu* in the shortcut (Shortcuts alerts have no checkboxes):
+        add as a shared expense → the existing `expense/add`, paid by me, for
+        everyone, linked to a place when the merchant name matches one;
+        not now; don't suggest this merchant again here → a mute endpoint.
+      - *Two switches*: per trip on Details (owner), per account in settings.
+        Turning the automation off on the phone is the third, per device.
+      - *Mute list*: `wallet_muted (trip_id, user_id, merchant_key)`.
+
+      Each traveller installs the shortcut on their own phone and only their
+      own taps are suggested — which is the money model anyway ("paid by
+      me"). About two days, plus testing on a real iPhone; see the open
+      questions.
 
 ### Polish
 
@@ -683,6 +712,24 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - **Per-row translations for user content.** `name_de` / `summary_de` exist
   only because the London 55 were authored. User content is one language; i18n
   stays for UI chrome.
+- **Reading Apple Wallet.** No web API exposes payment history, and
+  FinanceKit — the only native way — is Apple Card and Apple Cash only, by
+  entitlement, US only. **Open-banking feeds** (Tink, TrueLayer, GoCardless)
+  would see every card but mean holding bank consents and tokens, ninety-day
+  reconsent and a paid aggregator; against the privacy note and far more
+  than step 29 is worth. The Shortcuts trigger gets the same moment without
+  the app seeing a bank at all.
+- **An App Store app to get at Wallet.** Asked 2026-09-27. Going native
+  changes nothing about the trigger: a third-party app can add passes and
+  check a card is present (PassKit), but cannot see a tap or read the
+  transaction list, and cannot read Wallet's notifications; only the issuing
+  bank gets tap data, and FinanceKit stays Apple Card only. What native would
+  add is an App Intent so the automation runs the app's own suggest screen
+  (a real checkbox instead of a menu) — the Shortcuts automation is still
+  the only thing that fires on the tap. Against that: the developer
+  programme, App Review and a wrapper or second codebase, when the web app
+  already installs to the home screen and works offline. Not a workaround,
+  the only route Apple offers for a card that is not an Apple Card.
 - **Editing a visit length from the Sights card**, and showing "about 2 h"
   there or on the Home page's today card. The length only does anything once
   the place is on a day, so the stop's sheet is the place; the read-only
@@ -709,3 +756,15 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - Trips without dates: top of Upcoming, marked "no dates yet".
 - Switching from inside a trip: nothing new; the brand goes home.
 
+**Step 29 — a tap becomes an expense** *(open, 2026-09-27)*
+
+To check on a real iPhone before building:
+
+- Transport for London taps: do they arrive as a pending or zero amount,
+  with the day's fare settled later? If so, transport is a daily-cap
+  suggestion, not a per-tap one.
+- Do Apple Watch taps fire the automation on the phone?
+- A foreign charge: does the trigger report pounds or the card's euros?
+  The Money tab stores the trip's currency.
+- Can the automation run with no confirmation on the current iOS, so the
+  menu is the only tap?
