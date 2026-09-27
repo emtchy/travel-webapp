@@ -37,11 +37,12 @@ src/http.js           json() and bad()
 src/limits.js         rate limits (the RL_* bindings in wrangler.toml) and the security headers
 src/money.js          expenses: minor units, equal splits, balances, settle-up
 src/files.js          attachments: a ticket or confirmation on a place or an entry, bytes in R2 (FILES)
+src/access.js         asking to join: a signed-in stranger asks the owner for a seat; the owner lets them in or declines
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
-schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (021 so far)
+schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (022 so far)
 scripts/migrate.mjs   applies every migration, skipping done ones
 scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 ```
@@ -50,7 +51,7 @@ scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 
 ```bash
 npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a local D1)
-npm test                # 607 checks against the Worker with an in-memory SQLite
+npm test                # 627 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
 npm run release         # only when asked: migrate the live database, and deploy ONLY if that succeeded
@@ -98,7 +99,10 @@ outside it may change.
 | GET | `/api/examples` | the public trips, for the front page; open to anyone |
 | POST | `/api/trips` | signed in: `{ name, destination?, startDate?, endDate?, template? }` → a trip you own |
 | GET | `/api/templates?destination=` | the templates that fit a destination (`london`) |
-| GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone |
+| GET | `/api/t/<trip>/me` | `{ user, member, trip }` — who you are here; open to anyone. Signed in but not on the trip: also `askable` (an owner with an account exists) and `requested` |
+| POST | `/api/t/<trip>/access/request` | signed in, not on the trip: `{ lang? }` → asks the owners (a mail each when Resend is set); once per person; not on a trip with no owner account, such as the example |
+| GET | `/api/t/<trip>/access/requests` | owner: the open requests (also `requests` on `/api/sights` for owners) |
+| POST | `/api/t/<trip>/access/decide` | owner: `{ id, role \| null }` — a seat under the person's own name, or a decline |
 | POST | `/api/t/<trip>/invite` | owner: `{ email, role?, memberId? \| name?, lang? }` → mails an invite link |
 | GET | `/api/t/<trip>/invites` | owner: the open invites (also on `/api/sights` for owners) |
 | POST | `/api/t/<trip>/invite/revoke` | owner: `{ id }` |

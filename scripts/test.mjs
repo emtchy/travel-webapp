@@ -1902,5 +1902,51 @@ t5("and trip 1 does not see trip 2's rows",
   t5("without a bucket the app says so instead of failing", noBucket.status === 503);
 }
 
+// --- Asking to join
+{
+  const em = { cookie: cookieFor("Emily", 1) };
+  const guest = asUser("guest@example.org");
+  const me = async (t, h) => (await (await raw(`/api/t/${t}/me`, { headers: h })).json());
+  const ask = (t, h, body = {}) => raw(`/api/t/${t}/access/request`, { method: "POST", headers: h, body: JSON.stringify(body) });
+  const decide = (id, role, h = em) => raw("/api/t/1/access/decide", { method: "POST", headers: h, body: JSON.stringify({ id, role }) });
+
+  t5("a member is not offered to ask", (await me(1, em)).askable === undefined);
+  const g = await me(1, guest);
+  t5("a stranger to the London trip may ask: an owner has an account", g.askable === true && g.requested === false);
+  t5("the example trip has nobody to ask", (await me(2, guest)).askable === false);
+  t5("not signed in: no asking", (await ask(1, {})).status === 401);
+  t5("nor when already on the trip", (await ask(1, em)).status === 400);
+  t5("nor on the example trip", (await ask(2, guest)).status === 400);
+  const asked = await (await ask(1, guest, { lang: "en" })).json();
+  t5("a signed-in stranger asks to join", asked.ok === true && asked.requested === true && asked.sent === false);
+  t5("and is told so from then on", (await me(1, guest)).requested === true);
+  t5("once", (await ask(1, guest)).status === 409);
+  t5("only the owner sees the requests", (await raw("/api/t/1/access/requests", { headers: guest })).status === 403);
+  const list = await (await raw("/api/t/1/access/requests", { headers: em })).json();
+  const r = list.requests.find((x) => x.email === "guest@example.org");
+  t5("the owner sees who asked", !!r && r.name === "guest" && typeof r.createdAt === "number");
+  t5("and on the sights answer too", (await (await raw("/api/t/1/sights", { headers: em })).json()).requests.some((x) => x.id === r.id));
+  t5("a role must be a role", (await decide(r.id, "boss")).status === 400);
+  t5("only the owner decides", (await decide(r.id, "viewer", guest)).status === 403);
+  const dec = await (await decide(r.id, "viewer")).json();
+  t5("letting someone in seats them under their own name", dec.requests.length === list.requests.length - 1 &&
+     dec.members.some((m) => m.name === "guest" && m.role === "viewer" && m.claimed));
+  t5("they are on the trip now", (await me(1, guest)).member?.role === "viewer");
+  t5("answering twice is a 404", (await decide(r.id, "viewer")).status === 404);
+
+  const g2 = asUser("guest2@example.org");
+  await ask(1, g2);
+  const r2 = (await (await raw("/api/t/1/access/requests", { headers: em })).json()).requests.find((x) => x.email === "guest2@example.org");
+  const den = await (await decide(r2.id, null)).json();
+  t5("declining closes it without a seat", !den.requests.some((x) => x.id === r2.id) && !den.members.some((m) => m.name === "guest2"));
+  t5("and they may ask again later", (await me(1, g2)).requested === false && (await ask(1, g2)).status === 200);
+
+  const twin = asUser("emily@example.org");   // display name "emily" — Emily's key already
+  await ask(1, twin);
+  const r3 = (await (await raw("/api/t/1/access/requests", { headers: em })).json()).requests.find((x) => x.email === "emily@example.org");
+  const dec3 = await (await decide(r3.id, "editor")).json();
+  t5("a name already on the trip gets a number", dec3.members.some((m) => m.name === "emily 2" && m.role === "editor"));
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

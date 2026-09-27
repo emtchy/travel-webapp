@@ -19,6 +19,7 @@ public/shell.js        the shared shell: nav and tab bar, name field, language, 
 public/route.js        builds the Google and Apple Maps links; guesses the way between two stops
 public/times.js        the clock arithmetic of a day: worked-out ends, overlaps, tight ways, sums
 src/files.js           attachments: a ticket or confirmation on a place or an entry, bytes in R2
+src/access.js          asking to join a trip you are not on; the owner decides
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the London template: the 55 places a fresh database is seeded with
 scripts/build-items-seed.mjs   turns that template into migration 009
@@ -538,6 +539,8 @@ group's links are in use.
 | POST   | `/api/attachments/add?target=<id>` | the file as the body → a ticket or confirmation on a place or entry, editors |
 | POST   | `/api/attachments/remove` | `{ id }` → editors |
 | GET    | `/api/attachments/<id>` | the file, members only |
+| POST   | `/api/access/request` | signed in, not on the trip → asks the owner for a seat |
+| POST   | `/api/access/decide` | `{ id, role \| null }` → owner lets the person in, or declines |
 | POST   | `/api/geocode`       | `{ voter, q }` → address, maps link or coordinates → a place |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
 | POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |

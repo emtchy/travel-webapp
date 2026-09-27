@@ -201,6 +201,8 @@ const T = {
     fPerson: "Name", fPersonNote: "Note",
     peopleHint: "A tick means that person has signed in. Names without one are placeholders — invite the person and pick the name so they inherit its votes and bookings.",
     claimed: "Signed in",
+    hRequests: "Asking to join", letIn: "Let in", decline: "Decline", asksSince: (d) => `asked ${d}`,
+    requestsHint: "People who found the trip and asked for a seat. Letting someone in adds them under their own name with the role you pick.",
     hInvite: "Invite someone", fEmail: "Email", fRole: "Role", fAs: "As",
     asNew: "a new name", send: "Send invitation",
     roleHelp: "Owners run the trip and its people. Editors change places, bookings and the plan. Viewers vote and comment.",
@@ -251,6 +253,8 @@ const T = {
     fPerson: "Name", fPersonNote: "Notiz",
     peopleHint: "Ein Haken heißt: die Person hat sich angemeldet. Namen ohne Haken sind Platzhalter – lade die Person ein und wähle den Namen, damit sie ihre Stimmen und Buchungen übernimmt.",
     claimed: "Angemeldet",
+    hRequests: "Möchten dabei sein", letIn: "Aufnehmen", decline: "Ablehnen", asksSince: (d) => `angefragt ${d}`,
+    requestsHint: "Leute, die die Reise gefunden und um einen Platz gebeten haben. Aufnehmen trägt sie unter ihrem eigenen Namen mit der gewählten Rolle ein.",
     hInvite: "Jemanden einladen", fEmail: "E-Mail", fRole: "Rolle", fAs: "Als",
     asNew: "neuer Name", send: "Einladung schicken",
     roleHelp: "Verwaltung: die Reise und ihre Leute. Bearbeiten: Orte, Buchungen und der Plan. Ansehen: abstimmen und kommentieren.",
@@ -268,6 +272,7 @@ const T = {
 const t = () => T[getLang()];
 
 let TRIP = { days: [] }, MEMBERS = [], TRAVEL = [], VOTES = {}, INVITES = [];
+let REQUESTS = [];   // people asking to join; owners only
 let inviteNote = "";   // what happened after the last invitation
 
 /* ------------------------------------------------------------------ render */
@@ -386,6 +391,16 @@ function renderInvites() {
             ${i.memberId || i.name ? `<span>${esc(L.invitedAs(MEMBERS.find((m) => m.id === i.memberId)?.name ?? i.name))}</span>` : ""}
             <span>${esc(L.expires(dateShort(i.expiresAt)))}</span></div></div>
         <button class="btn btn-sm btn-ghost danger" type="button" data-revoke="${esc(i.id)}">${esc(L.revoke)}</button>
+      </div>`).join("")}</div>` : ""}
+    ${REQUESTS.length ? `<h3 class="title-3" style="margin:22px 0 4px">${esc(L.hRequests)}</h3>
+      <p class="hint" style="margin:0 0 10px">${esc(L.requestsHint)}</p>
+      <div class="rows card">${REQUESTS.map((r) => `<div class="row" data-request="${esc(r.id)}" style="flex-wrap:wrap">
+        <div class="grow"><div class="name">${esc(r.name || r.email)}</div>
+          <div class="meta"><span>${esc(r.email)}</span><span>${esc(L.asksSince(dateShort(r.createdAt)))}</span></div></div>
+        <select class="select" data-req-role aria-label="${esc(L.fRole)}" style="max-width:120px">${ROLES.filter((x) => x !== "owner").map((x) =>
+          `<option value="${x}"${x === "editor" ? " selected" : ""}>${esc(roleLabel(x))}</option>`).join("")}</select>
+        <button class="btn btn-sm btn-primary" type="button" data-letin="${esc(r.id)}">${esc(L.letIn)}</button>
+        <button class="btn btn-sm btn-ghost danger" type="button" data-decline="${esc(r.id)}">${esc(L.decline)}</button>
       </div>`).join("")}</div>` : ""}`;
 }
 
@@ -488,6 +503,7 @@ async function mutate(path, body) {
     const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? VOTES;
     if (d.invites) INVITES = d.invites;
+    if (d.requests) REQUESTS = d.requests;
     fillMembers(d.members);
     render();
     setStatus(t().saved);
@@ -560,6 +576,13 @@ document.addEventListener("submit", async (ev) => {
 });
 
 document.addEventListener("click", async (ev) => {
+  const decide = ev.target.closest("[data-letin], [data-decline]");
+  if (decide) {
+    const row = decide.closest("[data-request]");
+    const id = row.dataset.request;
+    const role = decide.hasAttribute("data-letin") ? row.querySelector("[data-req-role]").value : null;
+    return void mutate("/api/access/decide", { id, role });
+  }
   const rv = ev.target.closest("[data-revoke]");
   if (rv) {
     try { const d = await api("/api/invite/revoke", { method: "POST", body: JSON.stringify({ id: rv.dataset.revoke }) });
@@ -621,7 +644,7 @@ onName(() => renderPeople());   // the role decides what this panel offers
   try {
     const d = await api("/api/sights");
     TRIP = d.trip ?? TRIP; MEMBERS = d.members ?? []; TRAVEL = d.travel ?? []; VOTES = d.votes ?? {};
-    INVITES = d.invites ?? [];
+    INVITES = d.invites ?? []; REQUESTS = d.requests ?? [];
     fillMembers(d.members);
     render();
   } catch (err) { setStatus(err.message, "err"); }

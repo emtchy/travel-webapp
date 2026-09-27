@@ -2,6 +2,7 @@ import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
 import { listAttachments, handleAttachmentAdd, handleAttachmentRemove, handleAttachmentGet,
          removeAttachmentsFor, removeTripAttachments } from "./files.js";
+import { askable, hasRequested, listRequests, handleAccessRequest, handleAccessList, handleAccessDecide } from "./access.js";
 import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser,
          handlePasswordSet, handlePasswordClear, handlePasswordLogin } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
@@ -39,7 +40,11 @@ async function handleWhoAmI(request, env, trip) {
   // The trip's name comes along so the bar can show it even to someone who
   // is not on the trip and gets nothing else.
   const row = await env.DB.prepare("SELECT name, destination, visibility FROM trips WHERE id = ?1").bind(trip).first();
-  return json({ user, member, trip: { id: trip, name: row?.name ?? null, destination: row?.destination ?? null,
+  // Someone signed in but not on the trip may ask to join — if there is an
+  // owner with an account to ask. The example trip has none.
+  const extra = user && !member
+    ? { askable: await askable(env, trip), requested: await hasRequested(env, trip, user.id) } : {};
+  return json({ user, member, ...extra, trip: { id: trip, name: row?.name ?? null, destination: row?.destination ?? null,
                                       visibility: row?.visibility === "public" ? "public" : "private" } });
 }
 
@@ -85,7 +90,7 @@ async function handleTripDelete(request, env, trip) {
     "DELETE FROM booking_status WHERE trip_id = ?1", "DELETE FROM plan_entries WHERE trip_id = ?1",
     "DELETE FROM plan_notes WHERE trip_id = ?1", "DELETE FROM items WHERE trip_id = ?1",
     "DELETE FROM trip_travel WHERE trip_id = ?1", "DELETE FROM invites WHERE trip_id = ?1",
-    "DELETE FROM expenses WHERE trip_id = ?1",
+    "DELETE FROM expenses WHERE trip_id = ?1", "DELETE FROM access_requests WHERE trip_id = ?1",
     "DELETE FROM trip_members WHERE trip_id = ?1",
     "UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1",
     "DELETE FROM trips WHERE id = ?1",
@@ -270,7 +275,7 @@ async function handleAccountDelete(request, env, url) {
 
   for (const sql of [
     "DELETE FROM trip_members WHERE user_id = ?1",
-    "DELETE FROM sessions WHERE user_id = ?1",
+    "DELETE FROM sessions WHERE user_id = ?1", "DELETE FROM access_requests WHERE user_id = ?1",
     "DELETE FROM users WHERE id = ?1",
   ]) await env.DB.prepare(sql).bind(user.id).run();
   for (const sql of [
@@ -1876,7 +1881,7 @@ async function route(request, env) {
       const { member, error } = await reader(request, env, trip);
       if (error) return error;
       return json({ sights: await getSights(env, trip), ...(await snapshot(env, trip)),
-                    ...(member?.role === "owner" ? { invites: await listInvites(env, trip) } : {}) });
+                    ...(member?.role === "owner" ? { invites: await listInvites(env, trip), requests: await listRequests(env, trip) } : {}) });
     }
 
     if (pathname === "/api/state" && method === "GET") {
@@ -1970,6 +1975,13 @@ async function route(request, env) {
 
     if (pathname === "/api/plan/note/update" && method === "POST")
       return handleNoteUpdate(request, env, trip);
+
+    if (pathname === "/api/access/request" && method === "POST")
+      return handleAccessRequest(request, env, trip, ctx);
+    if (pathname === "/api/access/requests" && method === "GET")
+      return handleAccessList(request, env, trip, ctx);
+    if (pathname === "/api/access/decide" && method === "POST")
+      return handleAccessDecide(request, env, trip, { ...ctx, snapshot });
 
     if (pathname === "/api/attachments/add" && method === "POST")
       return handleAttachmentAdd(request, env, trip, fctx);

@@ -124,6 +124,11 @@ const NAV = {
         privateSignIn: "Sign in with the address you were invited with to see it.",
         privateNotMember: (e) => `You're signed in as ${e}, but that address isn't on this trip. Ask whoever runs it for an invitation, or sign in with a different address.`,
         roleOwner: "owner", roleEditor: "editor", roleViewer: "viewer",
+        accessTitle: "You can't change this trip",
+        accessLede: (e) => `You're signed in as ${e}, but you're not on this trip. Only the people on it can vote, book and plan.`,
+        accessAsk: "Ask to join", accessAsking: "Asking…", cancel: "Cancel",
+        accessAsked: "Asked. The owner will see your request on the trip's Details page and can let you in.",
+        accessExample: "This is an example trip, so there is nobody to ask. Look around, then plan your own from Home.",
         example: "An example trip — look around. To plan your own, sign in.",
         exampleIn: "An example trip. You can look, but only its members can change it.",
         sDisplay: "Display name", sDisplayHint: "What a trip calls you when you join without a name of your own there.",
@@ -155,6 +160,11 @@ const NAV = {
         privateSignIn: "Melde dich mit der Adresse an, mit der du eingeladen wurdest.",
         privateNotMember: (e) => `Du bist als ${e} angemeldet, aber diese Adresse ist nicht auf der Reise. Bitte wen, der sie verwaltet, um eine Einladung – oder melde dich mit einer anderen Adresse an.`,
         roleOwner: "Verwaltung", roleEditor: "Bearbeiten", roleViewer: "Ansehen",
+        accessTitle: "Diese Reise kannst du nicht ändern",
+        accessLede: (e) => `Du bist als ${e} angemeldet, aber nicht auf dieser Reise. Nur wer dabei ist, kann abstimmen, buchen und planen.`,
+        accessAsk: "Anfragen, dabei zu sein", accessAsking: "Fragt an…", cancel: "Abbrechen",
+        accessAsked: "Angefragt. Wer die Reise verwaltet, sieht deine Anfrage auf der Details-Seite und kann dich aufnehmen.",
+        accessExample: "Das ist eine Beispielreise, da gibt es niemanden zu fragen. Schau dich um und plane deine eigene über Home.",
         example: "Eine Beispielreise – schau dich um. Für deine eigene: anmelden.",
         exampleIn: "Eine Beispielreise. Anschauen ja, ändern können nur die, die dabei sind.",
         sDisplay: "Anzeigename", sDisplayHint: "So heißt du auf einer Reise, wenn du dort ohne eigenen Namen dazukommst.",
@@ -216,6 +226,13 @@ if (mount) {
         <button class="sheet-close" id="auth-close" type="button">${ICONS.close}</button></header>
       <div class="sheet-body" id="auth-body"></div>
     </div>
+  </div>
+  <div class="sheet-back" id="access-sheet" hidden role="dialog" aria-modal="true" aria-labelledby="access-title">
+    <div class="sheet" style="width:min(440px,100%)">
+      <header><h2 id="access-title"></h2>
+        <button class="sheet-close" id="access-close" type="button">${ICONS.close}</button></header>
+      <div class="sheet-body" id="access-body"></div>
+    </div>
   </div>`;
 }
 
@@ -247,6 +264,8 @@ $("#langs")?.addEventListener("click", (e) => {
 let user = null;
 let member = null;      // this account's name and role on this trip, or null
 let tripPublic = false; // a public trip can be looked at by anyone
+let askable = false;    // someone not on the trip could ask its owner for a seat
+let requested = false;  // …and has
 const userListeners = new Set();
 export const getUser = () => user;
 export function onUser(cb) { userListeners.add(cb); cb(user); }
@@ -360,7 +379,10 @@ function paintPrivate() {
       <div style="width:44px;height:44px;border-radius:50%;background:var(--tint-soft);color:var(--tint);display:grid;place-items:center;margin:0 auto 14px">${ICONS.person}</div>
       <h1 class="title-2" style="margin-bottom:8px">${esc(L.privateTitle)}</h1>
       <p class="footnote" style="margin-bottom:18px">${esc(user ? L.privateNotMember(user.email) : L.privateSignIn)}</p>
-      <button type="button" class="btn btn-primary" id="private-cta">${esc(user ? L.signOut : L.signIn)}</button>
+      ${user && askable ? (requested
+        ? `<p class="saved" style="margin:-6px 0 14px">${esc(L.accessAsked)}</p>`
+        : `<button type="button" class="btn btn-primary" id="private-ask" style="margin:0 6px 8px 0">${esc(L.accessAsk)}</button>`) : ""}
+      <button type="button" class="btn ${user && askable && !requested ? "btn-quiet" : "btn-primary"}" id="private-cta">${esc(user ? L.signOut : L.signIn)}</button>
       <div style="margin-top:14px"><a href="/" class="footnote">${esc(L.front)}</a></div>
     </div></div>`;
 }
@@ -513,6 +535,7 @@ async function loadUser() {
   try {
     const d = await api(HOME ? "/api/auth/me" : "/api/me");
     user = d.user ?? null; member = d.member ?? null;
+    askable = !!d.askable; requested = !!d.requested;
     tripPublic = d.trip?.visibility === "public";
     if (d.trip?.name) setTrip(d.trip);
   } catch { user = null; member = null; }
@@ -540,8 +563,53 @@ export const nameKey = (s) => String(s ?? "").trim().toLowerCase().replace(/\s+/
 /** Run `cb(name)` whenever who you are changes. */
 export function onName(cb) { nameListeners.add(cb); }
 
-/** Sign in, or claim a name — whichever is the missing step. */
-export function askName() { openAuth(); }
+/**
+ * What a page calls when a write needs someone it hasn't got. Not signed
+ * in: the sign-in sheet. Signed in but not on this trip: a sheet that says
+ * so and offers to ask the owner — not the account settings, which have
+ * nothing to do with it.
+ */
+export function askName() {
+  if (user && !member && !HOME) return openAccess();
+  openAuth();
+}
+
+/* ------------------------------------------------------------- asking to join */
+
+function paintAccessSheet(busy = false) {
+  const L = NAV[lang];
+  const title = $("#access-title"), body = $("#access-body");
+  if (!title || !body) return;
+  title.textContent = L.accessTitle;
+  $("#access-close").setAttribute("aria-label", L.close);
+  body.innerHTML = `<p class="sval" style="margin:0 0 6px">${esc(L.accessLede(user?.email ?? ""))}</p>
+    ${requested ? `<p class="saved" style="margin:0 0 14px">${esc(L.accessAsked)}</p>`
+      : !askable ? `<p class="footnote" style="margin:0 0 14px">${esc(L.accessExample)}</p>` : ""}
+    <p class="err" id="access-err" hidden></p>
+    <div class="sfoot">
+      <button class="btn btn-primary" type="button" id="access-ask"${askable && !requested && !busy ? "" : " disabled"}>${esc(busy ? L.accessAsking : L.accessAsk)}</button>
+      <button class="btn btn-ghost right" type="button" id="access-cancel">${esc(requested ? L.close : L.cancel)}</button>
+    </div>`;
+}
+function openAccess() { paintAccessSheet(); const b = $("#access-sheet"); if (b) b.hidden = false; }
+function closeAccess() { const b = $("#access-sheet"); if (b) b.hidden = true; }
+$("#access-close")?.addEventListener("click", closeAccess);
+document.addEventListener("click", (e) => { if (e.target.closest("#private-ask")) openAccess(); });
+document.addEventListener("click", async (e) => {
+  if (e.target.closest("#access-cancel")) return closeAccess();
+  if (e.target === $("#access-sheet")) return closeAccess();
+  if (!e.target.closest("#access-ask")) return;
+  paintAccessSheet(true);
+  try {
+    await api("/api/access/request", { method: "POST", body: JSON.stringify({ lang }) });
+    requested = true;
+    paintAccessSheet();
+    paintPrivate();
+  } catch (ex) {
+    paintAccessSheet();
+    const err = $("#access-err"); if (err) { err.textContent = ex.message; err.hidden = false; }
+  }
+});
 
 /** Kept for the pages that call it; the bar no longer lists members. */
 export function fillMembers() {}

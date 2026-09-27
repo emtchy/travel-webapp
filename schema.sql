@@ -133,6 +133,20 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 CREATE INDEX IF NOT EXISTS idx_attachments_trip ON attachments (trip_id, target, created_at);
 
+-- Asking to join: someone signed in but not on a trip can ask its owner for
+-- a seat. One open request per person per trip; the owner accepts with a
+-- role or declines, and the row keeps the outcome.
+CREATE TABLE IF NOT EXISTS access_requests (
+  id         TEXT    PRIMARY KEY,   -- "r-<uuid>"
+  trip_id    INTEGER NOT NULL,
+  user_id    TEXT    NOT NULL,
+  status     TEXT    NOT NULL DEFAULT 'open',   -- open | accepted | declined
+  created_at INTEGER NOT NULL,
+  decided_at INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_access_requests_trip ON access_requests (trip_id, status, created_at);
+
 -- Sights put on the plan by hand — the ones with nothing to book, so nothing
 -- else would ever place them. Booked sights come from booking_status instead
 -- and never need a row here.
@@ -317,7 +331,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-018-password.sql', 0),
   ('migrate-019-money.sql', 0),
   ('migrate-020-durations.sql', 0),
-  ('migrate-021-attachments.sql', 0);
+  ('migrate-021-attachments.sql', 0),
+  ('migrate-022-access-requests.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

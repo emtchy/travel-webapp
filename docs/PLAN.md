@@ -389,6 +389,17 @@ took them.
       it, the "‹ Home" link in every trip's bar, the tab title and the
       back-links on the privacy and private-trip pages all say Home.
 
+- [x] **Asking to join, not the account sheet.** *(2026-09-27, Emily.)*
+      Signed in but not on a trip — the example, say — a tap on anything that
+      changes it opened the account sheet: settings, and "not on this trip",
+      which answered nothing. Now a sheet says you can't change this trip and
+      offers *Ask to join* or *Cancel*. The ask goes to the trip's owners — a
+      row in `access_requests` (migration 022), a mail to each owner with an
+      account when Resend is set — and they see it on Details under "Asking
+      to join", where they let the person in with a role, under the person's
+      own name, or decline. The example trip's owner is a placeholder with no
+      account, so there is nobody to ask: the button is off and the sheet
+      says so. The private-trip page makes the same offer. `src/access.js`.
 - [x] **Badges under the facts, not among them.** *(2026-09-25, Emily.)* On
       the trip cards the "no dates yet", "cancelled" and role tags sat inside
       the date line and the facts line, which made both hard to read. They
@@ -709,6 +720,14 @@ about itself — so the app's origin can never serve HTML or a script that
 somebody uploaded. The bucket is in the EU, like the privacy note promises
 about where things are kept. No previews, no scanning: the file opens in the
 browser as itself.
+
+**2026-09-27 — Asking to join is a request to a person, never a door.**
+Nothing joins anyone to a trip by itself: the owner sees who asked, with
+their address, and decides, exactly as with an invitation. What makes a trip
+askable is not a flag but a fact — an owner with an account — so the seeded
+example trip, whose owner is a placeholder, is simply unaskable, and so would
+any other trip nobody real runs. One open request per person and trip, so
+the owner is asked once.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
