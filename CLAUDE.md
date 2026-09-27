@@ -36,11 +36,12 @@ src/invites.js        invites: create, list, revoke, and the /invite link that j
 src/http.js           json() and bad()
 src/limits.js         rate limits (the RL_* bindings in wrangler.toml) and the security headers
 src/money.js          expenses: minor units, equal splits, balances, settle-up
+src/files.js          attachments: a ticket or confirmation on a place or an entry, bytes in R2 (FILES)
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
-schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (020 so far)
+schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (021 so far)
 scripts/migrate.mjs   applies every migration, skipping done ones
 scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 ```
@@ -49,12 +50,13 @@ scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 
 ```bash
 npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a local D1)
-npm test                # 581 checks against the Worker with an in-memory SQLite
+npm test                # 607 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
 npm run release         # only when asked: migrate the live database, and deploy ONLY if that succeeded
 npm run deploy          # deploy alone — never when a new migration is pending; a push to main does NOT deploy
 npx wrangler secret put RESEND_API_KEY   # once; sign-in mail. Unset locally = link returned, not mailed
+npx wrangler r2 bucket create trip-files --jurisdiction eu   # once; where attachments live. Local dev needs nothing
 ```
 
 ## API
@@ -75,7 +77,7 @@ outside it may change.
 | Method | Path | Does |
 | --- | --- | --- |
 | GET | `/api/sights` | everything: sights + the snapshot below |
-| GET | `/api/state` | the snapshot: custom, votes, comments, bookings, plan, notes, trip, members, travel |
+| GET | `/api/state` | the snapshot: custom, votes, comments, bookings, plan, notes, trip, members, travel, expenses, attachments |
 | POST | `/api/vote` | toggle one vote |
 | POST | `/api/sights/add` · `/edit` · `/remove` · `/address` | added places |
 | POST | `/api/sights/duration` | editors: `{ id, durationMin \| null }` — a rough visit length, 5 min to 12 h, on any place; answers with the sights too |
@@ -88,6 +90,9 @@ outside it may change.
 | GET | `/api/t/<trip>/photos` | `{ id: url }` — Wikipedia lead images for the trip's places, cached in `photo_cache`; readers only |
 | GET | `/api/t/<trip>/money` | `{ currency, expenses, members, people, total, settle }` — readers |
 | POST | `/api/t/<trip>/expense/add` · `/update` · `/remove` | editors: `{ label, amount, paidBy?, forKeys?, day?, itemId? }` |
+| POST | `/api/t/<trip>/attachments/add?target=<id>` | editors: the file as the body, `content-type` its type, `x-file-name` its name (URI-encoded); a PDF or photo up to 10 MB, ten per place or entry → snapshot |
+| POST | `/api/t/<trip>/attachments/remove` | editors: `{ id }` — bytes and row |
+| GET | `/api/t/<trip>/attachments/<id>` | members only, even on a public trip: the file, inline, under its name |
 | GET | `/api/trips?today=` | signed in: `{ user, trips, featured, examples }` — your trips with role, status, pinned; the featured one with today's stops or a countdown and to-dos |
 | POST | `/api/auth/pin` | `{ tripId \| null }` — the trip shown first on the front page |
 | GET | `/api/examples` | the public trips, for the front page; open to anyone |

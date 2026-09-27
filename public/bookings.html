@@ -48,6 +48,16 @@
 .gone{margin-top:22px}
 .grow .n{flex:1;min-width:160px;font-size:14.5px}
 .gone .voters{white-space:nowrap}
+/* ---- files on a booking ---- */
+.files{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;flex-basis:100%;font-size:13px}
+.file{display:inline-flex;gap:6px;align-items:center;max-width:100%;background:var(--surface-2);border-radius:var(--r-pill);padding:3px 6px 3px 10px}
+.file a{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.file .fsize{color:var(--text-3);font-size:11.5px;white-space:nowrap}
+.file .fx{border:0;background:none;color:var(--text-3);cursor:pointer;font-size:16px;line-height:1;padding:0 3px;border-radius:50%}
+.file .fx:hover{color:var(--coral)}
+.filebtn{cursor:pointer}
+.row.done{flex-wrap:wrap}
+.done .files{margin-left:38px}
 @media (max-width:640px){
   .row.done{flex-wrap:wrap}
   .done .voters{flex-basis:100%;margin-left:38px;white-space:normal}
@@ -77,7 +87,7 @@
 
 <script type="module">
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, dayShort } from "/shell.js";
+         setStatus, setTrip, tripKicker, dayShort, roleOf, apiHref, uploadFile, fileSize } from "/shell.js";
 
 const T = {
   en: {
@@ -107,6 +117,9 @@ const T = {
     goneTitle: "Not booking these",
     goneNote: "Still on the Sights page, still keeping their votes — just not something we're booking.",
     restore: "Back to the list", by: "removed by",
+    fileAdd: "Add a ticket or confirmation", fileAddMore: "Add another file", fileRemove: "Remove this file",
+    fileHint: "PDF or photo, up to 10 MB. Only the people on the trip can open it.",
+    uploading: "Uploading…",
     foot: "Prices are what each place lists publicly and are per person unless it says otherwise. Check the official site before booking.",
   },
   de: {
@@ -136,6 +149,9 @@ const T = {
     goneTitle: "Buchen wir nicht",
     goneNote: "Stehen weiterhin auf der Orte-Seite und behalten ihre Stimmen – wir buchen sie nur nicht.",
     restore: "Zurück zur Liste", by: "entfernt von",
+    fileAdd: "Ticket oder Bestätigung anhängen", fileAddMore: "Weitere Datei", fileRemove: "Datei entfernen",
+    fileHint: "PDF oder Foto, bis 10 MB. Nur die Leute auf der Reise können sie öffnen.",
+    uploading: "Lädt hoch…",
     foot: "Preise sind die öffentlich genannten und gelten pro Person, sofern nicht anders angegeben. Vor dem Buchen auf der offiziellen Seite prüfen.",
   },
 };
@@ -146,7 +162,8 @@ let TRIPINFO = null;
 let TRIP_START = "";
 let TRIP_END = "";
 
-let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [];
+let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], FILES = [];
+const canEdit = () => roleOf() === "editor" || roleOf() === "owner";
 let booking = null;              // id of the card currently being booked
 let minVotes = 0;
 let kind = "all";        // all | builtin | added | booking
@@ -212,12 +229,33 @@ function itemHTML(s) {
     <div class="voters">${who.length
       ? `<b>${esc(L.wanted(who.length))}</b> · ${esc(who.join(", "))}`
       : esc(L.noVotes)}</div>
+    ${filesHTML(s.id)}
     ${booking === s.id ? slotFormHTML(s) : `<div class="iact">
       <button class="btn btn-sm btn-green" data-open-slot="${esc(s.id)}" type="button">${ICONS.check}${esc(L.markBooked)}</button>
       ${s.url ? `<a class="btn btn-sm btn-quiet" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(L.open)}${ICONS.external}</a>` : ""}
       <button class="remove btn btn-sm btn-ghost danger" data-set="skipped" data-id="${esc(s.id)}" type="button">${esc(L.remove)}</button>
     </div>`}
   </article>`;
+}
+
+/**
+ * The ticket or the confirmation, on the thing it belongs to. Everyone on the
+ * trip can open a file; editors add and remove. Shown wherever the booking
+ * is — still to book, booked — since the confirmation often arrives first.
+ */
+function filesHTML(id) {
+  const L = t();
+  const files = FILES.filter((x) => x.target === id);
+  if (!files.length && !canEdit()) return "";
+  return `<div class="files">
+    ${files.map((x) => `<span class="file">
+      <a href="${esc(apiHref("/api/attachments/" + x.id))}" target="_blank" rel="noopener" title="${esc(x.name)}">${esc(x.name)}</a>
+      <span class="fsize">${esc(fileSize(x.size))}</span>
+      ${canEdit() ? `<button class="fx" type="button" data-file-remove="${esc(x.id)}" aria-label="${esc(L.fileRemove)}" title="${esc(L.fileRemove)}">×</button>` : ""}
+    </span>`).join("")}
+    ${canEdit() ? `<label class="btn btn-sm btn-ghost filebtn" title="${esc(L.fileHint)}">${ICONS.plus}${esc(files.length ? L.fileAddMore : L.fileAdd)}
+      <input type="file" hidden accept="application/pdf,image/jpeg,image/png,image/webp,image/heic" data-file-add="${esc(id)}"></label>` : ""}
+  </div>`;
 }
 
 /** Date and time of the slot we hold. Both optional — plenty has no fixed time. */
@@ -263,6 +301,7 @@ function bookedHTML(s) {
     <span class="voters">${esc(L.bookedBy)} ${esc(st?.by ?? "?")}</span>
     <button class="btn btn-sm btn-quiet" data-open-slot="${esc(s.id)}" type="button">${esc(L.editSlot)}</button>
     <button class="btn btn-sm btn-ghost" data-set="null" data-id="${esc(s.id)}" type="button">${esc(L.unbook)}</button>
+    ${filesHTML(s.id)}
   </div>`;
 }
 
@@ -358,17 +397,32 @@ function render() {
 
 /* -------------------------------------------------------------- actions */
 
+function apply(d) {
+  CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? []; FILES = d.attachments ?? FILES;
+  fillMembers(d.members);
+  render();
+}
+
 async function mutate(path, body) {
   if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
   setStatus(t().saving, "sticky");
   try {
-    const d = await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) });
-    CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
-    fillMembers(d.members);
-    render();
+    apply(await api(path, { method: "POST", body: JSON.stringify({ ...body, voter: nameOf() }) }));
     setStatus(t().saved);
   } catch (err) { setStatus(err.message, "err"); }
 }
+
+// A file picked goes up at once; the answer is the snapshot, like any write.
+document.addEventListener("change", async (ev) => {
+  const inp = ev.target.closest("[data-file-add]");
+  if (!inp || !inp.files?.[0]) return;
+  const file = inp.files[0], target = inp.dataset.fileAdd;
+  inp.value = "";
+  if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
+  setStatus(t().uploading, "sticky");
+  try { apply(await uploadFile(target, file)); setStatus(t().saved); }
+  catch (err) { setStatus(err.message, "err"); }
+});
 
 document.addEventListener("input", (ev) => {
   if (ev.target.id !== "vmin") return;
@@ -385,6 +439,9 @@ document.addEventListener("input", (ev) => {
 });
 
 document.addEventListener("click", (ev) => {
+  const fx = ev.target.closest("[data-file-remove]");
+  if (fx) return void mutate("/api/attachments/remove", { id: fx.dataset.fileRemove });
+
   const openSlot = ev.target.closest("[data-open-slot]");
   if (openSlot) {
     if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
@@ -427,7 +484,7 @@ onLang(() => { if (SIGHTS.length) render(); else { const L = t(); $("#headline")
 (async () => {
   try {
     const d = await api("/api/sights");
-    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? [];
+    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; STATUS = d.bookings ?? []; FILES = d.attachments ?? [];
     TRIP_START = d.trip?.startDate ?? ""; TRIP_END = d.trip?.endDate ?? ""; TRIPINFO = d.trip ?? TRIPINFO;
     fillMembers(d.members);
     render();

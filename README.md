@@ -18,6 +18,7 @@ public/app.css         the design system every page shares: tokens, colours, com
 public/shell.js        the shared shell: nav and tab bar, name field, language, status toast
 public/route.js        builds the Google and Apple Maps links; guesses the way between two stops
 public/times.js        the clock arithmetic of a day: worked-out ends, overlaps, tight ways, sums
+src/files.js           attachments: a ticket or confirmation on a place or an entry, bytes in R2
 src/worker.js          the API, and the static-file fallthrough
 src/sights.js          the London template: the 55 places a fresh database is seeded with
 scripts/build-items-seed.mjs   turns that template into migration 009
@@ -534,6 +535,9 @@ group's links are in use.
 | POST   | `/api/sights/edit`   | `{ voter, id, costs, bookingRequired, priceLabel? }` → anyone |
 | POST   | `/api/sights/address` | `{ voter, id, address?, lat?, lon? }` → give it a location |
 | POST   | `/api/sights/duration` | `{ id, durationMin \| null }` → a rough visit length, editors |
+| POST   | `/api/attachments/add?target=<id>` | the file as the body → a ticket or confirmation on a place or entry, editors |
+| POST   | `/api/attachments/remove` | `{ id }` → editors |
+| GET    | `/api/attachments/<id>` | the file, members only |
 | POST   | `/api/geocode`       | `{ voter, q }` → address, maps link or coordinates → a place |
 | POST   | `/api/sights/remove` | `{ voter, id }` → creator-only delete              |
 | POST   | `/api/bookings/status` | `{ voter, sightId, status, bookedDate?, bookedTime?, bookedEnd? }` → `"booked"`, `"skipped"` or `null` |

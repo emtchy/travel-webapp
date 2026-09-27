@@ -611,16 +611,21 @@ export const weekdayShort = (iso) => fmtDate(iso, { weekday: "short" });
  * shared passphrase this used to prompt for is gone now that there are
  * accounts.
  */
-export async function api(path, options) {
-  // Accounts are not part of any trip, so /api/auth/… is left as it is.
-  const scoped = !HOME && path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
+/** An API path inside this trip: apiHref("/api/photos") → "/api/t/3/photos". Accounts are not part of any trip, so /api/auth/… is left as it is. */
+export const apiHref = (path) =>
+  !HOME && path.startsWith("/api/") && !path.startsWith("/api/t/") && !path.startsWith("/api/auth/")
     ? `/api/t/${TRIP}${path.slice(4)}` : path;
+
+export async function api(path, options) {
+  const scoped = apiHref(path);
+  // A file goes up as itself, with its own type; everything else is JSON.
+  const rawBody = typeof Blob !== "undefined" && options?.body instanceof Blob;
   let res;
   try {
     res = await fetch(scoped, {
       ...options,
       headers: {
-        "content-type": "application/json",
+        ...(rawBody ? {} : { "content-type": "application/json" }),
         ...(options?.headers || {}),
       },
     });
@@ -637,6 +642,19 @@ export async function api(path, options) {
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
+
+/* ------------------------------------------------------------- files */
+
+/** Attach a file to a place or an own entry; resolves with the snapshot. */
+export function uploadFile(target, file) {
+  return api(`/api/attachments/add?target=${encodeURIComponent(target)}`, {
+    method: "POST", body: file,
+    headers: { "content-type": file.type || "application/octet-stream", "x-file-name": encodeURIComponent(file.name || "") },
+  });
+}
+
+/** "340 KB", "2.1 MB". */
+export const fileSize = (n) => n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1048576).toFixed(1)} MB`;
 
 /* ------------------------------------------------------------- offline */
 /* The service worker (sw.js) keeps the pages and each trip's last answer.

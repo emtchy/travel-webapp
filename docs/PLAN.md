@@ -337,8 +337,16 @@ took them.
       `travelMinutes` in `route.js` guesses the way between stops, on foot
       up to 1.5 km and by transit beyond. Ten minutes of grace on the
       estimate-based checks; nothing here blocks a save.
-- [ ] **Step 24 — attachments.** The PDF ticket or the confirmation on the
-      booking. Needs file storage (R2).
+- [x] **Step 24 — attachments.** *(2026-09-27.)* The PDF ticket or the
+      confirmation on a booking — or on one of your own entries, where the
+      musical's ticket belongs. Bytes in R2 (`FILES`, bucket `trip-files`,
+      EU), one object per file under `t/<trip>/`; rows in `attachments`
+      (migration 021). PDFs and photos, up to 10 MB, ten per thing. Editors
+      add and remove — on the Bookings page, on the card and on the booked
+      row, and in a stop's sheet on the plan; everyone on the trip opens
+      them and nobody else, not even on a public trip. A file goes with its
+      place, its entry or its trip. "Save for offline" fetches them too, so
+      the ticket is on the phone at the door. `src/files.js`.
 - [ ] **Step 25 — notes on a stop and on a day.**
 - [ ] **Step 26 — notifications.** A daily digest by email of what changed,
       and a reminder the day before a booking.
@@ -689,6 +697,19 @@ stops a save: the plan is the group's, the arithmetic is a hint. The length
 is edited in the stop's sheet and nowhere else: it only does anything once
 the place is on a day.
 
+**2026-09-27 — A file hangs on the thing, is members-only, and is only ever a PDF or a photo.**
+It attaches to the place or the entry, not to the booking row: the
+confirmation often arrives before anyone ticks *booked*, and the row goes
+again when a booking is undone, while the ticket should not. A public trip
+shows its places and its plan, but a confirmation carries names and
+references, so files never go out through the public read; a member's
+session is needed for every download. Only PDFs and images are accepted and
+the type served is the one from that short list, never what the file says
+about itself — so the app's origin can never serve HTML or a script that
+somebody uploaded. The bucket is in the EU, like the privacy note promises
+about where things are kept. No previews, no scanning: the file opens in the
+browser as itself.
+
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a
 membership row, and membership is per trip. Doing trips and items first means
@@ -712,6 +733,10 @@ Recorded so these get reconsidered on purpose, not stumbled into.
 - **Per-row translations for user content.** `name_de` / `summary_de` exist
   only because the London 55 were authored. User content is one language; i18n
   stays for UI chrome.
+- **Previews, thumbnails and virus scanning of attachments; other file
+  types; sharing a file outside the trip.** A ticket is opened, not browsed.
+  A calendar file (.ics) on a booking would be a small, useful addition
+  later.
 - **Reading Apple Wallet.** No web API exposes payment history, and
   FinanceKit — the only native way — is Apple Card and Apple Cash only, by
   entitlement, US only. **Open-banking feeds** (Tink, TrueLayer, GoCardless)

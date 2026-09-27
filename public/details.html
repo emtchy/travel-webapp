@@ -161,7 +161,7 @@
 
 <script type="module">
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, roleOf, roleLabel, onName, saveForOffline } from "/shell.js";
+         setStatus, setTrip, tripKicker, roleOf, roleLabel, onName, saveForOffline, apiHref } from "/shell.js";
 
 const T = {
   en: {
@@ -449,9 +449,11 @@ $("#save-offline").addEventListener("click", async () => {
   const btn = $("#save-offline");
   btn.disabled = true; btn.textContent = L.saving;
   try {
-    let photos = [];
+    let photos = [], files = [];
     try { photos = Object.values((await api("/api/photos")).photos || {}); } catch {}
-    const r = await saveForOffline(photos);
+    // The tickets and confirmations: exactly what you want on your phone at the door.
+    try { files = ((await api("/api/state")).attachments || []).map((a) => apiHref(`/api/attachments/${a.id}`)); } catch {}
+    const r = await saveForOffline([...photos, ...files]);
     try { localStorage.setItem(SAVED_KEY(), String(r.at)); } catch {}
     setStatus(L.savedResult(r.ok, r.failed), r.failed ? "err" : "");
     paintSaved();

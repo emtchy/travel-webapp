@@ -21,6 +21,15 @@ binding = "DB"
 database_name = "london-votes"
 database_id = "d7412b9d-0cca-4b50-b13e-10c8476fceba"
 
+# Attachments — the ticket PDFs and confirmations — live in R2, one object
+# per file under t/<trip>/. The bucket is created once, in the EU:
+#   npx wrangler r2 bucket create trip-files --jurisdiction eu
+# Locally, wrangler dev keeps a bucket of its own under .wrangler/state.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "trip-files"
+jurisdiction = "eu"
+
 # Rate limits, counted at the edge per key per minute. Separate namespaces
 # so the counters never share. See src/limits.js for what each guards.
 [[ratelimits]]

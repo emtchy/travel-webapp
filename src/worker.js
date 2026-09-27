@@ -1,5 +1,7 @@
 import { parseMapLink, isShortMapLink, mapSearchTerm } from "./maplink.js";
 import { json, bad } from "./http.js";
+import { listAttachments, handleAttachmentAdd, handleAttachmentRemove, handleAttachmentGet,
+         removeAttachmentsFor, removeTripAttachments } from "./files.js";
 import { handleAuthRequest, handleAuthCallback, handleAuthMe, handleAuthLogout, handleAuthSettings, currentUser,
          handlePasswordSet, handlePasswordClear, handlePasswordLogin } from "./auth.js";
 import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteAccept, listInvites, ROLES } from "./invites.js";
@@ -88,6 +90,7 @@ async function handleTripDelete(request, env, trip) {
     "UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1",
     "DELETE FROM trips WHERE id = ?1",
   ];
+  await removeTripAttachments(env, trip);
   for (const sql of gone) await env.DB.prepare(sql).bind(trip).run();
   return json({ ok: true, deleted: trip });
 }
@@ -751,6 +754,7 @@ const snapshot = async (env, trip) => ({
   members: await getMembers(env, trip),
   travel: await getTravel(env, trip),
   expenses: await getExpenses(env, trip),
+  attachments: await listAttachments(env, trip),
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -1139,6 +1143,7 @@ async function handleDeleteSight(request, env, trip) {
   await env.DB.prepare("DELETE FROM comments WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM booking_status WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1").bind(id).run();
+  await removeAttachmentsFor(env, trip, id);
   await env.DB.prepare("DELETE FROM items WHERE id = ?1 AND trip_id = ?2").bind(id, trip).run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -1730,6 +1735,7 @@ async function handleNoteRemove(request, env, trip) {
   if (typeof id !== "string" || !id.startsWith("note-"))
     return bad("That isn't one of your own entries.");
 
+  await removeAttachmentsFor(env, trip, id);
   await env.DB.prepare("DELETE FROM plan_notes WHERE id = ?1").bind(id).run();
   return json({ ok: true, ...(await snapshot(env, trip)) });
 }
@@ -1861,6 +1867,10 @@ async function route(request, env) {
     // Everything from here is for members of the trip.
     const ctx = { actor, cleanName, voterKey, tripName: async (env, t) => (await getTrip(env, t)).name };
     const mctx = { actor, cleanText, voterKey, getTrip, getMembers, isKnownSight, snapshot };
+    // A file attaches to a place or to one of your own entries.
+    const fctx = { actor, voterKey, snapshot, isTarget: async (env, id, t) =>
+      (await isKnownSight(env, id, t)) ||
+      !!(await env.DB.prepare("SELECT 1 FROM plan_notes WHERE id = ?1 AND trip_id = ?2").bind(id, t).first()) };
 
     if (pathname === "/api/sights" && method === "GET") {
       const { member, error } = await reader(request, env, trip);
@@ -1960,6 +1970,15 @@ async function route(request, env) {
 
     if (pathname === "/api/plan/note/update" && method === "POST")
       return handleNoteUpdate(request, env, trip);
+
+    if (pathname === "/api/attachments/add" && method === "POST")
+      return handleAttachmentAdd(request, env, trip, fctx);
+    if (pathname === "/api/attachments/remove" && method === "POST")
+      return handleAttachmentRemove(request, env, trip, fctx);
+    {
+      const m = pathname.match(/^\/api\/attachments\/([A-Za-z0-9-]+)$/);
+      if (m && method === "GET") return handleAttachmentGet(request, env, trip, m[1], fctx);
+    }
 
     if (pathname === "/api/plan/note/remove" && method === "POST")
       return handleNoteRemove(request, env, trip);

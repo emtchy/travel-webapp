@@ -80,6 +80,13 @@ li.stop:hover .chev{opacity:1}
 .sfields .select{max-width:190px;min-width:0}
 .sfields select[data-f=dur]{max-width:112px}
 .svoters{display:flex;gap:6px;flex-wrap:wrap}
+.files{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;font-size:13px}
+.file{display:inline-flex;gap:6px;align-items:center;max-width:100%;background:var(--surface-2);border-radius:var(--r-pill);padding:3px 6px 3px 10px}
+.file a{color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}
+.file .fsize{color:var(--text-3);font-size:11.5px;white-space:nowrap}
+.file .fx{border:0;background:none;color:var(--text-3);cursor:pointer;font-size:16px;line-height:1;padding:0 3px;border-radius:50%}
+.file .fx:hover{color:var(--coral)}
+.filebtn{cursor:pointer}
 .slinks{display:flex;gap:8px;flex-wrap:wrap}
 .sfoot .right{margin-left:auto}
 @media (max-width:560px){
@@ -184,7 +191,8 @@ li.stop:hover .chev{opacity:1}
 import { routeLinks, routeFrom, hasPlace } from "/route.js";
 import { dayTimes, fromMin } from "/times.js";
 import { $, esc, api, ICONS, getLang, onLang, nameOf, askName, fillMembers,
-         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink, onPrefs } from "/shell.js";
+         setStatus, setTrip, tripKicker, dayLong, weekday, weekdayShort, mapLink, onPrefs,
+         roleOf, apiHref, uploadFile, fileSize } from "/shell.js";
 
 const T = {
   en: {
@@ -251,6 +259,9 @@ const T = {
     srcOwn: "yours", fOwn: "Your own",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "booked by", addedBy: "added by",
+    shFiles: "Files", fileAdd: "Add a ticket or confirmation", fileAddMore: "Add another file",
+    fileRemove: "Remove this file", fileHint: "PDF or photo, up to 10 MB. Only the people on the trip can open it.",
+    uploading: "Uploading…",
     shTakes: "Takes about", shTakesNone: "—",
     dur: (m) => m < 60 ? `${m} min` : m % 60 ? `${Math.floor(m / 60)} h ${m % 60}` : `${m / 60} h`,
     tOverlap: "overlaps the stop before",
@@ -327,6 +338,9 @@ const T = {
     srcOwn: "eigener", fOwn: "Eigene",
     votesShort: (n) => `${n} ♥`,
     bookedBy: "gebucht von", addedBy: "eingetragen von",
+    shFiles: "Dateien", fileAdd: "Ticket oder Bestätigung anhängen", fileAddMore: "Weitere Datei",
+    fileRemove: "Datei entfernen", fileHint: "PDF oder Foto, bis 10 MB. Nur die Leute auf der Reise können sie öffnen.",
+    uploading: "Lädt hoch…",
     shTakes: "Dauert etwa", shTakesNone: "—",
     dur: (m) => m < 60 ? `${m} Min.` : m % 60 ? `${Math.floor(m / 60)} Std. ${m % 60}` : `${m / 60} Std.`,
     tOverlap: "überschneidet sich mit dem Stopp davor",
@@ -342,7 +356,8 @@ const T = {
 };
 const t = () => T[getLang()];
 
-let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] };
+let SIGHTS = [], CUSTOM = [], VOTES = {}, STATUS = [], ENTRIES = [], NOTES = [], TRIP = { days: [] }, FILES = [];
+const canEdit = () => roleOf() === "editor" || roleOf() === "owner";
 let minVotes = 0;
 let editingAddress = null;   // sight id whose address form is open
 // A place picked on the add form, held until the entry it belongs to exists.
@@ -740,6 +755,25 @@ function detailsOf(p) {
   };
 }
 
+/**
+ * The ticket or the confirmation on this stop — a place or one of your own
+ * entries. Everyone on the trip can open a file; editors add and remove.
+ */
+function filesHTML(id) {
+  const L = t();
+  const files = FILES.filter((x) => x.target === id);
+  if (!files.length && !canEdit()) return `<span class="sval muted">—</span>`;
+  return `<div class="files">
+    ${files.map((x) => `<span class="file">
+      <a href="${esc(apiHref("/api/attachments/" + x.id))}" target="_blank" rel="noopener" title="${esc(x.name)}">${esc(x.name)}</a>
+      <span class="fsize">${esc(fileSize(x.size))}</span>
+      ${canEdit() ? `<button class="fx" type="button" data-file-remove="${esc(x.id)}" aria-label="${esc(L.fileRemove)}" title="${esc(L.fileRemove)}">×</button>` : ""}
+    </span>`).join("")}
+    ${canEdit() ? `<label class="btn btn-sm btn-ghost filebtn" title="${esc(L.fileHint)}">${ICONS.plus}${esc(files.length ? L.fileAddMore : L.fileAdd)}
+      <input type="file" hidden accept="application/pdf,image/jpeg,image/png,image/webp,image/heic" data-file-add="${esc(id)}"></label>` : ""}
+  </div>`;
+}
+
 function sheetHTML(x) {
   const L = t();
   const dayOpts = TRIP.days.map((d) =>
@@ -817,6 +851,11 @@ function sheetHTML(x) {
       ${x.bookingUrl && x.bookingUrl !== x.url ? `<a class="btn btn-sm btn-tint" href="${esc(x.bookingUrl)}" target="_blank" rel="noopener">${esc(L.shTickets)}${ICONS.external}</a>` : ""}
     </div>
   </div>` : ""}
+
+  <div class="srow">
+    <span class="slabel">${esc(L.shFiles)}</span>
+    ${filesHTML(x.id)}
+  </div>
 
   <div class="sfoot">
     <button class="btn btn-primary" type="button" data-sheet-save>${esc(L.shSave)}</button>
@@ -915,20 +954,37 @@ async function mutate(path, body) {
     // Every one of these can change on any mutation — a booking places a
     // sight, an address changes a route. Missing one leaves the page showing
     // something the server no longer believes.
-    SIGHTS = d.sights ?? SIGHTS;
-    CUSTOM = d.custom ?? CUSTOM;
-    VOTES = d.votes ?? VOTES;
-    STATUS = d.bookings ?? [];
-    ENTRIES = d.plan ?? [];
-    NOTES = d.notes ?? [];
-    TRIP = d.trip ?? TRIP;
-    fillMembers(d.members);
-    render();
-    renderSheet();
+    apply(d);
     setStatus(t().saved);
     return d;
   } catch (err) { setStatus(err.message, "err"); }
 }
+
+function apply(d) {
+  SIGHTS = d.sights ?? SIGHTS;
+  CUSTOM = d.custom ?? CUSTOM;
+  VOTES = d.votes ?? VOTES;
+  STATUS = d.bookings ?? [];
+  ENTRIES = d.plan ?? [];
+  NOTES = d.notes ?? [];
+  TRIP = d.trip ?? TRIP;
+  FILES = d.attachments ?? FILES;
+  fillMembers(d.members);
+  render();
+  renderSheet();
+}
+
+// A file picked in the sheet goes up at once; the answer is the snapshot.
+document.addEventListener("change", async (ev) => {
+  const inp = ev.target.closest("[data-file-add]");
+  if (!inp || !inp.files?.[0]) return;
+  const file = inp.files[0], target = inp.dataset.fileAdd;
+  inp.value = "";
+  if (!nameOf()) { setStatus(t().needName, "err"); askName(); return; }
+  setStatus(t().uploading, "sticky");
+  try { apply(await uploadFile(target, file)); setStatus(t().saved); }
+  catch (err) { setStatus(err.message, "err"); }
+});
 
 $("#ap-add").addEventListener("click", () => {
   const sightId = $("#ap-what").value;
@@ -989,6 +1045,8 @@ document.addEventListener("input", (ev) => {
 
 document.addEventListener("click", (ev) => {
   // --- the detail sheet
+  const fx = ev.target.closest("[data-file-remove]");
+  if (fx) return void mutate("/api/attachments/remove", { id: fx.dataset.fileRemove });
   if (ev.target.closest("[data-sheet-save]")) return void saveSheet();
   if (ev.target.closest("[data-sheet-remove]")) return void removeFromSheet();
   // Clicking the backdrop itself, or the ×, closes it.
@@ -1110,7 +1168,7 @@ onPrefs(() => { if (SIGHTS.length || TRIP.days.length) { render(); renderSheet()
 (async () => {
   try {
     const d = await api("/api/sights");
-    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes;
+    SIGHTS = d.sights; CUSTOM = d.custom; VOTES = d.votes; FILES = d.attachments ?? [];
     STATUS = d.bookings ?? []; ENTRIES = d.plan ?? []; NOTES = d.notes ?? [];
     TRIP = d.trip ?? { days: [] };
     fillMembers(d.members);

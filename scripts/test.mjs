@@ -32,7 +32,15 @@ const DB = {
 };
 // The assets mock answers with the path it was asked for, so a test can see
 // which file the Worker chose to serve.
-const env = { DB, ASSETS: { fetch: (req) => new Response("static " + new URL(req.url).pathname, { status: 200 }) } };
+// R2 in a Map: put, get, delete (one key or many) and list by prefix.
+const FILES = {
+  store: new Map(),
+  async put(key, body, opts) { this.store.set(key, { body: new Uint8Array(body), meta: opts?.httpMetadata }); },
+  async get(key) { const o = this.store.get(key); return o ? { body: o.body, httpMetadata: o.meta } : null; },
+  async delete(keys) { for (const k of [].concat(keys)) this.store.delete(k); },
+  async list({ prefix }) { return { objects: [...this.store.keys()].filter((k) => k.startsWith(prefix)).map((key) => ({ key })), truncated: false }; },
+};
+const env = { DB, FILES, ASSETS: { fetch: (req) => new Response("static " + new URL(req.url).pathname, { status: 200 }) } };
 
 /*
  * Identity comes from the session cookie, never from the body. The tests were
@@ -1818,6 +1826,80 @@ t5("and trip 1 does not see trip 2's rows",
   t5("nothing means unknown again", d.custom.find(c => c.id === lunch.id).durationMin === null);
   t5("the snapshot carries a length for every place", d.sights.every(s => "durationMin" in s) && d.custom.every(c => "durationMin" in c));
   await dur({ id: "tower-of-london", durationMin: 180 });
+}
+
+// --- Step 24: attachments
+{
+  const em = { cookie: cookieFor("Emily", 1) };
+  const pdf = new TextEncoder().encode("%PDF-1.4 test");
+  const up = (target, body, headers = {}, who = em) => raw(`/api/t/1/attachments/add?target=${encodeURIComponent(target)}`, {
+    method: "POST", body,
+    headers: { "content-type": "application/pdf", "x-file-name": encodeURIComponent("Tower tickets.pdf"), ...headers, ...who } });
+  const state = async (h = em) => (await (await raw("/api/t/1/state", { headers: h })).json()).attachments;
+
+  t5("a stranger cannot attach a file", (await up("tower-of-london", pdf, {}, {})).status === 401);
+  const inv = await (await raw("/api/t/1/invite", { method: "POST", headers: em, body: JSON.stringify({ email: "viewer4@example.org", role: "viewer" }) })).json();
+  const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+  const V = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+  t5("nor can a viewer", (await up("tower-of-london", pdf, {}, V)).status === 403);
+  t5("it attaches to a place or an entry on this trip", (await up("nowhere-at-all", pdf)).status === 400);
+  t5("a PDF or a photo, nothing else", (await up("tower-of-london", pdf, { "content-type": "text/html" })).status === 415);
+  t5("up to 10 MB", (await up("tower-of-london", new Uint8Array(10 * 1024 * 1024 + 1))).status === 413);
+  t5("not an empty one", (await up("tower-of-london", new Uint8Array(0))).status === 400);
+
+  let d = await (await up("tower-of-london", pdf)).json();
+  const f = d.attachments.find((a) => a.target === "tower-of-london");
+  t5("an editor attaches a PDF to a place", !!f && f.name === "Tower tickets.pdf" && f.type === "application/pdf" && f.size === pdf.length && f.addedBy === "Emily");
+  t5("the snapshot carries it", (await state()).some((a) => a.id === f.id));
+  t5("the bytes are in the bucket under the trip", FILES.store.has(`t/1/${f.id}.pdf`));
+
+  const got = await raw(`/api/t/1/attachments/${f.id}`, { headers: em });
+  t5("a member gets the file back, inline, under its name",
+     got.status === 200 && got.headers.get("content-type") === "application/pdf" &&
+     got.headers.get("content-disposition").includes("Tower%20tickets.pdf") &&
+     new TextDecoder().decode(await got.arrayBuffer()) === "%PDF-1.4 test");
+  t5("a viewer may read it", (await raw(`/api/t/1/attachments/${f.id}`, { headers: V })).status === 200);
+  t5("a stranger may not", (await raw(`/api/t/1/attachments/${f.id}`)).status === 401);
+  t5("not even on a public trip", (await raw("/api/t/2/attachments/f-nothing")).status === 401);
+  t5("a file that is not there is a 404", (await raw("/api/t/1/attachments/f-nothing", { headers: em })).status === 404);
+
+  const note = await (await raw("/api/t/1/plan/note/add", { method: "POST", headers: em, body: JSON.stringify({ label: "Musical with a ticket", day: "2026-09-12" }) })).json();
+  const nid = note.notes.find((n) => n.label === "Musical with a ticket").id;
+  d = await (await up(nid, new Uint8Array([137, 80, 78, 71]), { "content-type": "image/png", "x-file-name": "ticket.png" })).json();
+  t5("and a photo to an own entry", d.attachments.some((a) => a.target === nid && a.type === "image/png" && a.name === "ticket.png"));
+  d = await (await up("tower-of-london", pdf, { "x-file-name": encodeURIComponent("C:\\Users\\me\\Docs\\conf.pdf") })).json();
+  t5("a name with a path keeps only the file", d.attachments.some((a) => a.name === "conf.pdf"));
+  d = await (await up("tower-of-london", pdf, { "x-file-name": "" })).json();
+  t5("a file without a name gets one", d.attachments.some((a) => a.name === "file.pdf"));
+
+  let last;
+  for (let i = 0; i <= 10; i++) last = await up("british-museum", pdf, { "x-file-name": `b${i}.pdf` });   // the eleventh is refused
+  t5("ten on one thing is the cap", last.status === 400 && (await state()).filter((a) => a.target === "british-museum").length === 10);
+
+  const before = FILES.store.size;
+  d = await (await raw("/api/t/1/attachments/remove", { method: "POST", headers: em, body: JSON.stringify({ id: f.id }) })).json();
+  t5("an editor removes a file, bytes and all", !d.attachments.some((a) => a.id === f.id) && FILES.store.size === before - 1 && !FILES.store.has(`t/1/${f.id}.pdf`));
+  t5("a viewer cannot", (await raw("/api/t/1/attachments/remove", { method: "POST", headers: V, body: JSON.stringify({ id: nid }) })).status === 403);
+  t5("removing twice is a 404", (await raw("/api/t/1/attachments/remove", { method: "POST", headers: em, body: JSON.stringify({ id: f.id }) })).status === 404);
+
+  await raw("/api/t/1/plan/note/remove", { method: "POST", headers: em, body: JSON.stringify({ id: nid }) });
+  t5("an entry's files go with the entry", !(await state()).some((a) => a.target === nid) && ![...FILES.store.keys()].some((k) => k.includes(nid)));
+  const added = await (await raw("/api/t/1/sights/add", { method: "POST", headers: em, body: JSON.stringify({ name: "A place with a ticket", costs: true }) })).json();
+  const pid = added.custom.find((c) => c.name === "A place with a ticket").id;
+  await up(pid, pdf);
+  const sizeWith = FILES.store.size;
+  await raw("/api/t/1/sights/remove", { method: "POST", headers: em, body: JSON.stringify({ id: pid }) });
+  t5("a place's files go with the place", !(await state()).some((a) => a.target === pid) && FILES.store.size === sizeWith - 1);
+
+  const owner = asUser("files-owner@example.org");
+  const made = await (await raw("/api/trips", { method: "POST", headers: owner, body: JSON.stringify({ name: "Files trip", destination: "London", template: "london" }) })).json();
+  await raw(`/api/t/${made.id}/attachments/add?target=tower-of-london-t${made.id}`, { method: "POST", headers: { ...owner, "content-type": "application/pdf", "x-file-name": "t.pdf" }, body: pdf });
+  t5("a new trip keeps its files under its own prefix", [...FILES.store.keys()].some((k) => k.startsWith(`t/${made.id}/`)));
+  await raw(`/api/t/${made.id}/trip/delete`, { method: "POST", headers: owner, body: JSON.stringify({ confirm: "Files trip" }) });
+  t5("deleting the trip empties its prefix", ![...FILES.store.keys()].some((k) => k.startsWith(`t/${made.id}/`)));
+
+  const noBucket = await worker.fetch(new Request("https://x/api/t/1/attachments/add?target=tower-of-london", { method: "POST", headers: { ...em, "content-type": "application/pdf" }, body: pdf }), { ...env, FILES: undefined });
+  t5("without a bucket the app says so instead of failing", noBucket.status === 503);
 }
 
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
