@@ -38,11 +38,12 @@ src/limits.js         rate limits (the RL_* bindings in wrangler.toml) and the s
 src/money.js          expenses: minor units, equal splits, balances, settle-up
 src/files.js          attachments: a ticket or confirmation on a place or an entry, bytes in R2 (FILES)
 src/access.js         asking to join: a signed-in stranger asks the owner for a seat; the owner lets them in or declines
+src/memos.js          notes on a stop and on a day: one shared text per place, entry or day, edited in place
 src/sights.js         the London template; scripts/build-items-seed.mjs turns it into migration 009
                       and src/templates.js copies it into a new trip that asks for it
 src/templates.js      templates a new trip can start from, matched by destination
 src/maplink.js        coordinates out of a pasted maps link
-schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (022 so far)
+schema.sql            fresh-install schema; existing databases get scripts/migrate-*.sql (023 so far)
 scripts/migrate.mjs   applies every migration, skipping done ones
 scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 ```
@@ -51,7 +52,7 @@ scripts/test.mjs      the test suite: a SQLite mock of D1, no network
 
 ```bash
 npm run dev             # local, http://localhost:8787 (uses .wrangler/state, a local D1)
-npm test                # 627 checks against the Worker with an in-memory SQLite
+npm test                # 646 checks against the Worker with an in-memory SQLite
 npm run migrate         # apply migrations to the local D1
 npm run migrate:remote  # …to the live one — only when asked
 npm run release         # only when asked: migrate the live database, and deploy ONLY if that succeeded
@@ -78,7 +79,7 @@ outside it may change.
 | Method | Path | Does |
 | --- | --- | --- |
 | GET | `/api/sights` | everything: sights + the snapshot below |
-| GET | `/api/state` | the snapshot: custom, votes, comments, bookings, plan, notes, trip, members, travel, expenses, attachments |
+| GET | `/api/state` | the snapshot: custom, votes, comments, bookings, plan, notes, trip, members, travel, expenses, attachments, memos |
 | POST | `/api/vote` | toggle one vote |
 | POST | `/api/sights/add` · `/edit` · `/remove` · `/address` | added places |
 | POST | `/api/sights/duration` | editors: `{ id, durationMin \| null }` — a rough visit length, 5 min to 12 h, on any place; answers with the sights too |
@@ -93,6 +94,7 @@ outside it may change.
 | POST | `/api/t/<trip>/expense/add` · `/update` · `/remove` | editors: `{ label, amount, paidBy?, forKeys?, day?, itemId? }` |
 | POST | `/api/t/<trip>/attachments/add?target=<id>` | editors: the file as the body, `content-type` its type, `x-file-name` its name (URI-encoded); a PDF or photo up to 10 MB, ten per place or entry → snapshot |
 | POST | `/api/t/<trip>/attachments/remove` | editors: `{ id }` — bytes and row |
+| POST | `/api/t/<trip>/memo/set` | editors: `{ target, text \| null }` — the note on a place, an entry or a day of the trip (`YYYY-MM-DD`), up to 2000 characters, lines kept; empty takes it away → snapshot (`memos`, by target) |
 | GET | `/api/t/<trip>/attachments/<id>` | members only, even on a public trip: the file, inline, under its name |
 | GET | `/api/trips?today=` | signed in: `{ user, trips, featured, examples }` — your trips with role, status, pinned; the featured one with today's stops or a countdown and to-dos |
 | POST | `/api/auth/pin` | `{ tripId \| null }` — the trip shown first on the front page |

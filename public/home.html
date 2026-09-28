@@ -75,6 +75,7 @@
 .feat .when.open{color:var(--text-3);font-weight:500;font-size:12px}
 .feat .sn{font-weight:600;font-size:14.5px}
 .feat .empty-day{padding:16px 20px;color:var(--text-3);font-size:14px;border-top:1px solid var(--hair)}
+.feat .daynote{margin:0;padding:12px 20px;border-top:1px solid var(--hair);font-size:14px;line-height:1.45;color:var(--text-2);white-space:pre-line}
 .feat .todo{display:flex;gap:8px;flex-wrap:wrap;padding:0 20px 18px}
 .feat .todo a{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border-radius:var(--r-pill);
   background:var(--surface-2);color:var(--text);font-size:13.5px;font-weight:600;text-decoration:none}
@@ -376,7 +377,8 @@ function featuredHTML(L, tr, f) {
   let body = "";
   if (f.phase === "current") {
     const r = routeLinks(f.stops.map((x) => ({ lat: x.lat, lon: x.lon })), "transit", null);
-    body = (f.stops.length ? `<div class="stops">${f.stops.map((x) => {
+    body = (f.note ? `<p class="daynote">${esc(f.note.text)}</p>` : "") +
+      (f.stops.length ? `<div class="stops">${f.stops.map((x) => {
         const one = x.lat != null ? routeLinks([{ lat: x.lat, lon: x.lon }], "transit", null) : null;
         return `<div class="stop"><div class="when${x.start ? "" : " open"}">${x.start ? esc(x.start) : "—"}${x.end ? `<em>${esc(x.end)}</em>` : ""}</div>
           <div class="sn">${esc(x.label)}</div>

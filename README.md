@@ -237,6 +237,12 @@ whichever record actually owns that stop, so a booked sight updates its
 booking and one of your own entries updates itself. Press Escape or click
 outside to close.
 
+**Notes.** Every stop has a note in that panel — the entrance to use, whose
+phone the tickets are on, what to bring — and every day has one under its
+head. One shared text each, written or rewritten in place by anyone who can
+edit; the first line shows on the stop's card and the day's note is on the
+front page on the day. It goes when the stop goes.
+
 ### Routes
 
 A stop on a day shows its time, its name, the votes it has, and one word

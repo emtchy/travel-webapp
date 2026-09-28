@@ -1948,5 +1948,75 @@ t5("and trip 1 does not see trip 2's rows",
   t5("a name already on the trip gets a number", dec3.members.some((m) => m.name === "emily 2" && m.role === "editor"));
 }
 
+// --- Step 25: notes on a stop and on a day
+{
+  const { cleanMemo } = await import("../src/memos.js");
+  t5("a note keeps its lines and loses the mess",
+     cleanMemo("  Side entrance.\r\n\r\n\r\nTickets on Anna's phone.  \t\n") === "Side entrance.\n\nTickets on Anna's phone." &&
+     cleanMemo("") === null && cleanMemo("   \n ") === null && cleanMemo(null) === null && cleanMemo(5) === undefined &&
+     cleanMemo("x".repeat(2000)) !== undefined && cleanMemo("x".repeat(2001)) === undefined);
+
+  const em = { cookie: cookieFor("Emily", 1) };
+  const set = (b, h = em) => raw("/api/t/1/memo/set", { method: "POST", headers: h, body: JSON.stringify(b) });
+  const memos = async (h = em) => (await (await raw("/api/t/1/state", { headers: h })).json()).memos;
+  const day = list.trip.days[0];
+
+  t5("a stranger cannot leave a note", (await set({ target: "tower-of-london", text: "x" }, {})).status === 401);
+  {
+    const inv = await (await raw("/api/t/1/invite", { method: "POST", headers: em, body: JSON.stringify({ email: "viewer5@example.org", role: "viewer" }) })).json();
+    const li = new URL(inv.devLink); const acc = await raw(li.pathname + li.search, { redirect: "manual" });
+    const V = { cookie: (acc.headers.get("set-cookie") || "").split(";")[0] };
+    t5("nor can a viewer", (await set({ target: "tower-of-london", text: "x" }, V)).status === 403);
+    t5("but a viewer reads them", typeof (await memos(V)) === "object");
+  }
+  t5("a note goes on a place, an entry or a day of this trip",
+     (await set({ target: "nowhere-at-all", text: "x" })).status === 400 && (await set({ target: "2031-01-01", text: "x" })).status === 400 &&
+     (await set({ text: "x" })).status === 400 && (await set({ target: "", text: "x" })).status === 400);
+  t5("and stays under 2000 characters", (await set({ target: "tower-of-london", text: "x".repeat(2001) })).status === 400 &&
+     (await set({ target: "tower-of-london", text: 5 })).status === 400);
+
+  let d = await (await set({ target: "tower-of-london", text: "  Side entrance on Tower Hill.\r\n\r\n\r\nTickets on Emily's phone.  " })).json();
+  t5("an editor leaves a note on a place, tidied, with its lines",
+     d.memos["tower-of-london"]?.text === "Side entrance on Tower Hill.\n\nTickets on Emily's phone." && d.memos["tower-of-london"].by === "Emily" &&
+     Number.isInteger(d.memos["tower-of-london"].updatedAt));
+  t5("the snapshot carries it", (await memos())["tower-of-london"]?.text.startsWith("Side entrance"));
+  d = await (await set({ target: day, text: "Leave by eight, the Tower opens at nine." })).json();
+  t5("and on a day", d.memos[day]?.text === "Leave by eight, the Tower opens at nine.");
+  d = await (await set({ target: "tower-of-london", text: "Tickets on Manuel's phone." })).json();
+  t5("a second note replaces the first", d.memos["tower-of-london"].text === "Tickets on Manuel's phone.");
+  d = await (await set({ target: "tower-of-london", text: "  " })).json();
+  t5("an empty note takes it away", !("tower-of-london" in d.memos) && day in d.memos);
+  d = await (await set({ target: day, text: null })).json();
+  t5("so does null", !(day in d.memos));
+
+  // the front page's today
+  await set({ target: "2026-09-13", text: "Rain forecast: the museums day." });
+  await raw("/api/auth/pin", { method: "POST", headers: em, body: JSON.stringify({ tripId: null }) });
+  const home = await (await raw("/api/trips?today=2026-09-13", { headers: em })).json();
+  t5("today's note is on the front page", home.featured?.id === 1 && home.featured.note?.text === "Rain forecast: the museums day.");
+  const home2 = await (await raw("/api/trips?today=2026-09-12", { headers: em })).json();
+  t5("and only today's", home2.featured?.id === 1 && home2.featured.note === null);
+  await set({ target: "2026-09-13", text: null });
+
+  // it goes with the thing it is on
+  const note = await (await raw("/api/t/1/plan/note/add", { method: "POST", headers: em, body: JSON.stringify({ label: "Dinner with a note", day }) })).json();
+  const nid = note.notes.find((n) => n.label === "Dinner with a note").id;
+  d = await (await set({ target: nid, text: "Anna booked, say her name." })).json();
+  t5("a note on one of your own entries", d.memos[nid]?.text === "Anna booked, say her name.");
+  d = await (await raw("/api/t/1/plan/note/remove", { method: "POST", headers: em, body: JSON.stringify({ id: nid }) })).json();
+  t5("goes when the entry goes", !(nid in d.memos));
+  const added = await (await raw("/api/t/1/sights/add", { method: "POST", headers: em, body: JSON.stringify({ name: "A café with a note", costs: false }) })).json();
+  const cafe = added.custom.find((c) => c.name === "A café with a note").id;
+  await set({ target: cafe, text: "Cash only." });
+  d = await (await raw("/api/t/1/sights/remove", { method: "POST", headers: em, body: JSON.stringify({ id: cafe }) })).json();
+  t5("and a place's when the place goes", !(cafe in d.memos));
+
+  const mk = await (await raw("/api/trips", { method: "POST", headers: em, body: JSON.stringify({ name: "Noted", startDate: "2027-05-01", endDate: "2027-05-02" }) })).json();
+  await raw(`/api/t/${mk.trip.id}/memo/set`, { method: "POST", headers: em, body: JSON.stringify({ target: "2027-05-01", text: "Arrive." }) });
+  t5("a note on another trip is that trip's", db.prepare("SELECT COUNT(*) AS n FROM memos WHERE trip_id = ?").get(mk.trip.id).n === 1 && !("2027-05-01" in (await memos())));
+  await raw(`/api/t/${mk.trip.id}/trip/delete`, { method: "POST", headers: em, body: JSON.stringify({ confirm: "Noted" }) });
+  t5("and goes with the trip", db.prepare("SELECT COUNT(*) AS n FROM memos WHERE trip_id = ?").get(mk.trip.id).n === 0);
+}
+
 console.log(`\n${ok + ok2 + ok3 + ok4 + ok5} passed, ${fail + fail2 + fail3 + fail4 + fail5} failed`);
 process.exit(fail + fail2 + fail3 + fail4 + fail5 ? 1 : 0);

@@ -347,7 +347,15 @@ took them.
       them and nobody else, not even on a public trip. A file goes with its
       place, its entry or its trip. "Save for offline" fetches them too, so
       the ticket is on the phone at the door. `src/files.js`.
-- [ ] **Step 25 — notes on a stop and on a day.**
+- [x] **Step 25 — notes on a stop and on a day.** *(2026-09-28.)* One
+      shared text on a place, on one of your own entries, or on a day: the
+      entrance to use, whose phone the tickets are on, "leave by eight".
+      Editors write and rewrite it in place — in the stop's sheet, and under
+      the day's head — and it says who last edited it; viewers read. The
+      first line shows on the stop's card; the day's note is on the front
+      page on the day. Up to 2000 characters, line breaks kept; empty takes
+      it away; it goes with the stop, the entry or the trip. Table `memos`
+      (migration 023), `POST /api/memo/set`, `src/memos.js`.
 - [ ] **Step 26 — notifications.** A daily digest by email of what changed,
       and a reminder the day before a booking.
 - [ ] **Step 27 — dates that shift.** Moving a trip's dates moves the plan
@@ -728,6 +736,20 @@ askable is not a flag but a fact — an owner with an account — so the seeded
 example trip, whose owner is a placeholder, is simply unaskable, and so would
 any other trip nobody real runs. One open request per person and trip, so
 the owner is asked once.
+
+**2026-09-28 — A note is one shared text per thing, not a thread.**
+Comments on a place already exist on Sights and are a conversation — who
+said what, in order. A note is the opposite: the one thing everyone should
+know when they are standing there, kept current. So it is a single text per
+place, entry or day that any editor rewrites in place, with the last editor
+named, rather than another list of comments. It hangs on the place, not on
+the plan row, for the same reason a file does: the plan row comes and goes
+with the slot, the fact about the entrance does not. A day's note is keyed on
+the date; if the trip's dates move (step 27) it stays in the table and
+simply shows again when a day of that date exists. Called `memos` in the
+code only because `plan_notes` — your own entries — took the word first;
+every page says "note". Not on the Sights or Bookings cards yet: the sheet
+on the plan is where you look when you are about to go.
 
 **2026-09-18 — Phase 1 before Phase 2.**
 Accounts, invites and per-account settings all hang off a user row *and* a

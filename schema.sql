@@ -133,6 +133,20 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 CREATE INDEX IF NOT EXISTS idx_attachments_trip ON attachments (trip_id, target, created_at);
 
+-- Notes on a stop and on a day: one short shared text per thing, edited in
+-- place by any editor. The target is a place (an item id), one of your own
+-- entries (a "note-…" id) or a day of the trip (YYYY-MM-DD). Called memos
+-- here because `plan_notes` — your own entries — already took the word.
+CREATE TABLE IF NOT EXISTS memos (
+  trip_id    INTEGER NOT NULL,
+  target     TEXT    NOT NULL,      -- an item id, a "note-…" id, or a day
+  text       TEXT    NOT NULL,      -- up to 2000 characters, line breaks kept
+  set_by     TEXT    NOT NULL,      -- who last edited it, as typed
+  set_by_key TEXT    NOT NULL,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (trip_id, target)
+);
+
 -- Asking to join: someone signed in but not on a trip can ask its owner for
 -- a seat. One open request per person per trip; the owner accepts with a
 -- role or declines, and the row keeps the outcome.
@@ -332,7 +346,8 @@ INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES
   ('migrate-019-money.sql', 0),
   ('migrate-020-durations.sql', 0),
   ('migrate-021-attachments.sql', 0),
-  ('migrate-022-access-requests.sql', 0);
+  ('migrate-022-access-requests.sql', 0),
+  ('migrate-023-memos.sql', 0);
 -- 009 (the London places) and 014 (the example trip) are deliberately not
 -- recorded: `npm run migrate` on a fresh database imports them, so trip 1 is
 -- the London trip there too and the front page has its example.

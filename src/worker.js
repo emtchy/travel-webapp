@@ -9,6 +9,7 @@ import { handleInviteCreate, handleInviteList, handleInviteRevoke, handleInviteA
 import { TEMPLATES, ITEM_COLUMNS as TEMPLATE_COLUMNS, templatesFor } from "./templates.js";
 import { limited, ip, withHeaders } from "./limits.js";
 import { getExpenses, balances, handleExpenseAdd, handleExpenseUpdate, handleExpenseRemove, CURRENCIES } from "./money.js";
+import { listMemos, memoOn, handleMemoSet, removeMemoFor } from "./memos.js";
 
 /* ------------------------------------------------------------------ utils */
 
@@ -91,6 +92,7 @@ async function handleTripDelete(request, env, trip) {
     "DELETE FROM plan_notes WHERE trip_id = ?1", "DELETE FROM items WHERE trip_id = ?1",
     "DELETE FROM trip_travel WHERE trip_id = ?1", "DELETE FROM invites WHERE trip_id = ?1",
     "DELETE FROM expenses WHERE trip_id = ?1", "DELETE FROM access_requests WHERE trip_id = ?1",
+    "DELETE FROM memos WHERE trip_id = ?1",
     "DELETE FROM trip_members WHERE trip_id = ?1",
     "UPDATE users SET pinned_trip_id = NULL WHERE pinned_trip_id = ?1",
     "DELETE FROM trips WHERE id = ?1",
@@ -205,6 +207,7 @@ async function featuredTrip(env, trips, today) {
     out.totalDays = days.length;
     out.today = today;
     out.stops = await stopsOn(env, trip.id, today);
+    out.note = await memoOn(env, trip.id, today);
   } else if (phase === "next") {
     out.daysUntil = Math.round((Date.parse(trip.startDate) - Date.parse(today)) / 864e5);
     Object.assign(out, await stillToDo(env, trip.id, trip.role));
@@ -760,6 +763,7 @@ const snapshot = async (env, trip) => ({
   travel: await getTravel(env, trip),
   expenses: await getExpenses(env, trip),
   attachments: await listAttachments(env, trip),
+  memos: await listMemos(env, trip),
 });
 
 /* ------------------------------------------------------------- handlers */
@@ -1149,6 +1153,7 @@ async function handleDeleteSight(request, env, trip) {
   await env.DB.prepare("DELETE FROM booking_status WHERE sight_id = ?1").bind(id).run();
   await env.DB.prepare("DELETE FROM plan_entries WHERE sight_id = ?1").bind(id).run();
   await removeAttachmentsFor(env, trip, id);
+  await removeMemoFor(env, trip, id);
   await env.DB.prepare("DELETE FROM items WHERE id = ?1 AND trip_id = ?2").bind(id, trip).run();
 
   return json({ ok: true, ...(await snapshot(env, trip)) });
@@ -1741,6 +1746,7 @@ async function handleNoteRemove(request, env, trip) {
     return bad("That isn't one of your own entries.");
 
   await removeAttachmentsFor(env, trip, id);
+  await removeMemoFor(env, trip, id);
   await env.DB.prepare("DELETE FROM plan_notes WHERE id = ?1").bind(id).run();
   return json({ ok: true, ...(await snapshot(env, trip)) });
 }
@@ -1982,6 +1988,9 @@ async function route(request, env) {
       return handleAccessList(request, env, trip, ctx);
     if (pathname === "/api/access/decide" && method === "POST")
       return handleAccessDecide(request, env, trip, { ...ctx, snapshot });
+
+    if (pathname === "/api/memo/set" && method === "POST")
+      return handleMemoSet(request, env, trip, { ...fctx, getTrip });
 
     if (pathname === "/api/attachments/add" && method === "POST")
       return handleAttachmentAdd(request, env, trip, fctx);
