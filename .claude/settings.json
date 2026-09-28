@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && echo '## Last commits' && git log --oneline -5 && echo '## Working tree' && git status --short && echo '## Open steps (docs/PLAN.md)' && grep -n '^\\s*- \\[ \\]' docs/PLAN.md"
+          }
+        ]
+      }
+    ]
+  }
+}
